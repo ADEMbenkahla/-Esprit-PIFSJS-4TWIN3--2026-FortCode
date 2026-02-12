@@ -137,3 +137,75 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+// =============================
+// 👤 GET PROFILE
+// =============================
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: "Profile retrieved successfully",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👤 UPDATE PROFILE
+// =============================
+exports.updateProfile = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update username if provided
+    if (username) {
+      // Check if new username is unique
+      const existingUsername = await User.findOne({ username, _id: { $ne: user._id } });
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      user.username = username;
+    }
+
+    // Update email if provided
+    if (email) {
+      // Check if new email is unique
+      const existingEmail = await User.findOne({ email, _id: { $ne: user._id } });
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      user.email = email;
+    }
+
+    // Update password if provided (optional)
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: await User.findById(user._id).select("-password")
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
