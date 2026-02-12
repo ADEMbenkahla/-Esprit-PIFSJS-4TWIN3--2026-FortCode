@@ -209,3 +209,132 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+// =============================
+// 👨‍💼 REGISTER ADMIN
+// =============================
+exports.registerAdmin = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Check if email exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: "admin"
+    });
+
+    res.status(201).json({
+      message: "Admin user created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 ADMIN: GET ALL USERS
+// =============================
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+
+    res.json({
+      message: "All users retrieved successfully",
+      total: users.length,
+      users
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 ADMIN: TOGGLE USER ACTIVATION
+// =============================
+exports.toggleUserActivation = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.json({
+      message: `User ${user.isActive ? "activated" : "deactivated"} successfully`,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        isActive: user.isActive
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 ADMIN: ASSIGN ROLE
+// =============================
+exports.assignRole = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    // Validate role
+    const validRoles = ["participant", "admin", "recruiter"];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ 
+        message: `Invalid role. Allowed roles: ${validRoles.join(", ")}` 
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.role = role;
+    await user.save();
+
+    res.json({
+      message: "Role assigned successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
