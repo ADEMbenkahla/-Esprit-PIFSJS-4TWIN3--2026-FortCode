@@ -18,6 +18,21 @@ router.post("/register", register);
 router.post("/register-admin", registerAdmin);
 router.post("/login", login);
 
+// Simple demo login endpoint (without DB validation)
+router.post("/demo-login", (req, res) => {
+  const { email, password } = req.body;
+  const demoUser = {
+    email: "user@algoarena.com",
+    password: "123456"
+  };
+
+  if (email === demoUser.email && password === demoUser.password) {
+    res.json({ success: true, message: "Login successful" });
+  } else {
+    res.status(401).json({ success: false, message: "Invalid credentials" });
+  }
+});
+
 // Profile routes (protected)
 router.get("/profile", authMiddleware, getProfile);
 router.put("/profile", authMiddleware, updateProfile);
