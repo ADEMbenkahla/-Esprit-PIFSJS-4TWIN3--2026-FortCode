@@ -6,8 +6,7 @@ import UserDetails from "./components/UserDetails";
 import AddUserModal from "./components/AddUserModal";
 import EditUserModal from "./components/EditUserModal";
 import { User } from "./types";
-
-import { io } from "socket.io-client";
+import { useSocket } from "../../context/SocketContext";
 
 const UserTracker: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -18,14 +17,14 @@ const UserTracker: React.FC = () => {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState<boolean>(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
-  const pageSize = 4;
+  const pageSize = 10;
 
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        "http://localhost:5000/api/auth/admin/users",
+        `http://localhost:5000/api/auth/admin/users?t=${Date.now()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -34,10 +33,15 @@ const UserTracker: React.FC = () => {
       );
 
       const data = await response.json();
-
-      if (Array.isArray(data)) {
-        setUsers(data);
-      } else if (Array.isArray(data.users)) {
+      if (response.ok) {
+        console.log("DEBUG: fetchUsers received", data.users.length, "users.");
+        if (selectedUserId) {
+          const found = data.users.find((u: any) => u._id === selectedUserId);
+          console.log("DEBUG: Selected user in list after fetch:", found?.username, "Avatar:", found?.avatar);
+        }
+        setUsers(data.users);
+      }
+      else if (Array.isArray(data.users)) {
         setUsers(data.users);
       } else {
         setUsers([]);
@@ -49,33 +53,36 @@ const UserTracker: React.FC = () => {
   };
 
   /* ================= FETCH USERS & SOCKET ================= */
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchUsers();
 
-    const token = localStorage.getItem("token");
-    const socket = io("http://localhost:5000", {
-      auth: { token }
-    });
-
-    socket.on("userStatusChanged", ({ userId, isOnline }) => {
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user._id === userId ? { ...user, isOnline } : user
-        )
-      );
-    });
+    if (socket) {
+      socket.on("userStatusChanged", ({ userId, isOnline }) => {
+        setUsers(prevUsers =>
+          prevUsers.map(user =>
+            user._id === userId ? { ...user, isOnline } : user
+          )
+        );
+      });
+    }
 
     return () => {
-      socket.disconnect();
+      if (socket) socket.off("userStatusChanged");
     };
-  }, []);
+  }, [socket]);
 
   /* ================= FILTER ================= */
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
+      const searchStr = searchQuery.toLowerCase();
+      const username = (user.username || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+
       const matchesSearch =
-        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        username.includes(searchStr) ||
+        email.includes(searchStr);
 
       if (activeFilter === "All Users") return matchesSearch;
       if (activeFilter === "Admins")
@@ -86,6 +93,10 @@ const UserTracker: React.FC = () => {
         return matchesSearch && user.role === "recruiter";
 
       return matchesSearch;
+    }).sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
     });
   }, [users, activeFilter, searchQuery]);
 
@@ -98,7 +109,13 @@ const UserTracker: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, searchQuery, users.length]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   const selectedUser = users.find((u) => u._id === selectedUserId);
 
@@ -108,7 +125,7 @@ const UserTracker: React.FC = () => {
   };
 
   /* ================= FILTER BUTTONS ================= */
-  const filters = ["All Users", "Admins"];
+  const filters = ["All Users", "Admins", "Participants", "Recruiters"];
 
   return (
     <div className="flex h-screen bg-background-dark font-body text-gray-200 overflow-hidden">
@@ -228,19 +245,23 @@ const UserTracker: React.FC = () => {
       </main>
 
       {/* Add User Modal */}
-      <AddUserModal
-        isOpen={isAddUserModalOpen}
-        onClose={() => setIsAddUserModalOpen(false)}
-        onUserCreated={fetchUsers}
-      />
+      {isAddUserModalOpen && (
+        <AddUserModal
+          isOpen={isAddUserModalOpen}
+          onClose={() => setIsAddUserModalOpen(false)}
+          onUserCreated={fetchUsers}
+        />
+      )}
 
       {/* Edit User Modal */}
-      <EditUserModal
-        isOpen={isEditUserModalOpen}
-        onClose={() => setIsEditUserModalOpen(false)}
-        onUserUpdated={fetchUsers}
-        user={userToEdit}
-      />
+      {isEditUserModalOpen && userToEdit && (
+        <EditUserModal
+          isOpen={isEditUserModalOpen}
+          onClose={() => setIsEditUserModalOpen(false)}
+          onUserUpdated={fetchUsers}
+          user={userToEdit}
+        />
+      )}
     </div>
   );
 };

@@ -33,144 +33,139 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  /* Deep, rich, animated gradient background */
-  background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #4b1d7a);
-  background-size: 400% 400%;
-  animation: gradientAnimation 15s ease infinite;
-  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  /* Deep, layered navy/slate mesh background */
+  background: #020617;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.3) 0, transparent 50%),
+    radial-gradient(at 50% 0%, rgba(88, 28, 135, 0.2) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(30, 58, 138, 0.3) 0, transparent 50%);
+  background-size: 200% 200%;
+  animation: gradientAnimation 20s ease-in-out infinite;
+  font-family: 'Inter', 'Outfit', 'Segoe UI', sans-serif;
   position: relative;
   overflow: hidden;
 }
 
-/* Optional: Decorative glowing orbs in background (pseudo-elements) */
 .auth-container::before {
   content: '';
   position: absolute;
-  top: -10%;
+  top: -20%;
   left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
-  filter: blur(80px);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+  filter: blur(120px);
   z-index: 0;
+  animation: float 15s ease-in-out infinite alternate;
 }
 
 .auth-container::after {
   content: '';
   position: absolute;
-  bottom: -10%;
+  bottom: -20%;
   right: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(255, 140, 0, 0.2) 0%, transparent 70%);
-  filter: blur(80px);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%);
+  filter: blur(120px);
   z-index: 0;
+  animation: float 18s ease-in-out infinite alternate-reverse;
 }
 
-/* ================= GLASSMORPHISM CARD ================= */
+/* New: Extra glowing highlight for center depth */
+.auth-container>.card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ================= CARD STRUCTURE ================= */
 
 .auth-container .card {
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.03);
-  /* Extremely subtle fill */
-  backdrop-filter: blur(20px);
-  /* Strong blur */
-  -webkit-backdrop-filter: blur(20px);
-
-  padding: 50px 50px;
-  border-radius: 28px;
-  width: 450px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 16px;
+  padding: 2.5rem;
+  max-width: 420px;
+  width: 90%;
   text-align: center;
-
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-
-  box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.37),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(251, 191, 36, 0.05);
   animation: float 6s ease-in-out infinite;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.auth-container .card:hover {
-  box-shadow:
-    0 15px 45px 0 rgba(0, 0, 0, 0.5),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 /* ================= LOGO ================= */
 
 .auth-container .logo-card {
-  margin-bottom: 30px;
-  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-bottom: 2rem;
 }
 
-/* For Register page layout adjustment */
 .auth-container .logo-card.register {
-  margin-top: 0;
-  /* Reset previous hack */
+  margin-bottom: 1.5rem;
 }
 
 .auth-container .logo-card img {
-  width: 160px;
+  width: 120px;
   height: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.5));
-  transition: filter 0.3s ease;
+  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .auth-container .logo-card img:hover {
-  filter: drop-shadow(0 0 25px rgba(255, 140, 0, 0.6));
+  filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.8));
+  transform: scale(1.05);
 }
 
-/* ================= LABELS ================= */
+/* ================= LABELS & INPUTS ================= */
 
 .auth-container label {
   display: block;
-  text-align: left;
-  margin: 15px 0 8px;
-  font-size: 13px;
-  color: #d1d5db;
-  /* Gray-300 */
+  color: #cbd5e1;
+  font-size: 0.875rem;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  font-size: 0.7rem;
+  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+  text-align: left;
+  text-transform: none;
+  /* User requested style is cleaner without uppercase */
 }
 
-/* ================= INPUTS ================= */
+.auth-container label:first-of-type {
+  margin-top: 0;
+}
 
 .auth-container input {
   width: 100%;
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-
-  /* Darker glass input */
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-
-  color: #ffffff;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 0.9375rem;
+  transition: all 0.3s ease;
   outline: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.auth-container input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
 }
 
 .auth-container input:focus {
-  background: rgba(0, 0, 0, 0.4);
-  border-color: #a855f7;
-  /* Primary Purple */
-  box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15);
-  transform: translateY(-1px);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: rgba(15, 23, 42, 1);
+}
+
+.auth-container input::placeholder {
+  color: #64748b;
 }
 
 /* ================= PASSWORD & FORGOT ================= */
@@ -180,18 +175,18 @@
 }
 
 .auth-container .forgot {
-  font-size: 12px;
-  color: #a855f7;
+  font-size: 0.8125rem;
+  color: #fbbf24;
   float: right;
   margin-top: 8px;
   cursor: pointer;
   font-weight: 500;
-  transition: color 0.2s;
+  text-decoration: none;
+  transition: color 0.3s ease;
 }
 
 .auth-container .forgot:hover {
-  color: #ff8c00;
-  /* Orange Accent */
+  color: #f59e0b;
   text-decoration: underline;
 }
 
@@ -199,126 +194,99 @@
 
 .auth-container button {
   width: 100%;
-  margin-top: 24px;
-  padding: 16px;
-  border-radius: 14px;
-  border: none;
-
-  /* Modern Gradient */
-  background: linear-gradient(135deg, #FF8C00 0%, #FF5F6D 50%, #a855f7 100%);
-  background-size: 200% auto;
-
-  color: #ffffff;
+  padding: 0.875rem;
+  margin-top: 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 8px;
+  color: white;
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-
+  font-size: 0.9375rem;
   cursor: pointer;
-  transition: all 0.4s ease;
-  box-shadow: 0 10px 20px -10px rgba(255, 140, 0, 0.5);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  text-transform: none;
 }
 
 .auth-container button:hover:not(:disabled) {
-  background-position: right center;
-  /* shift gradient */
-  transform: translateY(-3px);
-  box-shadow: 0 15px 30px -10px rgba(168, 85, 247, 0.6);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
 }
 
 .auth-container button:active:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translateY(0);
 }
 
 .auth-container button:disabled {
   opacity: 0.6;
-  cursor: wait;
-  filter: grayscale(100%);
+  cursor: not-allowed;
 }
 
 /* ================= DIVIDER ================= */
 
 .auth-container .divider {
-  margin: 24px 0;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  font-weight: 600;
-  letter-spacing: 1.5px;
   display: flex;
   align-items: center;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.8125rem;
+  margin: 1.5rem 0;
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .auth-container .divider::before,
 .auth-container .divider::after {
-  content: "";
+  content: '';
   flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #334155;
 }
 
 .auth-container .divider::before {
-  margin-right: 15px;
+  margin-right: 0.75rem;
 }
 
 .auth-container .divider::after {
-  margin-left: 15px;
+  margin-left: 0.75rem;
 }
 
 /* ================= GOOGLE BUTTON ================= */
 
-.auth-container .google {
-  margin-top: 0;
-  /* Reset */
+.auth-container button.google {
   background: rgba(255, 255, 255, 0.05);
-  /* Transparent white */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  border: 1px solid #334155;
+  color: #f1f5f9;
+  margin-top: 0;
   box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 14px;
-  text-transform: none;
-  font-weight: 500;
 }
 
-.auth-container .google:hover {
+.auth-container button.google:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+  border-color: #475569;
 }
 
-/* ================= REGISTER TEXT ================= */
+/* ================= REGISTER / LOGIN SWITCH TEXT ================= */
 
 .auth-container .register {
-  font-size: 13px;
-  margin-top: 25px;
-  color: rgba(255, 255, 255, 0.6);
+  margin-top: 1.5rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
 }
 
-.auth-container .register span {
-  color: #FF8C00;
-  cursor: pointer;
+.auth-container .register span,
+.auth-container .register a {
+  color: #fbbf24;
+  text-decoration: none;
   font-weight: 600;
   margin-left: 5px;
-  transition: 0.2s;
-  position: relative;
+  cursor: pointer;
+  transition: color 0.3s ease;
 }
 
-.auth-container .register span::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0%;
-  height: 1px;
-  background: #FF8C00;
-  transition: width 0.3s;
-}
-
-.auth-container .register span:hover::after {
-  width: 100%;
+.auth-container .register span:hover,
+.auth-container .register a:hover {
+  color: #f59e0b;
+  text-decoration: underline;
 }

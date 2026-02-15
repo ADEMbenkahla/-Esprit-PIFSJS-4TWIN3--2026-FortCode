@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const sendEmail = require("../utils/sendEmail");
 
 
 // =============================
@@ -66,10 +67,25 @@ exports.register = async (req, res) => {
 // =============================
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, email, password } = req.body;
+    let loginId = (identifier || email || "").toString().trim();
 
-    const user = await User.findOne({ email });
+    console.log(`DEBUG: Login Attempt - Identifier: [${loginId}], Password length: ${password ? password.length : 0}`);
+
+    if (!loginId || !password) {
+      return res.status(400).json({ message: "Login identifier and password are required" });
+    }
+
+    // Comprehensive search: username or email (case-insensitive)
+    const user = await User.findOne({
+      $or: [
+        { email: { $regex: new RegExp(`^${loginId}$`, "i") } },
+        { username: { $regex: new RegExp(`^${loginId}$`, "i") } }
+      ]
+    });
+
     if (!user) {
+      console.log(`DEBUG: No user found for identifier: [${loginId}]`);
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
@@ -79,6 +95,7 @@ exports.login = async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("DEBUG: Password match result:", isMatch);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -123,10 +140,39 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
 
-    res.json({
-      message: "Password reset token generated",
-      resetToken  // ⚠️ En production on envoie par email
-    });
+    // Create reset URL
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+
+    const message = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+        <h2 style="color: #FF8C00; text-align: center;">Reset Your Password</h2>
+        <p style="color: #555; text-align: center;">Hello ${user.username},</p>
+        <p style="color: #555; text-align: center;">We received a request to reset your password for your FortCode account.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #FF8C00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+        </div>
+        <p style="color: #999; text-align: center; font-size: 12px;">If you did not request this, please ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #999; text-align: center; font-size: 12px;">The FortCode Team</p>
+      </div>
+    `;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Reset Your FortCode Password",
+        html: message,
+      });
+
+      res.status(200).json({ message: "Email sent" });
+    } catch (error) {
+      console.error("Email send error:", error);
+      user.resetToken = undefined;
+      user.resetTokenExpire = undefined;
+      await user.save();
+
+      return res.status(500).json({ message: "Email could not be sent. Check server logs." });
+    }
 
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -283,7 +329,7 @@ exports.registerAdmin = async (req, res) => {
 // =============================
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
 
     res.json({
       message: "All users retrieved successfully",
@@ -373,7 +419,7 @@ exports.assignRole = async (req, res) => {
 // =============================
 exports.createUser = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, avatar: providedAvatar } = req.body;
 
     // Validate required fields
     if (!username || !email || !password || !role) {
@@ -403,8 +449,8 @@ exports.createUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate DiceBear Avatar
-    const avatar = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+    // Use provided avatar or generate DiceBear Avatar
+    const avatar = providedAvatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
 
     const user = await User.create({
       username,
@@ -437,12 +483,15 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { username, email, password, role } = req.body;
+    console.log("DEBUG: updateUser Body:", req.body);
+    const { username, email, password, role, avatar } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    const updateData = {};
 
     // Update username if provided
     if (username && username !== user.username) {
@@ -450,7 +499,7 @@ exports.updateUser = async (req, res) => {
       if (existingUsername) {
         return res.status(400).json({ message: "Username already exists" });
       }
-      user.username = username;
+      updateData.username = username;
     }
 
     // Update email if provided
@@ -459,12 +508,12 @@ exports.updateUser = async (req, res) => {
       if (existingEmail) {
         return res.status(400).json({ message: "Email already exists" });
       }
-      user.email = email;
+      updateData.email = email;
     }
 
     // Update password if provided
     if (password) {
-      user.password = await bcrypt.hash(password, 10);
+      updateData.password = await bcrypt.hash(password, 10);
     }
 
     // Update role if provided
@@ -475,14 +524,28 @@ exports.updateUser = async (req, res) => {
           message: `Invalid role. Allowed roles: ${validRoles.join(", ")}`
         });
       }
-      user.role = role;
+      updateData.role = role;
     }
 
-    await user.save();
+    // Update avatar if provided
+    if (avatar) {
+      console.log("DEBUG: Avatar detected in request:", avatar);
+      updateData.avatar = avatar;
+    }
+
+    console.log("DEBUG: Applying Update to DB:", updateData);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    console.log("DEBUG: Final User in DB after update:", updatedUser.avatar);
 
     res.json({
       message: "User updated successfully",
-      user: await User.findById(userId).select("-password")
+      user: updatedUser
     });
 
   } catch (error) {

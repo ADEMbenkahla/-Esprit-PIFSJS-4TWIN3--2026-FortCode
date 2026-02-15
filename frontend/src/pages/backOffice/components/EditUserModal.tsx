@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { User } from '../types';
+import { AvatarPicker } from './AvatarPicker';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -10,20 +11,16 @@ interface EditUserModalProps {
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUpdated, user }) => {
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState(user?.username || '');
+    const [email, setEmail] = useState(user?.email || '');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('participant');
+    const [role, setRole] = useState(user?.role || 'participant');
+    const [avatar, setAvatar] = useState(user?.avatar || '');
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (user) {
-            setUsername(user.username || '');
-            setEmail(user.email || '');
-            setPassword('');
-            setRole(user.role || 'participant');
-        }
-    }, [user]);
+    const handleAvatarSelect = React.useCallback((url: string) => {
+        setAvatar(url);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,12 +41,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
 
         try {
             const token = localStorage.getItem('token');
-            const body: any = { username, email, role };
+            const body: any = { username, email, role, avatar };
 
             // Only include password if it's provided
             if (password) {
                 body.password = password;
             }
+
+            console.log("DEBUG: Sending Update Body:", body);
 
             const response = await fetch(`http://localhost:5000/api/auth/admin/users/${user?._id}`, {
                 method: 'PUT',
@@ -61,6 +60,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
             });
 
             const data = await response.json();
+            console.log("DEBUG: Server Response for Update:", data);
 
             if (!response.ok) {
                 Swal.fire({
@@ -107,9 +107,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-surface-dark border border-purple-900/30 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="bg-surface-dark border border-purple-900/30 rounded-xl p-6 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-white font-display">Edit User</h2>
+                    <h2 className="text-xl font-bold text-white font-display">Edit User <span className="text-[10px] text-primary">(DEBUG-V3)</span></h2>
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-white transition-colors"
@@ -118,51 +118,63 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="john_doe"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="john_doe"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="user@fortcode.com"
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="user@fortcode.com"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Password (leave empty to keep current)</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="••••••••"
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Password (leave empty to keep current)</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="••••••••"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
-                        <select
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                        >
-                            <option value="participant">Participant</option>
-                            <option value="recruiter">Recruiter</option>
-                            <option value="admin">Admin</option>
-                        </select>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                >
+                                    <option value="participant">Participant</option>
+                                    <option value="recruiter">Recruiter</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">User Appearance</label>
+                            <AvatarPicker
+                                currentAvatar={avatar}
+                                onSelect={handleAvatarSelect}
+                            />
+                        </div>
                     </div>
 
                     <div className="flex gap-3 pt-4">

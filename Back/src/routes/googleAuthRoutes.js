@@ -25,6 +25,11 @@ router.get('/google/callback',
             return res.redirect(redirectUrl);
         }
 
+        // 🔥 Check if account is active
+        if (!user.isActive) {
+            return res.redirect('http://localhost:5173/?error=deactivated');
+        }
+
         // Existing user - generate JWT token
         const token = jwt.sign(
             { id: user._id, role: user.role, username: user.username },

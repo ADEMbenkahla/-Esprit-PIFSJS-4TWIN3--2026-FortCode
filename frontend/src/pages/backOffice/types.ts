@@ -39,6 +39,8 @@ export interface User {
   activities?: Activity[];
   flags?: string[];
   reports?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ActivityLog {

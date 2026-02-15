@@ -59,14 +59,14 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
           <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-accent-purple mb-4 shadow-glow relative">
             <img
               src={user.avatar || `https://i.pravatar.cc/150?u=${user._id}`}
-              alt={user.name}
+              alt={user.username}
               className="w-full h-full rounded-full object-cover border-4 border-surface-dark"
             />
             <div
               className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-surface-dark ${user.isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}
             ></div>
           </div>
-          <h3 className="font-display font-bold text-xl text-white">{user.name}</h3>
+          <h3 className="font-display font-bold text-xl text-white">{user.username}</h3>
           <p className="text-sm text-gray-500">@{user.username} • {user.role}</p>
 
           <div className="flex flex-col gap-2 w-full mt-5">

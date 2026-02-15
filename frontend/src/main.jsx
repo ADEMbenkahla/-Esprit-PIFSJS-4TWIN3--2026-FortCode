@@ -4,8 +4,12 @@ import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
 
+import { SocketProvider } from "./context/SocketContext";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <App />
+    <SocketProvider>
+      <App />
+    </SocketProvider>
   </BrowserRouter>
 );

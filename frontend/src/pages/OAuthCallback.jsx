@@ -16,6 +16,8 @@ function OAuthCallback() {
             // Redirect based on role
             if (role === 'admin') {
                 navigate('/backoffice/users');
+            } else if (role === 'participant') {
+                navigate('/home');
             } else {
                 navigate('/');
             }

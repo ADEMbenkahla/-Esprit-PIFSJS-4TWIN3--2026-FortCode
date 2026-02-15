@@ -88,7 +88,7 @@ const UserTable: React.FC<UserTableProps> = ({
                     <div className="relative">
                       <img
                         src={user.avatar || "/default-avatar.png"}
-                        alt={user.name}
+                        alt={user.username}
                         className="w-9 h-9 rounded-full border border-purple-900/50"
                       />
                       {user.isOnline && (
@@ -97,7 +97,7 @@ const UserTable: React.FC<UserTableProps> = ({
                     </div>
                     <div>
                       <div className="font-medium text-white">
-                        {user.name}
+                        {user.username}
                       </div>
                       <div className="text-[10px] text-gray-500">
                         {user.email}

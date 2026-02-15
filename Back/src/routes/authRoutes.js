@@ -11,7 +11,9 @@ const {
   toggleUserActivation,
   assignRole,
   createUser,
-  updateUser
+  updateUser,
+  forgotPassword,
+  resetPassword
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -29,6 +31,12 @@ router.post("/register-admin", registerAdmin);
 
 // Login
 router.post("/login", login);
+
+// Forgot password
+router.put("/forgot-password", forgotPassword);
+
+// Reset password
+router.put("/reset-password/:token", resetPassword);
 
 
 /* =====================================================

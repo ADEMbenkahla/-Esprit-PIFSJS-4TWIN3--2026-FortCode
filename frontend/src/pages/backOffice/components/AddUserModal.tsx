@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Swal from 'sweetalert2';
+import { AvatarPicker } from './AvatarPicker';
 
 interface AddUserModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('participant');
+    const [avatar, setAvatar] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -33,13 +35,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
 
         try {
             const token = localStorage.getItem('token');
+            const body = { username, email, password, role, avatar };
             const response = await fetch('http://localhost:5000/api/auth/admin/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ username, email, password, role })
+                body: JSON.stringify(body)
             });
 
             const data = await response.json();
@@ -73,6 +76,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
             setEmail('');
             setPassword('');
             setRole('participant');
+            setAvatar('');
 
             // Notify parent
             onUserCreated();
@@ -95,7 +99,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-surface-dark border border-purple-900/30 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="bg-surface-dark border border-purple-900/30 rounded-xl p-6 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-white font-display">Add New User</h2>
                     <button
@@ -106,51 +110,63 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="john_doe"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="john_doe"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="user@fortcode.com"
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="user@fortcode.com"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                            placeholder="••••••••"
-                        />
-                    </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                    placeholder="••••••••"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
-                        <select
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
-                        >
-                            <option value="participant">Participant</option>
-                            <option value="recruiter">Recruiter</option>
-                            <option value="admin">Admin</option>
-                        </select>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
+                                <select
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
+                                >
+                                    <option value="participant">Participant</option>
+                                    <option value="recruiter">Recruiter</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">User Appearance</label>
+                            <AvatarPicker
+                                currentAvatar={avatar}
+                                onSelect={(url) => setAvatar(url)}
+                            />
+                        </div>
                     </div>
 
                     <div className="flex gap-3 pt-4">

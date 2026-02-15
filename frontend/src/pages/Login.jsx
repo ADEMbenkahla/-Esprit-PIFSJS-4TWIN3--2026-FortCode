@@ -1,18 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import logoImg from "../assets/logo.png";
 import "./pages.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useSocket } from "../context/SocketContext";
 
 import Swal from "sweetalert2";
 
 function Login({ onSwitchToRegister }) {
-  const [email, setEmail] = useState("");
+  const { connect } = useSocket();
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("error") === "deactivated") {
+      Swal.fire({
+        icon: 'error',
+        title: 'Account Deactivated',
+        text: 'Your account has been deactivated. Please contact support.',
+        background: '#1a1a2e',
+        color: '#fff',
+        confirmButtonColor: '#d33'
+      });
+      // Nettoyer l'URL
+      navigate("/", { replace: true });
+    }
+  }, [location, navigate]);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!identifier || !password) {
       Swal.fire({
         icon: 'warning',
         title: 'Missing Fields',
@@ -25,6 +44,7 @@ function Login({ onSwitchToRegister }) {
     }
 
     setLoading(true);
+    console.log("DEBUG: Sending Login Request:", { identifier, password });
 
     try {
       const response = await fetch("http://localhost:5000/api/auth/login", {
@@ -32,12 +52,13 @@ function Login({ onSwitchToRegister }) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        console.warn("DEBUG: Login Failed. Server responded:", data);
         Swal.fire({
           icon: 'error',
           title: 'Login Failed',
@@ -52,6 +73,7 @@ function Login({ onSwitchToRegister }) {
 
       // ✅ Stocker token
       localStorage.setItem("token", data.token);
+      connect(data.token);
 
       Swal.fire({
         icon: 'success',
@@ -69,6 +91,8 @@ function Login({ onSwitchToRegister }) {
       setTimeout(() => {
         if (payload.role === "admin") {
           navigate("/backoffice/users");
+        } else if (payload.role === "participant") {
+          navigate("/home");
         } else {
           navigate("/");
         }
@@ -95,12 +119,12 @@ function Login({ onSwitchToRegister }) {
           <img src={logoImg} alt="FortCode Logo" />
         </div>
 
-        <label>Email Address</label>
+        <label>Username or Email Address</label>
         <input
-          type="email"
-          placeholder="user@fortcode.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          type="text"
+          placeholder="user@fortcode.com or username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
         />
 
         <label>Password</label>
@@ -111,11 +135,14 @@ function Login({ onSwitchToRegister }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <span className="forgot">Forgot password?</span>
+          <Link to="/forgot-password" title="Forgot password?" className="forgot">
+            Forgot password?
+          </Link>
+          <div style={{ clear: 'both' }}></div>
         </div>
 
         <button onClick={handleLogin} disabled={loading}>
-          {loading ? "LOGGING IN..." : "INITIALIZE SESSION →"}
+          {loading ? "SIGNING IN..." : "SIGN IN →"}
         </button>
 
         <div className="divider">OR CONTINUE WITH</div>
