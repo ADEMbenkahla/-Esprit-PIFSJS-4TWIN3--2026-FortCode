@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserActivityLog {
+  id          String   @id @default(uuid())
+  user_id     String?  // References Mongo ObjectId as string
+  ip_address  String
+  user_agent  String
+  browser     String?
+  os          String?
+  device      String?
+  method      String
+  route       String
+  referrer    String?
+  session_id  String?
+  created_at  DateTime @default(now())
+
+  @@index([user_id])
+  @@index([created_at])
+}

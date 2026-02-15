@@ -11,9 +11,18 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  avatar: {
+    type: String,
+    default: ""
+  },
   password: {
     type: String,
-    required: true
+    required: false
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
   },
   role: {
     type: String,
@@ -31,13 +40,17 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
   resetToken: String,
-resetTokenExpire: Date,
+  resetTokenExpire: Date,
 
   deactivatedAt: {
-  type: Date,
-  default: null
-}
+    type: Date,
+    default: null
+  }
 
 }, { timestamps: true });
 

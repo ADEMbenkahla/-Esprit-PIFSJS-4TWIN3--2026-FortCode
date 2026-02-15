@@ -1,44 +1,100 @@
-
 const express = require("express");
 const router = express.Router();
-const { 
-  register, 
-  login, 
-  getProfile, 
-  updateProfile, 
+
+const {
+  register,
   registerAdmin,
+  login,
+  getProfile,
+  updateProfile,
   getAllUsers,
   toggleUserActivation,
-  assignRole
+  assignRole,
+  createUser,
+  updateUser
 } = require("../controllers/authController");
+
 const authMiddleware = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
 
+/* =====================================================
+   🔓 PUBLIC ROUTES
+===================================================== */
+
+// Register user
 router.post("/register", register);
+
+// Register admin (optionnel)
 router.post("/register-admin", registerAdmin);
+
+// Login
 router.post("/login", login);
 
-// Simple demo login endpoint (without DB validation)
-router.post("/demo-login", (req, res) => {
-  const { email, password } = req.body;
-  const demoUser = {
-    email: "user@algoarena.com",
-    password: "123456"
-  };
 
-  if (email === demoUser.email && password === demoUser.password) {
-    res.json({ success: true, message: "Login successful" });
-  } else {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
-  }
-});
+/* =====================================================
+   🔐 USER PROTECTED ROUTES
+===================================================== */
 
-// Profile routes (protected)
+// Get logged-in user profile
 router.get("/profile", authMiddleware, getProfile);
+
+// Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
 
-// Admin routes (protected)
-router.get("/admin/users", authMiddleware, roleMiddleware("admin"), getAllUsers);
-router.patch("/admin/users/:userId/toggle", authMiddleware, roleMiddleware("admin"), toggleUserActivation);
-router.patch("/admin/users/:userId/role", authMiddleware, roleMiddleware("admin"), assignRole);
+
+/* =====================================================
+   👑 ADMIN ROUTES (Protected + Role Check)
+===================================================== */
+
+// Get all users
+router.get(
+  "/admin/users",
+  authMiddleware,
+  roleMiddleware("admin"),
+  getAllUsers
+);
+
+// Create user (Admin only)
+router.post(
+  "/admin/users",
+  authMiddleware,
+  roleMiddleware("admin"),
+  createUser
+);
+
+// Update user (Admin only)
+router.put(
+  "/admin/users/:userId",
+  authMiddleware,
+  roleMiddleware("admin"),
+  updateUser
+);
+
+// Activate / Deactivate user
+router.patch(
+  "/admin/users/:userId/toggle",
+  authMiddleware,
+  roleMiddleware("admin"),
+  toggleUserActivation
+);
+
+// Change user role
+router.patch(
+  "/admin/users/:userId/role",
+  authMiddleware,
+  roleMiddleware("admin"),
+  assignRole
+);
+
+
+/* =====================================================
+   🚪 LOGOUT (Stateless JWT)
+===================================================== */
+
+router.post("/logout", authMiddleware, (req, res) => {
+  // JWT est stateless → côté client on supprime le token
+  res.json({ message: "Logout successful" });
+});
+
+
 module.exports = router;
