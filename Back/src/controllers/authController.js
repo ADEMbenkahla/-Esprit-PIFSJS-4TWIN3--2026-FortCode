@@ -240,7 +240,7 @@ exports.getProfile = async (req, res) => {
 // =============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, avatar } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -270,6 +270,11 @@ exports.updateProfile = async (req, res) => {
     // Update password if provided (optional)
     if (password) {
       user.password = await bcrypt.hash(password, 10);
+    }
+
+    // Update avatar if provided
+    if (avatar) {
+      user.avatar = avatar;
     }
 
     await user.save();

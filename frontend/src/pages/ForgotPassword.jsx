@@ -21,6 +21,21 @@ function ForgotPassword() {
             });
             return;
         }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Email',
+                text: 'Please enter a valid email address (e.g., user@example.com)',
+                background: '#1a1a2e',
+                color: '#fff',
+                confirmButtonColor: '#d33'
+            });
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
