@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
                                     { label: "Participants", value: stats.participants, icon: "school", gradient: "from-blue-500 to-indigo-600" },
                                     { label: "Admins", value: stats.admins, icon: "admin_panel_settings", gradient: "from-rose-500 to-red-600" },
                                     { label: "Recruiters", value: stats.recruiters, icon: "business_center", gradient: "from-amber-500 to-orange-600" },
-                                    { label: "New This Week", value: stats.newUsersThisWeek, icon: "trending_up", gradient: "from-cyan-500 to-teal-600" },
+
                                 ].map((card) => (
                                     <div
                                         key={card.label}

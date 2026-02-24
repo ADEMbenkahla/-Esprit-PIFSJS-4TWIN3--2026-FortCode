@@ -90,7 +90,7 @@ function Login({ onSwitchToRegister }) {
 
       setTimeout(() => {
         if (payload.role === "admin") {
-          navigate("/backoffice/users");
+          navigate("/backoffice/dashboard");
         } else if (payload.role === "participant") {
           navigate("/home");
         } else {
