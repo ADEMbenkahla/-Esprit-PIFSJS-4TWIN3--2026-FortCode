@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings } from "lucide-react";
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import Swal from "sweetalert2";
@@ -8,6 +8,7 @@ import { ProfileModal } from "./ProfileModal";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -91,7 +92,8 @@ export function Navbar() {
           </NavLink>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
           <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" />
           <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" />
           <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" />
@@ -114,8 +116,8 @@ export function Navbar() {
             </span>
           </div>
 
-          {/* Profile Dropdown */}
-          <div className="relative">
+          {/* Profile Dropdown - Desktop */}
+          <div className="hidden md:block relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
@@ -163,8 +165,81 @@ export function Navbar() {
               </div>
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Navigation Sidebar/Overlay */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-0 bottom-0 w-64 bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300 p-6 flex flex-col pt-24">
+            <div className="flex flex-col gap-2">
+              <NavItem to="/map" icon={<Map className="w-5 h-5" />} label="World Map" onClick={() => setIsMenuOpen(false)} />
+              <NavItem to="/training" icon={<Sword className="w-5 h-5" />} label="Combat Training" onClick={() => setIsMenuOpen(false)} />
+              <NavItem to="/arena" icon={<Cpu className="w-5 h-5" />} label="Battle Arena" onClick={() => setIsMenuOpen(false)} />
+              <NavItem to="/dashboard" icon={<User className="w-5 h-5" />} label="Commander Desk" onClick={() => setIsMenuOpen(false)} />
+              <NavItem to="/armory" icon={<Trophy className="w-5 h-5" />} label="War Armory" onClick={() => setIsMenuOpen(false)} />
+            </div>
+
+            <div className="mt-auto pt-8 border-t border-slate-800 flex flex-col gap-4">
+              {userData && (
+                <div className="flex items-center gap-3 mb-4 px-2">
+                  <div className="w-10 h-10 rounded-full border border-slate-700 overflow-hidden">
+                    <img src={userData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-slate-100 font-bold truncate text-sm">{userData.username}</span>
+                    <span className="text-slate-400 text-[10px] truncate">{userData.email}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setIsProfileModalOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-colors bg-slate-900/50 border border-slate-800"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Update Profile</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors bg-red-500/5 border border-red-500/20"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+
+              <NavLink
+                to="/castle"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500 text-slate-950 font-bold"
+              >
+                <Castle className="w-5 h-5" />
+                <span>Enter Castle</span>
+              </NavLink>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ProfileModal
         isOpen={isProfileModalOpen}
@@ -176,10 +251,11 @@ export function Navbar() {
   );
 }
 
-function NavItem({ to, icon, label }) {
+function NavItem({ to, icon, label, onClick }) {
   return (
     <NavLink
       to={to}
+      onClick={onClick}
       className={({ isActive }) =>
         twMerge(
           "flex items-center gap-2 px-4 py-1.5 rounded-full transition-all duration-300 text-sm font-medium",

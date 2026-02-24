@@ -3,10 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import logo from '../../../assets/logo.png';
+import { useSidebar } from '../../../context/SidebarContext';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isSidebarOpen, closeSidebar } = useSidebar();
   const [currentUser, setCurrentUser] = useState({
     name: "User",
     role: "Guest",
@@ -97,75 +99,90 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-surface-dark border-r border-purple-900/20 flex flex-col z-20 hidden lg:flex">
-      <div className="h-20 flex items-center justify-center border-b border-purple-900/20 px-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center">
-            <img src={logo} alt="FortCode Logo" className="w-full h-full object-contain" />
-          </div>
-          <span className="font-display font-bold text-xl tracking-wider text-white uppercase italic">
-            FORT<span className="text-accent-purple">CODE</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-6 space-y-1 px-3">
-        {navItems.map((item) => (
-          <button
-            key={item.label}
-            onClick={() => item.path !== '#' && navigate(item.path)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
-              ? 'bg-primary/10 text-primary border-l-4 border-primary'
-              : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
-              }`}
-          >
-            <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
-              {item.icon}
+    <>
+      <aside className={`bg-surface-dark border-r border-purple-900/20 flex flex-col z-40 transition-all duration-300 overflow-hidden ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 lg:w-64 lg:opacity-100'
+        }`}>
+        <div className="h-20 min-w-[256px] flex items-center justify-between border-b border-purple-900/20 px-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img src={logo} alt="FortCode Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-display font-bold text-xl tracking-wider text-white uppercase italic">
+              FORT<span className="text-accent-purple">CODE</span>
             </span>
-            <span className="font-medium">{item.label}</span>
-          </button>
-        ))}
-
-        <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
-          <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-purple-900/20 hover:text-white transition-all group"
-          >
-            <span className="material-icons-outlined text-xl group-hover:text-primary transition-colors">settings</span>
-            <span className="font-medium">Settings</span>
-          </a>
+          </div>
 
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all group text-left"
+            onClick={closeSidebar}
+            className="lg:hidden p-2 text-gray-400 hover:text-white"
           >
-            <span className="material-icons-outlined text-xl group-hover:text-red-400 transition-colors">logout</span>
-            <span className="font-medium">Logout</span>
+            <span className="material-icons-outlined">close</span>
           </button>
         </div>
-      </nav>
 
-      {/* Current User */}
-      <div className="p-4 border-t border-purple-900/20">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-purple p-[2px]">
-            <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
-              <img
-                src={currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.name}&background=random`}
-                alt={currentUser.name}
-                className="w-full h-full object-cover"
-              />
+        {/* Navigation */}
+        <nav className="flex-1 min-w-[256px] overflow-y-auto py-6 space-y-1 px-3">
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => {
+                if (item.path !== '#') {
+                  navigate(item.path);
+                  closeSidebar();
+                }
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
+                ? 'bg-primary/10 text-primary border-l-4 border-primary'
+                : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
+                }`}
+            >
+              <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
+                {item.icon}
+              </span>
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+
+          <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
+            <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
+            <a
+              href="#"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-purple-900/20 hover:text-white transition-all group"
+            >
+              <span className="material-icons-outlined text-xl group-hover:text-primary transition-colors">settings</span>
+              <span className="font-medium">Settings</span>
+            </a>
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all group text-left"
+            >
+              <span className="material-icons-outlined text-xl group-hover:text-red-400 transition-colors">logout</span>
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Current User */}
+        <div className="p-4 border-t border-purple-900/20 min-w-[256px]">
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-purple p-[2px]">
+              <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
+                <img
+                  src={currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.name}&background=random`}
+                  alt={currentUser.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-white truncate">{currentUser.name}</span>
+              <span className="text-[10px] text-gray-500 capitalize">{currentUser.role}</span>
             </div>
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold text-white truncate">{currentUser.name}</span>
-            <span className="text-[10px] text-gray-500 capitalize">{currentUser.role}</span>
-          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

@@ -4,6 +4,8 @@ const session = require("express-session");
 const passport = require("./config/passport");
 const connectDB = require("./config/db");
 
+const path = require("path");
+
 connectDB();
 
 const app = express();
@@ -13,6 +15,9 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Serve static assets
+app.use("/assets", express.static(path.join(__dirname, "assets")));
 
 // Session middleware (required for passport)
 app.use(session({

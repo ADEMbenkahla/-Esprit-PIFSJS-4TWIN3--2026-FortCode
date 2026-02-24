@@ -61,9 +61,13 @@ function AppContent() {
   );
 }
 
+import { SidebarProvider } from "./context/SidebarContext";
+
 function App() {
   return (
-    <AppContent />
+    <SidebarProvider>
+      <AppContent />
+    </SidebarProvider>
   );
 }
 

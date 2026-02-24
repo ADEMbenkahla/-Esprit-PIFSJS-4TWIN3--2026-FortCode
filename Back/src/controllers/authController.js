@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const fs = require("fs");
+const path = require("path");
 
 
 // =============================
@@ -143,25 +145,28 @@ exports.forgotPassword = async (req, res) => {
     // Create reset URL
     const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
 
-    const message = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <h2 style="color: #FF8C00; text-align: center;">Reset Your Password</h2>
-        <p style="color: #555; text-align: center;">Hello ${user.username},</p>
-        <p style="color: #555; text-align: center;">We received a request to reset your password for your FortCode account.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #FF8C00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
-        </div>
-        <p style="color: #999; text-align: center; font-size: 12px;">If you did not request this, please ignore this email.</p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #999; text-align: center; font-size: 12px;">The FortCode Team</p>
-      </div>
-    `;
+    // Load and prepare email template
+    const templatePath = path.join(__dirname, "../templates/forgotPassword.html");
+    const logoPath = path.join(__dirname, "../assets/logo.png");
+    let htmlContent = fs.readFileSync(templatePath, "utf8");
+
+    // Replace placeholders
+    htmlContent = htmlContent
+      .replace("{{username}}", user.username)
+      .replace("{{resetUrl}}", resetUrl);
 
     try {
       await sendEmail({
         email: user.email,
         subject: "Reset Your FortCode Password",
-        html: message,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: "logo.png",
+            path: logoPath,
+            cid: "logo", // same cid value as in the html img src
+          },
+        ],
       });
 
       res.status(200).json({ message: "Email sent" });
@@ -330,16 +335,48 @@ exports.registerAdmin = async (req, res) => {
 
 
 // =============================
-// 👨‍💼 ADMIN: GET ALL USERS
+// 👨‍💼 ADMIN: GET ALL USERS (PAGINATED & FILTERED)
 // =============================
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 7;
+    const skip = (page - 1) * limit;
+    const { search, role } = req.query;
+
+    let query = {};
+
+    // Apply search filter (username or email)
+    if (search) {
+      query.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // Apply role filter
+    if (role && role !== "All Users") {
+      query.role = role.toLowerCase().slice(0, -1); // "Admins" -> "admin"
+      // Handle the case where role is "Admins", "Participants", "Recruiters"
+      if (role === "Admins") query.role = "admin";
+      if (role === "Participants") query.role = "participant";
+      if (role === "Recruiters") query.role = "recruiter";
+    }
+
+    const totalUsers = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.json({
-      message: "All users retrieved successfully",
-      total: users.length,
-      users
+      message: "Users retrieved successfully",
+      users,
+      totalUsers,
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: page,
+      limit
     });
 
   } catch (error) {
