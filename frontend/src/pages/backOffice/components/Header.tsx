@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { useSidebar } from '../../../context/SidebarContext';
 
 interface HeaderProps {
   title?: string;
@@ -16,11 +16,21 @@ const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   searchPlaceholder = "Search anything..."
 }) => {
+  const { toggleSidebar } = useSidebar();
+
   return (
     <header className="bg-surface-dark/80 backdrop-blur-md border-b border-purple-900/20 h-20 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0">
-      <div className="flex flex-col">
-        <h1 className="font-display font-bold text-lg md:text-2xl text-white tracking-wide">{title}</h1>
-        <p className="text-[10px] md:text-sm text-gray-500">{subtitle}</p>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden p-2 rounded-lg text-gray-400 hover:bg-purple-900/20 transition-colors"
+        >
+          <span className="material-icons-outlined">menu</span>
+        </button>
+        <div className="flex flex-col">
+          <h1 className="font-display font-bold text-lg md:text-2xl text-white tracking-wide">{title}</h1>
+          <p className="text-[10px] md:text-sm text-gray-500">{subtitle}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">

@@ -50,11 +50,11 @@ const UserTable: React.FC<UserTableProps> = ({
   }
 
   return (
-    <div className="bg-surface-dark/50 backdrop-blur-sm rounded-xl border border-purple-900/30 shadow-lg overflow-hidden flex-1 flex flex-col">
-      <div className="overflow-x-auto">
+    <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 overflow-auto scrollbar-custom">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
-            <tr className="bg-surface-dark/80 border-b border-purple-900/20">
+            <tr className="bg-surface-dark/80 border-b border-purple-900/20 sticky top-0 z-10 backdrop-blur-md">
               <th className="p-4 w-12 text-center"></th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">User</th>
               <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Role</th>

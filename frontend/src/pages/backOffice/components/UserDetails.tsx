@@ -40,7 +40,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
   };
 
   return (
-    <aside className="w-96 flex-shrink-0 bg-surface-dark border-l border-purple-900/20 shadow-2xl flex flex-col z-30 transition-transform duration-300 overflow-hidden">
+    <aside className="w-full lg:w-96 flex-shrink-0 bg-surface-dark border-r lg:border-l border-purple-900/20 shadow-2xl flex flex-col z-30 transition-all duration-300 overflow-hidden animate-in slide-in-from-right">
       {/* Header */}
       <div className="h-20 px-6 border-b border-purple-900/20 flex items-center justify-between bg-surface-dark/50">
         <h2 className="font-display font-bold text-lg text-white">User Details</h2>

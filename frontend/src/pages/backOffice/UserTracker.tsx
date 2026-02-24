@@ -14,37 +14,38 @@ const UserTracker: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<string>("All Users");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState<boolean>(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
-  const pageSize = 10;
+  const pageSize = 7;
 
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
+      const url = new URL("http://localhost:5000/api/auth/admin/users");
+      url.searchParams.append("page", currentPage.toString());
+      url.searchParams.append("limit", pageSize.toString());
+      if (searchQuery) url.searchParams.append("search", searchQuery);
+      if (activeFilter !== "All Users") url.searchParams.append("role", activeFilter);
+      url.searchParams.append("t", Date.now().toString());
 
-      const response = await fetch(
-        `http://localhost:5000/api/auth/admin/users?t=${Date.now()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
       if (response.ok) {
-        console.log("DEBUG: fetchUsers received", data.users.length, "users.");
-        if (selectedUserId) {
-          const found = data.users.find((u: any) => u._id === selectedUserId);
-          console.log("DEBUG: Selected user in list after fetch:", found?.username, "Avatar:", found?.avatar);
-        }
-        setUsers(data.users);
-      }
-      else if (Array.isArray(data.users)) {
-        setUsers(data.users);
+        setUsers(data.users || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalUsers(data.totalUsers || 0);
       } else {
         setUsers([]);
+        setTotalPages(1);
+        setTotalUsers(0);
       }
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -57,7 +58,21 @@ const UserTracker: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+  }, [socket, currentPage, activeFilter]);
 
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      } else {
+        fetchUsers();
+      }
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
     if (socket) {
       socket.on("userStatusChanged", ({ userId, isOnline }) => {
         setUsers(prevUsers =>
@@ -74,48 +89,27 @@ const UserTracker: React.FC = () => {
   }, [socket]);
 
   /* ================= FILTER ================= */
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const searchStr = searchQuery.toLowerCase();
-      const username = (user.username || "").toLowerCase();
-      const email = (user.email || "").toLowerCase();
-
-      const matchesSearch =
-        username.includes(searchStr) ||
-        email.includes(searchStr);
-
-      if (activeFilter === "All Users") return matchesSearch;
-      if (activeFilter === "Admins")
-        return matchesSearch && user.role === "admin";
-      if (activeFilter === "Participants")
-        return matchesSearch && user.role === "participant";
-      if (activeFilter === "Recruiters")
-        return matchesSearch && user.role === "recruiter";
-
-      return matchesSearch;
-    }).sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
-  }, [users, activeFilter, searchQuery]);
+  // Client-side filtering removed as it's now handled by the backend
+  const filteredUsers = users;
 
   /* ================= PAGINATION ================= */
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // totalPages and totalUsers are now fetched from the backend
+  // paginatedUsers is no longer needed as 'users' state already holds paginated data
 
   useEffect(() => {
+    // When filter or search changes, reset to page 1
     setCurrentPage(1);
-  }, [activeFilter, searchQuery, users.length]);
+  }, [activeFilter]); // searchQuery handled by its own debounce useEffect
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    // If current page exceeds new total pages (e.g., after filter/search reduces results)
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0 && currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [totalPages, currentPage]);
+  }, [totalPages]);
+
 
   const selectedUser = users.find((u) => u._id === selectedUserId);
 
@@ -140,7 +134,7 @@ const UserTracker: React.FC = () => {
           searchPlaceholder="Find user by name or email..."
         />
 
-        <div className="flex-1 overflow-auto p-6 flex gap-6">
+        <div className="flex-1 overflow-hidden p-4 md:p-6 flex flex-col lg:flex-row gap-6 transition-all duration-300">
           {/* LEFT — Table column */}
           <div className="flex-1 flex flex-col gap-5 min-w-0">
             {/* Filter Toolbar */}
@@ -168,28 +162,30 @@ const UserTracker: React.FC = () => {
               </button>
             </div>
 
-            {/* Table */}
-            <UserTable
-              users={paginatedUsers}
-              selectedUserId={selectedUserId}
-              onSelectUser={setSelectedUserId}
-              onEditUser={handleEditUser}
-            />
+            {/* Table Area - Focused Body */}
+            <div className="flex-1 min-h-0 bg-surface-dark/30 rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
+              <UserTable
+                users={users}
+                selectedUserId={selectedUserId}
+                onSelectUser={setSelectedUserId}
+                onEditUser={handleEditUser}
+              />
+            </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+            <div className="flex items-center justify-between text-xs text-gray-500 px-1 mt-auto">
               <span>
                 Showing{" "}
                 <span className="text-white font-medium">
-                  {Math.min((currentPage - 1) * pageSize + 1, filteredUsers.length)}
+                  {totalUsers === 0 ? 0 : (currentPage - 1) * pageSize + 1}
                 </span>{" "}
                 to{" "}
                 <span className="text-white font-medium">
-                  {Math.min(currentPage * pageSize, filteredUsers.length)}
+                  {Math.min(currentPage * pageSize, totalUsers)}
                 </span>{" "}
                 of{" "}
                 <span className="text-white font-medium">
-                  {filteredUsers.length}
+                  {totalUsers}
                 </span>{" "}
                 results
               </span>
