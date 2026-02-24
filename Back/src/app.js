@@ -39,6 +39,7 @@ app.use(activityLogger);
 app.use("/api/auth", require("./routes/googleAuthRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/admin/activity", require("./routes/activityRoutes"));
+app.use("/api/admin/dashboard", require("./routes/dashboardRoutes"));
 
 module.exports = app;
 

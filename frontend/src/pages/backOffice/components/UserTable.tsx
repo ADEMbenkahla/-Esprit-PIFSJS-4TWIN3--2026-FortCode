@@ -46,7 +46,12 @@ const UserTable: React.FC<UserTableProps> = ({
   };
 
   if (!users.length) {
-    return <div className="text-white p-6">Loading users...</div>;
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2 p-10">
+        <span className="material-icons-outlined text-4xl">person_off</span>
+        <p>Users not found</p>
+      </div>
+    );
   }
 
   return (

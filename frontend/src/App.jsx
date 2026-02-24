@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import OAuthCallback from "./pages/OAuthCallback";
 import UserTracker from "./pages/backOffice/UserTracker";
+import Dashboard from "./pages/backOffice/Dashboard";
 import ActivityLogs from "./pages/backOffice/ActivityLogs";
 import ActivityDetail from "./pages/backOffice/ActivityDetail";
 import MyActivity from "./pages/MyActivity";
@@ -29,7 +30,8 @@ function AppContent() {
     hideNavbarRoutes.includes(location.pathname) ||
     location.pathname.startsWith("/reset-password") ||
     location.pathname.startsWith("/backoffice") ||
-    location.pathname.startsWith("/admin");
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/my-activity");
 
   return (
     <>
@@ -52,6 +54,7 @@ function AppContent() {
         <Route path="/level/:id" element={<div>Challenge Page Coming Soon!</div>} />
 
         {/* Back Office & Activity Routes */}
+        <Route path="/backoffice/dashboard" element={<Dashboard />} />
         <Route path="/backoffice/users" element={<UserTracker />} />
         <Route path="/admin/activity" element={<ActivityLogs />} />
         <Route path="/admin/activity/:id" element={<ActivityDetail />} />
