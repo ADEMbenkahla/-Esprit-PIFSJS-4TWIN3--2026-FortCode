@@ -89,7 +89,7 @@ const Sidebar: React.FC = () => {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: 'dashboard', active: location.pathname === '/', path: '/' },
+    { label: 'Dashboard', icon: 'dashboard', active: location.pathname === '/backoffice/dashboard', path: '/backoffice/dashboard' },
     { label: 'My Activity', icon: 'visibility', active: location.pathname === '/my-activity', path: '/my-activity' },
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
