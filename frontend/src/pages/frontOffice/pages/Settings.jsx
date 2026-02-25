@@ -1,5 +1,5 @@
-import React from 'react';
-import { Settings as SettingsIcon, Palette, Eye, Monitor, Volume2, Moon, Sun, Type, Contrast, Sparkles, User } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Palette, Eye, Monitor, Volume2, Moon, Sun, Type, Contrast, Sparkles, User, ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { ScrollButton } from '../components/ui/ScrollButton';
 import { useSettings } from '../../../context/SettingsContext';
@@ -17,6 +17,8 @@ export default function Settings() {
     soundEnabled,
     avatar,
     nickname,
+    twoFactorEnabled,
+    twoFactorMethod,
     updateTheme,
     updateAccentColor,
     updateFontSize,
@@ -24,6 +26,9 @@ export default function Settings() {
     updateHighContrast,
     updateReduceMotion,
     updateSoundEnabled,
+    setupTwoFactor,
+    verifyTwoFactorSetup,
+    disableTwoFactor,
     updateAvatar,
     updateNickname,
     resetSettings
@@ -53,6 +58,19 @@ export default function Settings() {
     { value: 'orbitron', label: 'Orbitron', fontFamily: "'Orbitron', sans-serif" },
     { value: 'serif', label: 'Serif', fontFamily: "'Times New Roman', Times, serif" }
   ];
+
+  const [twoFactorMethodChoice, setTwoFactorMethodChoice] = useState(twoFactorMethod || 'totp');
+  const [twoFactorSetupStarted, setTwoFactorSetupStarted] = useState(false);
+  const [twoFactorQr, setTwoFactorQr] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorStatus, setTwoFactorStatus] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+
+  useEffect(() => {
+    if (twoFactorMethod) {
+      setTwoFactorMethodChoice(twoFactorMethod);
+    }
+  }, [twoFactorMethod]);
 
   const handleThemeChange = (newTheme) => {
     playSelect();
@@ -92,6 +110,67 @@ export default function Settings() {
   const handleNicknameChange = (value) => {
     if (value.length <= 20) {
       updateNickname(value);
+    }
+  };
+
+  const handleTwoFactorSetup = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorStatus('');
+    setTwoFactorQr('');
+    setTwoFactorSetupStarted(false);
+
+    try {
+      const data = await setupTwoFactor(twoFactorMethodChoice);
+      setTwoFactorSetupStarted(true);
+
+      if (data.qrCode) {
+        setTwoFactorQr(data.qrCode);
+      }
+
+      setTwoFactorStatus(data.message || 'Setup started. Enter the code to verify.');
+    } catch (error) {
+      setTwoFactorStatus(error.message || '2FA setup failed');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleTwoFactorVerify = async () => {
+    if (!twoFactorCode) {
+      setTwoFactorStatus('Enter the 2FA code to continue.');
+      return;
+    }
+
+    setTwoFactorLoading(true);
+    setTwoFactorStatus('');
+
+    try {
+      await verifyTwoFactorSetup(twoFactorMethodChoice, twoFactorCode);
+      setTwoFactorStatus('2FA enabled successfully.');
+      setTwoFactorCode('');
+      setTwoFactorQr('');
+      setTwoFactorSetupStarted(false);
+    } catch (error) {
+      setTwoFactorStatus(error.message || '2FA verification failed');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  const handleTwoFactorDisable = async () => {
+    setTwoFactorLoading(true);
+    setTwoFactorStatus('');
+
+    try {
+      await disableTwoFactor();
+      setTwoFactorStatus('2FA disabled.');
+      setTwoFactorCode('');
+      setTwoFactorQr('');
+      setTwoFactorSetupStarted(false);
+    } catch (error) {
+      setTwoFactorStatus(error.message || '2FA disable failed');
+    } finally {
+      setTwoFactorLoading(false);
     }
   };
 
@@ -367,6 +446,119 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Security Section */}
+        <div>
+          <Card className="p-6 bg-slate-900/90 border-slate-800">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-emerald-900/20 border border-emerald-500/30 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-slate-100">Security</h2>
+                <p className="text-sm text-slate-400">Enable two-factor authentication (2FA)</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800">
+                <div>
+                  <p className="text-sm font-semibold text-slate-300">2FA Status</p>
+                  <p className="text-xs text-slate-500">
+                    {twoFactorEnabled ? `Enabled (${twoFactorMethod})` : 'Disabled'}
+                  </p>
+                </div>
+                {twoFactorEnabled && (
+                  <button
+                    onClick={handleTwoFactorDisable}
+                    className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all"
+                    disabled={twoFactorLoading}
+                  >
+                    Disable 2FA
+                  </button>
+                )}
+              </div>
+
+              {!twoFactorEnabled && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-3">Choose Method</label>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setTwoFactorMethodChoice('totp')}
+                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
+                          twoFactorMethodChoice === 'totp'
+                            ? 'bg-slate-800'
+                            : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                        }`}
+                        style={twoFactorMethodChoice === 'totp' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
+                      >
+                        Authenticator App
+                      </button>
+                      <button
+                        onClick={() => setTwoFactorMethodChoice('email')}
+                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
+                          twoFactorMethodChoice === 'email'
+                            ? 'bg-slate-800'
+                            : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                        }`}
+                        style={twoFactorMethodChoice === 'email' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
+                      >
+                        Email Code
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleTwoFactorSetup}
+                    className="px-6 py-3 rounded-lg text-white font-semibold transition-all"
+                    style={{
+                      backgroundColor: 'var(--accent-color)',
+                      boxShadow: '0 0 20px rgba(var(--accent-color-rgb), 0.4)'
+                    }}
+                    disabled={twoFactorLoading}
+                  >
+                    {twoFactorLoading ? 'Starting...' : 'Start 2FA Setup'}
+                  </button>
+                </>
+              )}
+
+              {!twoFactorEnabled && twoFactorSetupStarted && (
+                <div className="space-y-4">
+                  {twoFactorQr && (
+                    <div className="p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                      <p className="text-xs text-slate-500 mb-3">Scan this QR code with your authenticator app</p>
+                      <img src={twoFactorQr} alt="2FA QR code" className="w-44 h-44" />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">Verification Code</label>
+                    <input
+                      type="text"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value)}
+                      placeholder="Enter 6-digit code"
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleTwoFactorVerify}
+                    className="px-6 py-3 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 hover:bg-slate-700 transition-all"
+                    disabled={twoFactorLoading}
+                  >
+                    {twoFactorLoading ? 'Verifying...' : 'Verify & Enable'}
+                  </button>
+                </div>
+              )}
+
+              {twoFactorStatus && (
+                <p className="text-xs text-slate-400">{twoFactorStatus}</p>
+              )}
             </div>
           </Card>
         </div>

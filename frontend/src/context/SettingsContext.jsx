@@ -30,6 +30,8 @@ export const SettingsProvider = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('soundEnabled') !== 'false');
   const [avatar, setAvatar] = useState(localStorage.getItem('avatar') || defaultAvatar);
   const [nickname, setNickname] = useState(localStorage.getItem('nickname') || defaultNickname);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorMethod, setTwoFactorMethod] = useState('totp');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load all settings from backend on mount
@@ -48,6 +50,8 @@ export const SettingsProvider = ({ children }) => {
           setSoundEnabled(true);
           setAvatar(defaultAvatar);
           setNickname(defaultNickname);
+          setTwoFactorEnabled(false);
+          setTwoFactorMethod('totp');
           setIsLoaded(true);
           return;
         }
@@ -70,6 +74,11 @@ export const SettingsProvider = ({ children }) => {
             setHighContrast(user.settings.highContrast || false);
             setReduceMotion(user.settings.reduceMotion || false);
             setSoundEnabled(user.settings.soundEnabled !== false);
+
+            if (user.settings.twoFactor) {
+              setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
+              setTwoFactorMethod(user.settings.twoFactor.method || 'totp');
+            }
 
             // Update localStorage cache
             localStorage.setItem('theme', nextTheme);
@@ -101,6 +110,8 @@ export const SettingsProvider = ({ children }) => {
           setSoundEnabled(true);
           setAvatar(defaultAvatar);
           setNickname(defaultNickname);
+          setTwoFactorEnabled(false);
+          setTwoFactorMethod('totp');
         }
       } catch (error) {
         console.error('Error loading user settings:', error);
@@ -232,6 +243,72 @@ export const SettingsProvider = ({ children }) => {
     syncWithBackend({ soundEnabled: value });
   }, [syncWithBackend]);
 
+  const setupTwoFactor = useCallback(async (method) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch('http://localhost:5000/api/auth/2fa/setup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ method })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || '2FA setup failed');
+    }
+
+    setTwoFactorMethod(method || 'totp');
+    return data;
+  }, []);
+
+  const verifyTwoFactorSetup = useCallback(async (method, code) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch('http://localhost:5000/api/auth/2fa/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ method, code })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || '2FA verification failed');
+    }
+
+    setTwoFactorEnabled(true);
+    setTwoFactorMethod(method || 'totp');
+    return data;
+  }, []);
+
+  const disableTwoFactor = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch('http://localhost:5000/api/auth/2fa/disable', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || '2FA disable failed');
+    }
+
+    setTwoFactorEnabled(false);
+    return data;
+  }, []);
+
   const updateAvatar = useCallback((value) => {
     setAvatar(value);
     localStorage.setItem('avatar', value);
@@ -326,6 +403,8 @@ export const SettingsProvider = ({ children }) => {
     soundEnabled,
     avatar,
     nickname,
+    twoFactorEnabled,
+    twoFactorMethod,
     isLoaded,
     updateTheme,
     updateAccentColor,
@@ -334,6 +413,9 @@ export const SettingsProvider = ({ children }) => {
     updateHighContrast,
     updateReduceMotion,
     updateSoundEnabled,
+    setupTwoFactor,
+    verifyTwoFactorSetup,
+    disableTwoFactor,
     updateAvatar,
     updateNickname,
     resetSettings

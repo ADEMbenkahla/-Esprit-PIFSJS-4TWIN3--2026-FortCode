@@ -89,6 +89,33 @@ const userSchema = new mongoose.Schema({
     soundEnabled: {
       type: Boolean,
       default: true
+    },
+    twoFactor: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      method: {
+        type: String,
+        enum: ["totp", "email"],
+        default: "totp"
+      },
+      totpSecret: {
+        type: String,
+        default: ""
+      },
+      tempTotpSecret: {
+        type: String,
+        default: ""
+      },
+      emailOtpHash: {
+        type: String,
+        default: ""
+      },
+      emailOtpExpires: {
+        type: Date,
+        default: null
+      }
     }
   }
 

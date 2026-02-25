@@ -5,8 +5,12 @@ const {
   register,
   registerAdmin,
   login,
+  login2fa,
   getProfile,
   updateProfile,
+  setupTwoFactor,
+  verifyTwoFactor,
+  disableTwoFactor,
   getAllUsers,
   toggleUserActivation,
   assignRole,
@@ -32,6 +36,9 @@ router.post("/register-admin", registerAdmin);
 // Login
 router.post("/login", login);
 
+// Login 2FA verify
+router.post("/login/2fa", login2fa);
+
 // Forgot password
 router.put("/forgot-password", forgotPassword);
 
@@ -48,6 +55,11 @@ router.get("/profile", authMiddleware, getProfile);
 
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
+
+// 2FA setup/verify/disable
+router.post("/2fa/setup", authMiddleware, setupTwoFactor);
+router.post("/2fa/verify", authMiddleware, verifyTwoFactor);
+router.post("/2fa/disable", authMiddleware, disableTwoFactor);
 
 
 /* =====================================================

@@ -2,9 +2,21 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const speakeasy = require("speakeasy");
+const qrcode = require("qrcode");
 const sendEmail = require("../utils/sendEmail");
 const fs = require("fs");
 const path = require("path");
+
+const TWO_FA_EMAIL_TTL_MS = 10 * 60 * 1000;
+
+const generateEmailOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const hashOtp = (otp) => {
+  return crypto.createHash("sha256").update(otp).digest("hex");
+};
 
 
 // =============================
@@ -103,6 +115,46 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (twoFactor && twoFactor.enabled) {
+      const method = twoFactor.method || "totp";
+
+      if (method === "email") {
+        const otp = generateEmailOtp();
+        user.settings.twoFactor.emailOtpHash = hashOtp(otp);
+        user.settings.twoFactor.emailOtpExpires = new Date(Date.now() + TWO_FA_EMAIL_TTL_MS);
+        await user.save();
+
+        const html = `
+          <div style="font-family: Arial, sans-serif;">
+            <h2>FortCode 2FA Code</h2>
+            <p>Your one-time code is:</p>
+            <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
+            <p>This code expires in 10 minutes.</p>
+          </div>
+        `;
+
+        await sendEmail({
+          email: user.email,
+          subject: "Your FortCode 2FA Code",
+          html
+        });
+      }
+
+      const twoFactorToken = jwt.sign(
+        { id: user._id, type: "2fa" },
+        process.env.JWT_SECRET,
+        { expiresIn: "5m" }
+      );
+
+      return res.json({
+        message: "2FA required",
+        twoFactorRequired: true,
+        method,
+        twoFactorToken
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -117,6 +169,271 @@ exports.login = async (req, res) => {
     });
 
 
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 LOGIN 2FA VERIFY
+// =============================
+exports.login2fa = async (req, res) => {
+  try {
+    const { twoFactorToken, code } = req.body;
+
+    if (!twoFactorToken || !code) {
+      return res.status(400).json({ message: "2FA token and code are required" });
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(twoFactorToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired 2FA token" });
+    }
+
+    if (!payload || payload.type !== "2fa") {
+      return res.status(401).json({ message: "Invalid 2FA token" });
+    }
+
+    const user = await User.findById(payload.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (!twoFactor || !twoFactor.enabled) {
+      return res.status(400).json({ message: "2FA is not enabled" });
+    }
+
+    let verified = false;
+
+    const method = twoFactor.method || "totp";
+    if (method === "totp") {
+      if (!twoFactor.totpSecret) {
+        return res.status(400).json({ message: "2FA secret not found" });
+      }
+      verified = speakeasy.totp.verify({
+        secret: twoFactor.totpSecret,
+        encoding: "base32",
+        token: code,
+        window: 1
+      });
+    } else if (method === "email") {
+      if (!twoFactor.emailOtpHash || !twoFactor.emailOtpExpires) {
+        return res.status(400).json({ message: "2FA code not requested" });
+      }
+      if (twoFactor.emailOtpExpires.getTime() < Date.now()) {
+        return res.status(400).json({ message: "2FA code expired" });
+      }
+      verified = hashOtp(code) === twoFactor.emailOtpHash;
+      if (verified) {
+        user.settings.twoFactor.emailOtpHash = "";
+        user.settings.twoFactor.emailOtpExpires = null;
+        await user.save();
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ message: "Invalid 2FA code" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      role: user.role,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+// =============================
+// 🔐 2FA SETUP
+// =============================
+exports.setupTwoFactor = async (req, res) => {
+  try {
+    const { method } = req.body;
+    if (method !== "totp" && method !== "email") {
+      return res.status(400).json({ message: "Invalid 2FA method" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.settings) {
+      user.settings = {};
+    }
+    if (!user.settings.twoFactor) {
+      user.settings.twoFactor = {};
+    }
+
+    user.settings.twoFactor.method = method;
+    user.settings.twoFactor.enabled = false;
+
+    if (method === "totp") {
+      const secret = speakeasy.generateSecret({
+        name: `FortCode (${user.email})`
+      });
+
+      user.settings.twoFactor.tempTotpSecret = secret.base32;
+      await user.save();
+
+      const qrCode = await qrcode.toDataURL(secret.otpauth_url);
+
+      return res.json({
+        method: "totp",
+        qrCode,
+        otpauthUrl: secret.otpauth_url
+      });
+    }
+
+    const otp = generateEmailOtp();
+    user.settings.twoFactor.emailOtpHash = hashOtp(otp);
+    user.settings.twoFactor.emailOtpExpires = new Date(Date.now() + TWO_FA_EMAIL_TTL_MS);
+    await user.save();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>FortCode 2FA Setup</h2>
+        <p>Your verification code is:</p>
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
+        <p>This code expires in 10 minutes.</p>
+      </div>
+    `;
+
+    await sendEmail({
+      email: user.email,
+      subject: "Your FortCode 2FA Setup Code",
+      html
+    });
+
+    res.json({
+      method: "email",
+      message: "2FA code sent"
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 2FA VERIFY
+// =============================
+exports.verifyTwoFactor = async (req, res) => {
+  try {
+    const { method, code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: "2FA code is required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (!twoFactor) {
+      return res.status(400).json({ message: "2FA is not configured" });
+    }
+
+    const resolvedMethod = method || twoFactor.method || "totp";
+    let verified = false;
+
+    if (resolvedMethod === "totp") {
+      if (!twoFactor.tempTotpSecret) {
+        return res.status(400).json({ message: "2FA setup not started" });
+      }
+      verified = speakeasy.totp.verify({
+        secret: twoFactor.tempTotpSecret,
+        encoding: "base32",
+        token: code,
+        window: 1
+      });
+
+      if (verified) {
+        user.settings.twoFactor.totpSecret = twoFactor.tempTotpSecret;
+        user.settings.twoFactor.tempTotpSecret = "";
+        user.settings.twoFactor.enabled = true;
+        user.settings.twoFactor.method = "totp";
+      }
+    } else if (resolvedMethod === "email") {
+      if (!twoFactor.emailOtpHash || !twoFactor.emailOtpExpires) {
+        return res.status(400).json({ message: "2FA code not requested" });
+      }
+      if (twoFactor.emailOtpExpires.getTime() < Date.now()) {
+        return res.status(400).json({ message: "2FA code expired" });
+      }
+      verified = hashOtp(code) === twoFactor.emailOtpHash;
+
+      if (verified) {
+        user.settings.twoFactor.emailOtpHash = "";
+        user.settings.twoFactor.emailOtpExpires = null;
+        user.settings.twoFactor.enabled = true;
+        user.settings.twoFactor.method = "email";
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ message: "Invalid 2FA code" });
+    }
+
+    await user.save();
+
+    res.json({
+      message: "2FA enabled",
+      twoFactor: {
+        enabled: user.settings.twoFactor.enabled,
+        method: user.settings.twoFactor.method
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 2FA DISABLE
+// =============================
+exports.disableTwoFactor = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.settings) {
+      user.settings = {};
+    }
+    if (!user.settings.twoFactor) {
+      user.settings.twoFactor = {};
+    }
+
+    user.settings.twoFactor.enabled = false;
+    user.settings.twoFactor.method = "totp";
+    user.settings.twoFactor.totpSecret = "";
+    user.settings.twoFactor.tempTotpSecret = "";
+    user.settings.twoFactor.emailOtpHash = "";
+    user.settings.twoFactor.emailOtpExpires = null;
+
+    await user.save();
+
+    res.json({ message: "2FA disabled" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -230,9 +547,17 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const userObj = user.toObject();
+    if (userObj.settings && userObj.settings.twoFactor) {
+      delete userObj.settings.twoFactor.totpSecret;
+      delete userObj.settings.twoFactor.tempTotpSecret;
+      delete userObj.settings.twoFactor.emailOtpHash;
+      delete userObj.settings.twoFactor.emailOtpExpires;
+    }
+
     res.json({
       message: "Profile retrieved successfully",
-      user
+      user: userObj
     });
 
   } catch (error) {
@@ -299,9 +624,18 @@ exports.updateProfile = async (req, res) => {
 
     await user.save();
 
+    const updatedUser = await User.findById(user._id).select("-password");
+    const updatedObj = updatedUser.toObject();
+    if (updatedObj.settings && updatedObj.settings.twoFactor) {
+      delete updatedObj.settings.twoFactor.totpSecret;
+      delete updatedObj.settings.twoFactor.tempTotpSecret;
+      delete updatedObj.settings.twoFactor.emailOtpHash;
+      delete updatedObj.settings.twoFactor.emailOtpExpires;
+    }
+
     res.json({
       message: "Profile updated successfully",
-      user: await User.findById(user._id).select("-password")
+      user: updatedObj
     });
 
   } catch (error) {
@@ -385,9 +719,20 @@ exports.getAllUsers = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    const sanitizedUsers = users.map((user) => {
+      const userObj = user.toObject();
+      if (userObj.settings && userObj.settings.twoFactor) {
+        delete userObj.settings.twoFactor.totpSecret;
+        delete userObj.settings.twoFactor.tempTotpSecret;
+        delete userObj.settings.twoFactor.emailOtpHash;
+        delete userObj.settings.twoFactor.emailOtpExpires;
+      }
+      return userObj;
+    });
+
     res.json({
       message: "Users retrieved successfully",
-      users,
+      users: sanitizedUsers,
       totalUsers,
       totalPages: Math.ceil(totalUsers / limit),
       currentPage: page,

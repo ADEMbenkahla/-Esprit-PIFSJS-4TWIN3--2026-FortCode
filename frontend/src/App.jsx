@@ -24,6 +24,7 @@ import Armory from "./pages/frontOffice/pages/Armory";
 import Settings from "./pages/frontOffice/pages/Settings";
 import { UnityCastlePage } from "./pages/frontOffice/pages/UnityCastlePage";
 import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
+import { Footer } from "./pages/frontOffice/components/layout/Footer";
 import { SidebarProvider } from "./context/SidebarContext";
 import { SettingsProvider } from "./context/SettingsContext";
 
@@ -68,6 +69,7 @@ function AppContent() {
         <Route path="/admin/activity/:id" element={<ActivityDetail />} />
         <Route path="/my-activity" element={<MyActivity />} />
       </Routes>
+      {!shouldHideNavbar && <Footer />}
     </>
   );
 }
