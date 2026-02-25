@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import UserTable from "./components/UserTable";
@@ -7,6 +7,7 @@ import AddUserModal from "./components/AddUserModal";
 import EditUserModal from "./components/EditUserModal";
 import { User } from "./types";
 import { useSocket } from "../../context/SocketContext";
+import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
 
 const UserTracker: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -21,7 +22,7 @@ const UserTracker: React.FC = () => {
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
   const pageSize = 7;
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const url = new URL("http://localhost:5000/api/auth/admin/users");
@@ -51,14 +52,14 @@ const UserTracker: React.FC = () => {
       console.error("Error fetching users:", error);
       setUsers([]);
     }
-  };
+  }, [currentPage, searchQuery, activeFilter]);
 
   /* ================= FETCH USERS & SOCKET ================= */
   const { socket } = useSocket();
 
   useEffect(() => {
     fetchUsers();
-  }, [socket, currentPage, activeFilter]);
+  }, [fetchUsers, currentPage, activeFilter]);
 
   // Debounce search
   useEffect(() => {
@@ -70,7 +71,7 @@ const UserTracker: React.FC = () => {
       }
     }, 500);
     return () => clearTimeout(handler);
-  }, [searchQuery]);
+  }, [searchQuery, currentPage, fetchUsers]);
 
   useEffect(() => {
     if (socket) {
@@ -258,6 +259,7 @@ const UserTracker: React.FC = () => {
           user={userToEdit}
         />
       )}
+      <ScrollButton />
     </div>
   );
 };

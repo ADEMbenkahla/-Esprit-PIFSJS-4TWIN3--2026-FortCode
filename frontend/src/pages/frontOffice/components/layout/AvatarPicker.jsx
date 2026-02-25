@@ -50,14 +50,13 @@ export const AvatarPicker = ({ currentAvatar, onSelect }) => {
         if (isInitialized && style && seed) {
             const url = `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
             setPreviewUrl(url);
+            // Call onSelect with debounce to avoid too many calls
+            const timer = setTimeout(() => {
+                onSelect(url);
+            }, 300);
+            return () => clearTimeout(timer);
         }
-    }, [style, seed, isInitialized]);
-
-    useEffect(() => {
-        if (previewUrl) {
-            onSelect(previewUrl);
-        }
-    }, [previewUrl, onSelect]);
+    }, [style, seed, isInitialized, onSelect]);
 
     const randomize = () => {
         setSeed(Math.random().toString(36).substring(7));

@@ -1,64 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { Shield, Sword, Cpu, Trophy, MapPin, ChevronRight, Lock, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
+import { ScrollButton } from '../components/ui/ScrollButton';
 
 export default function WorldMap() {
+  const [levelProgress, setLevelProgress] = useState(() => {
+    return JSON.parse(localStorage.getItem('levelProgress') || '{}');
+  });
+
+  // Listen for progress reset events
+  useEffect(() => {
+    const handleReset = () => {
+      const progress = JSON.parse(localStorage.getItem('levelProgress') || '{}');
+      setLevelProgress(progress);
+    };
+
+    window.addEventListener("fortcode:progress-reset", handleReset);
+    return () => window.removeEventListener("fortcode:progress-reset", handleReset);
+  }, []);
+
+
   const layers = [
     {
-      id: 'training',
-      name: 'Outer Ward',
-      description: 'The Training Grounds',
-      icon: <Sword className="w-6 h-6 text-amber-400" />,
+      id: 'level1',
+      name: 'Level 1',
+      description: 'Blue Castle - Foundations',
+      icon: <Sword className="w-6 h-6 text-blue-400" />,
       status: 'unlocked',
-      path: '/training',
+      path: '/training/1',
+      levelKey: 'level1',
       position: { top: '70%', left: '50%' },
     },
     {
-      id: 'bastion',
-      name: 'Inner Bastion',
-      description: 'Bot Battles',
-      icon: <Cpu className="w-6 h-6 text-blue-400" />,
-      status: 'locked',
-      path: '/arena',
+      id: 'level2',
+      name: 'Level 2',
+      description: 'Red Castle - Intermediate',
+      icon: <Cpu className="w-6 h-6 text-red-400" />,
+      status: levelProgress.level1 ? 'unlocked' : 'locked',
+      path: '/training/2',
+      levelKey: 'level2',
       position: { top: '50%', left: '50%' },
     },
     {
-      id: 'keep',
-      name: 'The Keep',
-      description: 'PvP Combat',
-      icon: <Shield className="w-6 h-6 text-purple-400" />,
-      status: 'locked',
-      path: '/arena',
+      id: 'level3',
+      name: 'Level 3',
+      description: 'Brown Castle - Advanced',
+      icon: <Shield className="w-6 h-6 text-amber-700" />,
+      status: levelProgress.level2 ? 'unlocked' : 'locked',
+      path: '/training/3',
+      levelKey: 'level3',
       position: { top: '35%', left: '50%' },
     },
     {
-      id: 'commander',
-      name: 'Commander\'s Tower',
-      description: 'Recruiter Assessment',
-      icon: <Trophy className="w-6 h-6 text-yellow-400" />,
-      status: 'locked',
-      path: '/dashboard',
+      id: 'level4',
+      name: 'Level 4',
+      description: 'Purple Castle - Master',
+      icon: <Trophy className="w-6 h-6 text-purple-400" />,
+      status: levelProgress.level3 ? 'unlocked' : 'locked',
+      path: '/training/4',
+      levelKey: 'level4',
       position: { top: '15%', left: '50%' },
     },
   ];
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-slate-950 flex items-center justify-center">
+    <div className="relative min-h-screen bg-slate-950 overflow-auto">
       {/* Background Map */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center opacity-60 pointer-events-none"
+        className="fixed inset-0 z-0 bg-cover bg-center opacity-60 pointer-events-none"
         style={{ backgroundImage: `url('https://images.unsplash.com/photo-1734456031989-71d98f5d9807?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkYXJrJTIwZmFudGFzeSUyMGZvcnRyZXNzJTIwbWFwJTIwYWVyaWFsJTIwdmlld3xlbnwxfHx8fDE3NzA5NzkzNzd8MA&ixlib=rb-4.1.0&q=80&w=1080')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-slate-950/80" />
       </div>
 
       {/* Floating Fortress Layers */}
-      <div className="relative z-10 w-full max-w-4xl h-full flex flex-col items-center justify-center">
+      <div className="relative z-10 w-full max-w-4xl mx-auto py-20 flex flex-col items-center justify-center">
         {/* Connecting Line */}
-        <div className="absolute top-[20%] bottom-[25%] left-1/2 w-1 bg-gradient-to-b from-yellow-500 via-blue-500 to-slate-700 -translate-x-1/2 z-0 opacity-50" />
+        <div className="absolute top-[20%] bottom-[10%] left-1/2 w-1 bg-gradient-to-b from-yellow-500 via-blue-500 to-slate-700 -translate-x-1/2 z-0 opacity-50" />
 
         {layers.map((layer, index) => (
           <motion.div
@@ -95,6 +116,11 @@ export default function WorldMap() {
                     {layer.name}
                   </h3>
                   <p className="text-sm text-slate-400 font-mono mt-1">{layer.description}</p>
+                  {levelProgress[layer.levelKey] && (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                      Castle built
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Arrow */}
@@ -122,6 +148,7 @@ export default function WorldMap() {
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400 rounded-full blur-sm animate-pulse" />
         <div className="absolute bottom-1/3 right-1/4 w-3 h-3 bg-amber-400 rounded-full blur-sm animate-bounce" />
       </div>
+      <ScrollButton />
     </div>
   );
 }

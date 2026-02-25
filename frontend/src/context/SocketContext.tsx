@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 interface SocketContextType {
@@ -20,9 +20,12 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const socketRef = useRef<Socket | null>(null);
 
-    const connect = (token: string) => {
-        if (socket) socket.disconnect();
+    const connect = useCallback((token: string) => {
+        if (socketRef.current) {
+            socketRef.current.disconnect();
+        }
 
         const newSocket = io('http://localhost:5000', {
             auth: { token }
@@ -38,16 +41,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setIsConnected(false);
         });
 
+        socketRef.current = newSocket;
         setSocket(newSocket);
-    };
+    }, []);
 
-    const disconnect = () => {
-        if (socket) {
-            socket.disconnect();
+    const disconnect = useCallback(() => {
+        if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
             setSocket(null);
             setIsConnected(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -55,9 +60,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             connect(token);
         }
         return () => {
-            if (socket) socket.disconnect();
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
         };
-    }, []);
+    }, [connect]);
 
     return (
         <SocketContext.Provider value={{ socket, isConnected, connect, disconnect }}>

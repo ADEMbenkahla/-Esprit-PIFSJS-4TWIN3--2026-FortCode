@@ -5,23 +5,46 @@ export const UnityCastle = ({ userProgress, onLayerClick }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [loadStalled, setLoadStalled] = useState(false);
 
+  const unityBaseUrl = `${import.meta.env.BASE_URL}unity/fortC`;
   const { unityProvider, sendMessage, addEventListener, removeEventListener, loadingProgression } = useUnityContext({
-    loaderUrl: "/unity/fort.loader.js",
-    dataUrl: "/unity/fort.data",
-    frameworkUrl: "/unity/fort.framework.js",
-    codeUrl: "/unity/fort.wasm",
+    loaderUrl: `${unityBaseUrl}.loader.js`,
+    dataUrl: `${unityBaseUrl}.data`,
+    frameworkUrl: `${unityBaseUrl}.framework.js`,
+    codeUrl: `${unityBaseUrl}.wasm`,
   });
 
   // Track loading progress
   useEffect(() => {
-    // Intentionally updating state from Unity's loading progression
-    // eslint-disable-next-line
-    setProgress(loadingProgression * 100);
-    if (!isLoaded && loadingProgression >= 1) {
-      setIsLoaded(true);
+    if (typeof loadingProgression === 'number' && !Number.isNaN(loadingProgression)) {
+      setProgress(prev => {
+        if (prev !== loadingProgression * 100) {
+          return loadingProgression * 100;
+        }
+        return prev;
+      });
+      if (!isLoaded && loadingProgression >= 1) {
+        setIsLoaded(true);
+      }
     }
   }, [loadingProgression, isLoaded]);
+
+  // Detect load stall to avoid a blank screen when Unity never initializes
+  useEffect(() => {
+    if (isLoaded) {
+      if (loadStalled) {
+        setLoadStalled(false);
+      }
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setLoadStalled(true);
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, loadStalled]);
 
   // Listen for messages from Unity
   useEffect(() => {
@@ -49,8 +72,29 @@ export const UnityCastle = ({ userProgress, onLayerClick }) => {
   // Send user progress to Unity when loaded
   useEffect(() => {
     if (isLoaded && userProgress) {
-      sendMessage("ProgressManager", "SyncProgress", JSON.stringify(userProgress));
+      const progressData = JSON.stringify(userProgress);
+      console.log('🏰 Sending progress to Unity:', progressData);
+
+      let attempts = 0;
+      let timerId;
+
+      const trySync = () => {
+        attempts += 1;
+        sendMessage("ProgressManager", "SyncProgress", progressData);
+        if (attempts < 5) {
+          timerId = setTimeout(trySync, 700);
+        }
+      };
+
+      trySync();
+
+      return () => {
+        if (timerId) {
+          clearTimeout(timerId);
+        }
+      };
     }
+    return undefined;
   }, [isLoaded, userProgress, sendMessage]);
 
   // Gestionnaire d'erreurs
@@ -113,6 +157,11 @@ export const UnityCastle = ({ userProgress, onLayerClick }) => {
           <p style={{ color: '#374151', marginTop: '10px' }}>
             {Math.round(progress)}% - Please wait...
           </p>
+          {loadStalled && (
+            <p style={{ color: '#9B1C1C', marginTop: '10px', fontWeight: 600 }}>
+              Loading is taking too long. Check the browser console for Unity errors.
+            </p>
+          )}
         </div>
       )}
       
@@ -122,7 +171,7 @@ export const UnityCastle = ({ userProgress, onLayerClick }) => {
           width: '100%', 
           height: '100%',
           display: 'block',
-          visibility: isLoaded ? 'visible' : 'hidden',
+          opacity: isLoaded ? 1 : 0.001,
           background: '#f9fafb'
         }}
       />

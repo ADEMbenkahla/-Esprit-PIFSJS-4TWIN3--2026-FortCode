@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import { format } from "date-fns";
+import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
 
 interface ActivityLog {
     _id: string;
@@ -245,6 +246,7 @@ const Dashboard: React.FC = () => {
                     )}
                 </div>
             </main>
+            <ScrollButton />
         </div>
     );
 };

@@ -41,7 +41,8 @@ exports.register = async (req, res) => {
       email,
       password: hashedPassword,
       googleId: googleId || undefined,
-      avatar: userAvatar
+      avatar: userAvatar,
+      nickname: username // Default nickname is username
     });
 
     res.status(201).json({
@@ -245,7 +246,7 @@ exports.getProfile = async (req, res) => {
 // =============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, password, avatar } = req.body;
+    const { username, email, password, nickname, settings } = req.body;
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -277,9 +278,23 @@ exports.updateProfile = async (req, res) => {
       user.password = await bcrypt.hash(password, 10);
     }
 
-    // Update avatar if provided
-    if (avatar) {
-      user.avatar = avatar;
+    // Update nickname if provided
+    if (nickname !== undefined) {
+      user.nickname = nickname;
+    }
+
+    // Update settings if provided
+    if (settings) {
+      if (!user.settings) {
+        user.settings = {};
+      }
+      if (settings.theme) user.settings.theme = settings.theme;
+      if (settings.accentColor) user.settings.accentColor = settings.accentColor;
+      if (settings.fontSize) user.settings.fontSize = settings.fontSize;
+      if (settings.fontFamily) user.settings.fontFamily = settings.fontFamily;
+      if (settings.highContrast !== undefined) user.settings.highContrast = settings.highContrast;
+      if (settings.reduceMotion !== undefined) user.settings.reduceMotion = settings.reduceMotion;
+      if (settings.soundEnabled !== undefined) user.settings.soundEnabled = settings.soundEnabled;
     }
 
     await user.save();

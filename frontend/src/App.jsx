@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import "./App.css";
 
 import Login from "./pages/Login";
@@ -17,11 +17,15 @@ import ResetPassword from "./pages/ResetPassword";
 import { Home } from "./pages/frontOffice/pages/Home";
 import WorldMap from "./pages/frontOffice/pages/WorldMap";
 import TrainingGrounds from "./pages/frontOffice/pages/TrainingGrounds";
+import { TrainingLevel } from "./pages/frontOffice/pages/TrainingLevel";
 import BattleArena from "./pages/frontOffice/pages/BattleArena";
 import CommanderDashboard from "./pages/frontOffice/pages/CommanderDashboard";
 import Armory from "./pages/frontOffice/pages/Armory";
+import Settings from "./pages/frontOffice/pages/Settings";
 import { UnityCastlePage } from "./pages/frontOffice/pages/UnityCastlePage";
 import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
+import { SidebarProvider } from "./context/SidebarContext";
+import { SettingsProvider } from "./context/SettingsContext";
 
 function AppContent() {
   const location = useLocation();
@@ -31,6 +35,7 @@ function AppContent() {
     location.pathname.startsWith("/reset-password") ||
     location.pathname.startsWith("/backoffice") ||
     location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/training/")||
     location.pathname.startsWith("/my-activity");
 
   return (
@@ -47,9 +52,12 @@ function AppContent() {
         <Route path="/home" element={<Home />} />
         <Route path="/map" element={<WorldMap />} />
         <Route path="/training" element={<TrainingGrounds />} />
+        <Route path="/training/:levelId" element={<TrainingLevel />} />
         <Route path="/arena" element={<BattleArena />} />
         <Route path="/dashboard" element={<CommanderDashboard />} />
+        
         <Route path="/armory" element={<Armory />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/castle" element={<UnityCastlePage />} />
         <Route path="/level/:id" element={<div>Challenge Page Coming Soon!</div>} />
 
@@ -64,13 +72,13 @@ function AppContent() {
   );
 }
 
-import { SidebarProvider } from "./context/SidebarContext";
-
 function App() {
   return (
-    <SidebarProvider>
-      <AppContent />
-    </SidebarProvider>
+    <SettingsProvider>
+      <SidebarProvider>
+        <AppContent />
+      </SidebarProvider>
+    </SettingsProvider>
   );
 }
 

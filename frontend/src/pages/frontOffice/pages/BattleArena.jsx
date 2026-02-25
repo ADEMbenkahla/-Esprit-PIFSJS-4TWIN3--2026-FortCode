@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Play, RotateCcw, Save, Shield, Swords, Zap, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { ScrollButton } from '../components/ui/ScrollButton';
 
 export default function BattleArena() {
   const [code, setCode] = useState('// Write your champion code here\nfunction battle(enemy) {\n  return enemy.health > 0 ? "attack" : "defend";\n}');
@@ -19,9 +20,9 @@ export default function BattleArena() {
   };
 
   return (
-    <div className="h-screen flex flex-col pt-16 bg-slate-950 overflow-hidden">
+    <div className="min-h-screen flex flex-col pt-16 bg-slate-950">
       {/* Header */}
-      <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 backdrop-blur-md z-10">
+      <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 backdrop-blur-md z-10 sticky top-16">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-red-900/20 border border-red-500/30 flex items-center justify-center">
             <Swords className="w-6 h-6 text-red-400" />
@@ -50,10 +51,10 @@ export default function BattleArena() {
       </header>
 
       {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-12 gap-1 p-1 overflow-hidden">
+      <div className="flex-1 grid grid-cols-12 gap-1 p-1 min-h-[calc(100vh-120px)]">
         
         {/* Left Panel: The Enemy & Instructions */}
-        <div className="col-span-3 bg-slate-900/50 border-r border-slate-800 flex flex-col overflow-y-auto">
+        <div className="col-span-3 bg-slate-900/50 border-r border-slate-800 flex flex-col">
           <div className="p-4 border-b border-slate-800">
             <h2 className="font-serif font-bold text-slate-300 mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-red-400" />
@@ -162,6 +163,7 @@ export default function BattleArena() {
           </div>
         </div>
       </div>
+      <ScrollButton />
     </div>
   );
 }
