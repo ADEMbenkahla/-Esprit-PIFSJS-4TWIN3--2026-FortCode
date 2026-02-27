@@ -8,6 +8,7 @@ const {
   login2fa,
   getProfile,
   updateProfile,
+  deleteMyAccount,
   setupTwoFactor,
   verifyTwoFactor,
   disableTwoFactor,
@@ -55,6 +56,9 @@ router.get("/profile", authMiddleware, getProfile);
 
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
+
+// Delete my account (participant only)
+router.delete("/profile", authMiddleware, deleteMyAccount);
 
 // 2FA setup/verify/disable
 router.post("/2fa/setup", authMiddleware, setupTwoFactor);

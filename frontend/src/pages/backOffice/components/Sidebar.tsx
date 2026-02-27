@@ -93,6 +93,7 @@ const Sidebar: React.FC = () => {
     { label: 'My Activity', icon: 'visibility', active: location.pathname === '/my-activity', path: '/my-activity' },
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
+    { label: 'Virtual Rooms', icon: 'video_camera_front', active: location.pathname === '/backoffice/virtual-rooms', path: '/backoffice/virtual-rooms' },
     { label: 'Challenges', icon: 'emoji_events', active: false, path: '#' },
     { label: 'Analytics', icon: 'analytics', active: false, path: '#' },
     { label: 'Moderation', icon: 'shield', active: false, path: '#' },

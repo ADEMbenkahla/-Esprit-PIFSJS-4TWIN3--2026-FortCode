@@ -3,6 +3,7 @@ import logoImg from "../assets/logo.png";
 import "./pages.css";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
+import { getUserRole } from "../guards/RouteGuards";
 
 import Swal from "sweetalert2";
 
@@ -18,6 +19,19 @@ function Login({ onSwitchToRegister }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Redirect already logged-in users to the correct area
+  useEffect(() => {
+    const role = getUserRole();
+    if (role === "admin") {
+      navigate("/backoffice/dashboard", { replace: true });
+      return;
+    }
+    if (role === "participant" || role === "recruiter") {
+      navigate("/home", { replace: true });
+      return;
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("error") === "deactivated") {
@@ -29,7 +43,6 @@ function Login({ onSwitchToRegister }) {
         color: '#fff',
         confirmButtonColor: '#d33'
       });
-      // Nettoyer l'URL
       navigate("/", { replace: true });
     }
   }, [location, navigate]);
@@ -113,10 +126,9 @@ function Login({ onSwitchToRegister }) {
       setTimeout(() => {
         if (payload.role === "admin") {
           navigate("/backoffice/dashboard");
-        } else if (payload.role === "participant") {
-          navigate("/home");
         } else {
-          navigate("/");
+          // Participants and recruiters both go to the front-office home
+          navigate("/home");
         }
       }, 1500);
 
@@ -190,10 +202,9 @@ function Login({ onSwitchToRegister }) {
       setTimeout(() => {
         if (payload.role === "admin") {
           navigate("/backoffice/dashboard");
-        } else if (payload.role === "participant") {
-          navigate("/home");
         } else {
-          navigate("/");
+          // Participants and recruiters both go to the front-office home
+          navigate("/home");
         }
       }, 1500);
 
