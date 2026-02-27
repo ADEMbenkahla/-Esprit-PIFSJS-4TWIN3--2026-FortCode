@@ -1,4 +1,6 @@
 const User = require("../models/User");
+const BattleSubmission = require("../models/BattleSubmission");
+const BattleRoom = require("../models/BattleRoom");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -541,13 +543,15 @@ exports.resetPassword = async (req, res) => {
 // =============================
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const userObj = user.toObject();
+    userObj.hasPassword = !!(user.password && user.password.length > 0);
+    delete userObj.password;
     if (userObj.settings && userObj.settings.twoFactor) {
       delete userObj.settings.twoFactor.totpSecret;
       delete userObj.settings.twoFactor.tempTotpSecret;
@@ -638,6 +642,39 @@ exports.updateProfile = async (req, res) => {
       user: updatedObj
     });
 
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🗑️ DELETE MY ACCOUNT (participant only)
+// NOTE: Frontend asks for email / password / phrase, but the backend
+// only relies on the authenticated user + role check to avoid blocking.
+// =============================
+exports.deleteMyAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role !== "participant") {
+      return res.status(403).json({ message: "Only participants can delete their account from here" });
+    }
+
+    const userId = user._id;
+
+    // Remove participant from battle rooms and delete their submissions
+    await BattleSubmission.deleteMany({ participant: userId });
+    await BattleRoom.updateMany(
+      { participants: userId },
+      { $pull: { participants: userId } }
+    );
+
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: "Account deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

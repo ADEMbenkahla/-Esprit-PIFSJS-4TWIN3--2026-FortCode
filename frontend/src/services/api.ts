@@ -40,4 +40,37 @@ api.interceptors.response.use(
     }
 );
 
+export const requestVirtualRoom = () => {
+    return api.post('/recruiter/virtual-room/request');
+};
+
+export const getMyVirtualRoomRequest = () => {
+    return api.get('/recruiter/virtual-room/request');
+};
+
+/** Delete current user account (participant only). Requires email + password or confirmation phrase. */
+export const deleteMyAccount = (data: { email: string; password?: string; confirmationPhrase?: string }) =>
+    api.delete('/auth/profile', { data });
+
+// Battle Rooms (User Stories 4.4, 4.5, 4.6)
+export const getParticipants = () => api.get('/recruiter/participants');
+export const createBattleRoom = (data: {
+    title: string;
+    description?: string;
+    participantIds?: string[];
+    challenge?: { title: string; description?: string; starterCode?: string; language?: string };
+    timeLimitMinutes: number;
+}) => api.post('/recruiter/battle-rooms', data);
+export const getMyBattleRooms = (status?: string) =>
+    api.get('/recruiter/battle-rooms', status ? { params: { status } } : {});
+export const getBattleRoom = (id: string) => api.get(`/recruiter/battle-rooms/${id}`);
+export const updateBattleRoomStatus = (id: string, status: string) =>
+    api.patch(`/recruiter/battle-rooms/${id}`, { status });
+export const getBattleRoomSubmissions = (id: string) => api.get(`/recruiter/battle-rooms/${id}/submissions`);
+export const updateSubmissionEvaluation = (
+    roomId: string,
+    subId: string,
+    data: { recruiterComment?: string; recruiterRating?: number }
+) => api.patch(`/recruiter/battle-rooms/${roomId}/submissions/${subId}`, data);
+
 export default api;

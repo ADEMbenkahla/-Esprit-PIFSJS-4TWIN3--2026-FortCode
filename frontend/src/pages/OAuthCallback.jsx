@@ -13,10 +13,10 @@ function OAuthCallback() {
             // Store token
             localStorage.setItem('token', token);
 
-            // Redirect based on role
+            // Redirect based on role — admin only to back office; participant/recruiter to front office
             if (role === 'admin') {
                 navigate('/backoffice/dashboard');
-            } else if (role === 'participant') {
+            } else if (role === 'participant' || role === 'recruiter') {
                 navigate('/home');
             } else {
                 navigate('/');
