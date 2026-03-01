@@ -34,7 +34,7 @@ const Dashboard: React.FC = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const token = localStorage.getItem("token");
+                const token = sessionStorage.getItem("token") || localStorage.getItem("token");
                 const res = await fetch("http://localhost:5000/api/admin/dashboard/stats", {
                     headers: { Authorization: `Bearer ${token}` },
                 });

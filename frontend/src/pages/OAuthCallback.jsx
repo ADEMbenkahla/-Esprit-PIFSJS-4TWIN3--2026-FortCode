@@ -10,15 +10,22 @@ function OAuthCallback() {
         const role = searchParams.get('role');
 
         if (token) {
-            // Store token
-            localStorage.setItem('token', token);
+            // Store token in sessionStorage (isolated per tab)
+            sessionStorage.setItem('token', token);
+            // Notify other components of token change
+            window.dispatchEvent(new Event('tokenChanged'));
+
+            console.log("🎫 OAuth Token Role:", role);
 
             // Redirect based on role
             if (role === 'admin') {
+                console.log("➡️ Redirection vers /backoffice/dashboard");
                 navigate('/backoffice/dashboard');
-            } else if (role === 'participant') {
+            } else if (role === 'participant' || role === 'recruiter') {
+                console.log("➡️ Redirection vers /home");
                 navigate('/home');
             } else {
+                console.log("➡️ Redirection vers /");
                 navigate('/');
             }
         } else {

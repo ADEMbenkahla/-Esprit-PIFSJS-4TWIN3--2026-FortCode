@@ -18,7 +18,7 @@ const Sidebar: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
 
         // 1. Decode token for immediate display (optimistic UI)
@@ -92,6 +92,7 @@ const Sidebar: React.FC = () => {
     { label: 'Dashboard', icon: 'dashboard', active: location.pathname === '/backoffice/dashboard', path: '/backoffice/dashboard' },
     { label: 'My Activity', icon: 'visibility', active: location.pathname === '/my-activity', path: '/my-activity' },
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
+    { label: 'Role Requests', icon: 'badge', active: location.pathname === '/backoffice/role-requests', path: '/backoffice/role-requests', adminOnly: true },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
     { label: 'Challenges', icon: 'emoji_events', active: false, path: '#' },
     { label: 'Analytics', icon: 'analytics', active: false, path: '#' },
@@ -122,7 +123,9 @@ const Sidebar: React.FC = () => {
 
         {/* Navigation */}
         <nav className="flex-1 min-w-[256px] overflow-y-auto py-6 space-y-1 px-3">
-          {navItems.map((item) => (
+          {navItems
+            .filter(item => !item.adminOnly || currentUser.role === 'admin')
+            .map((item) => (
             <button
               key={item.label}
               onClick={() => {

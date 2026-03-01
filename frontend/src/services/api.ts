@@ -11,7 +11,8 @@ const api = axios.create({
 // Request interceptor for API calls
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token');
+        // Try sessionStorage first (current session/tab), fallback to localStorage
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -32,6 +33,7 @@ api.interceptors.response.use(
 
         // Handle 401 Unauthorized
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            sessionStorage.removeItem('token');
             localStorage.removeItem('token');
             window.location.href = '/'; // Redirect to login
         }

@@ -7,6 +7,7 @@ const {
   login,
   login2fa,
   getProfile,
+  refreshToken,
   updateProfile,
   setupTwoFactor,
   verifyTwoFactor,
@@ -52,6 +53,9 @@ router.put("/reset-password/:token", resetPassword);
 
 // Get logged-in user profile
 router.get("/profile", authMiddleware, getProfile);
+
+// Refresh token with updated user info
+router.post("/refresh-token", authMiddleware, refreshToken);
 
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);

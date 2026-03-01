@@ -38,7 +38,8 @@ export const SettingsProvider = ({ children }) => {
   useEffect(() => {
     const loadUserSettings = async () => {
       try {
-        const token = localStorage.getItem('token');
+        // Try sessionStorage first (current tab), then localStorage (fallback)
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         if (!token) {
           // No token = not logged in, reset to defaults
           setTheme('dark');
@@ -184,7 +185,7 @@ export const SettingsProvider = ({ children }) => {
   // Sync settings with backend
   const syncWithBackend = useCallback(async (settingsUpdate) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
 
       await fetch('http://localhost:5000/api/auth/profile', {
@@ -244,7 +245,7 @@ export const SettingsProvider = ({ children }) => {
   }, [syncWithBackend]);
 
   const setupTwoFactor = useCallback(async (method) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
     const response = await fetch('http://localhost:5000/api/auth/2fa/setup', {
@@ -266,7 +267,7 @@ export const SettingsProvider = ({ children }) => {
   }, []);
 
   const verifyTwoFactorSetup = useCallback(async (method, code) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
     const response = await fetch('http://localhost:5000/api/auth/2fa/verify', {
@@ -289,7 +290,7 @@ export const SettingsProvider = ({ children }) => {
   }, []);
 
   const disableTwoFactor = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
     const response = await fetch('http://localhost:5000/api/auth/2fa/disable', {
@@ -313,7 +314,7 @@ export const SettingsProvider = ({ children }) => {
     setAvatar(value);
     localStorage.setItem('avatar', value);
     // Sync avatar separately (not in settings object)
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',
@@ -330,7 +331,7 @@ export const SettingsProvider = ({ children }) => {
     setNickname(value);
     localStorage.setItem('nickname', value);
     // Sync nickname separately (not in settings object)
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',

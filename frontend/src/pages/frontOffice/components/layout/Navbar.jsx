@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X } from "lucide-react";
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, UserPlus, Code2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import { useSoundEffects } from "../../../../hooks/useSoundEffects";
@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -16,12 +17,33 @@ export function Navbar() {
   const { playClick } = useSoundEffects();
   const { avatar, nickname } = useSettings();
 
+  // Fonction pour extraire le rôle du JWT token
+  const extractRoleFromToken = () => {
+    try {
+      // Try sessionStorage first (current tab), then localStorage (fallback)
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("🎫 Rôle du token JWT:", payload.role);
+        return payload.role;
+      }
+    } catch (error) {
+      console.error("❌ Erreur extraction rôle du token:", error);
+    }
+    return null;
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        // Try sessionStorage first (current tab), then localStorage (fallback)
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) {
+          console.log("ℹ️ Pas de token trouvé");
+          return;
+        }
 
+        console.log("🔍 Fetching profile avec token...");
         const response = await fetch("http://localhost:5000/api/auth/profile", {
           headers: {
             "Authorization": `Bearer ${token}`
@@ -30,15 +52,99 @@ export function Navbar() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("✅ Profile reçu:", data.user);
+          console.log("👤 Rôle utilisateur:", data.user?.role);
           setUserData(data.user);
+          setUserRole(data.user?.role);
+        } else {
+          console.error("❌ Erreur réponse profile:", response.status);
+          // Fallback : récupérer le rôle du token directement
+          const roleFromToken = extractRoleFromToken();
+          if (roleFromToken) {
+            setUserRole(roleFromToken);
+          }
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
+        console.error("❌ Erreur fetch profile:", error);
+        // Fallback : récupérer le rôle du token directement
+        const roleFromToken = extractRoleFromToken();
+        if (roleFromToken) {
+          setUserRole(roleFromToken);
+        }
       }
     };
 
     fetchProfile();
+
+    // Listener pour détecter les changements de token (login/logout)
+    const handleTokenChange = () => {
+      console.log("🔄 Token change détecté!");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        console.log("🔄 Token trouvé, fetching profile...");
+        // Token a changé → récupérer le profil mis à jour
+        fetchProfile();
+      } else {
+        console.log("🔄 Token supprimé, réinitialisant userData");
+        // Token supprimé → réinitialiser
+        setUserData(null);
+        setUserRole(null);
+      }
+    };
+
+    // Écouter l'événement personnalisé 'tokenChanged'
+    window.addEventListener('tokenChanged', handleTokenChange);
+    
+    return () => {
+      window.removeEventListener('tokenChanged', handleTokenChange);
+    };
   }, []);
+
+  // Debug log pour userData et userRole
+  useEffect(() => {
+    console.log("📊 userData mis à jour:", userData);
+    console.log("📊 userRole mis à jour:", userRole);
+  }, [userData, userRole]);
+
+  // Sync role automatically after admin approval (works from any front-office page)
+  useEffect(() => {
+    if (!userRole || userRole === "recruiter" || userRole === "admin") {
+      return;
+    }
+
+    const checkRoleUpgrade = async () => {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data?.token || !data?.role) return;
+
+        const currentRole = extractRoleFromToken();
+        if (currentRole !== data.role) {
+          sessionStorage.setItem("token", data.token);
+          localStorage.setItem("token", data.token);
+          setUserRole(data.role);
+          if (data.user) setUserData(data.user);
+          window.dispatchEvent(new Event("tokenChanged"));
+        }
+      } catch (error) {
+        console.error("❌ Error while syncing upgraded role:", error);
+      }
+    };
+
+    const intervalId = setInterval(checkRoleUpgrade, 5000);
+    return () => clearInterval(intervalId);
+  }, [userRole]);
 
   const handleLogout = () => {
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
@@ -57,7 +163,8 @@ export function Navbar() {
     }).then((result) => {
       if (result.isConfirmed) {
         // Clear all user data including settings
-        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");  // Clear from current tab
+        localStorage.removeItem("token");     // Clear from browser storage
         localStorage.removeItem("theme");
         localStorage.removeItem("accentColor");
         localStorage.removeItem("fontSize");
@@ -67,6 +174,8 @@ export function Navbar() {
         localStorage.removeItem("avatar");
         localStorage.removeItem("nickname");
 
+        // Notifier les autres composants du changement de token
+        window.dispatchEvent(new Event('tokenChanged'));
         
         disconnect();
         navigate("/");
@@ -127,6 +236,7 @@ export function Navbar() {
           <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
           <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
           <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
+          <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
         </div>
 
         {/* Desktop Right Section */}
@@ -187,6 +297,29 @@ export function Navbar() {
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </Link>
+                  
+                  {userRole === 'participant' && (
+                    <Link
+                      to="/request-recruiter"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Become Recruiter</span>
+                    </Link>
+                  )}
+                  
+                  {(userRole === 'recruiter' || userRole === 'admin') && (
+                    <Link
+                      to="/create-room"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg transition-colors border border-transparent hover:border-green-500/20"
+                    >
+                      <Code2 className="w-4 h-4" />
+                      <span>Create Room</span>
+                    </Link>
+                  )}
+                  
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -280,6 +413,12 @@ export function Navbar() {
                   onClick={handleMobileMenuClose}
                 />
                 <MobileNavItem 
+                  to="/programming-rooms" 
+                  icon={<Code2 className="w-5 h-5" />} 
+                  label="Programming Rooms" 
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem 
                   to="/settings" 
                   icon={<Settings className="w-5 h-5" />} 
                   label="Settings" 
@@ -299,6 +438,29 @@ export function Navbar() {
                   <Castle className="w-5 h-5" />
                   <span>Enter Castle</span>
                 </Link>
+                
+                {userRole === 'participant' && (
+                  <Link
+                    to="/request-recruiter"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Become Recruiter</span>
+                  </Link>
+                )}
+                
+                {(userRole === 'recruiter' || userRole === 'admin') && (
+                  <Link
+                    to="/create-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
+                  >
+                    <Code2 className="w-5 h-5" />
+                    <span>Create Room</span>
+                  </Link>
+                )}
+                
                 <button
                   onClick={() => {
                     handleResetLevels();

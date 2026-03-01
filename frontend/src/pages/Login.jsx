@@ -93,32 +93,44 @@ function Login({ onSwitchToRegister }) {
         return;
       }
 
-      // ✅ Stocker token
-      localStorage.setItem("token", data.token);
+      // ✅ Stocker token dans sessionStorage (isolé par onglet)
+      sessionStorage.setItem("token", data.token);
+      
+      // ✅ Décoder le rôle et l'ID (si envoyé)
+      const payload = JSON.parse(atob(data.token.split(".")[1]));
+      console.log("🎫 Login Token Payload:", payload);
+      
+      // ✅ Stocker aussi l'ID et le rôle dans sessionStorage
+      sessionStorage.setItem("userId", payload.id);
+      sessionStorage.setItem("userRole", payload.role);
+      
+      // Notifier les autres composants du changement de token
+      window.dispatchEvent(new Event('tokenChanged'));
       connect(data.token);
 
+      // 🚀 Rediriger IMMÉDIATEMENT selon le rôle
+      if (payload.role === "admin") {
+        console.log("➡️ Redirection vers /backoffice/dashboard");
+        navigate("/backoffice/dashboard");
+      } else if (payload.role === "participant" || payload.role === "recruiter") {
+        console.log("➡️ Redirection vers /home");
+        navigate("/home");
+      } else {
+        console.log("➡️ Redirection vers /");
+        navigate("/");
+      }
+
+      // ✅ Afficher le Swal de succès (non-bloquant)
       Swal.fire({
         icon: 'success',
         title: 'Welcome Back!',
         text: 'Login successful',
-        timer: 1500,
+        timer: 2000,
         showConfirmButton: false,
         background: '#1a1a2e',
         color: '#fff'
       });
 
-      // ✅ Décoder le rôle (si envoyé)
-      const payload = JSON.parse(atob(data.token.split(".")[1]));
-
-      setTimeout(() => {
-        if (payload.role === "admin") {
-          navigate("/backoffice/dashboard");
-        } else if (payload.role === "participant") {
-          navigate("/home");
-        } else {
-          navigate("/");
-        }
-      }, 1500);
 
     } catch (error) {
       Swal.fire({
@@ -173,34 +185,41 @@ function Login({ onSwitchToRegister }) {
       }
 
       localStorage.setItem("token", data.token);
+      // Notifier les autres composants du changement de token
+      window.dispatchEvent(new Event('tokenChanged'));
       connect(data.token);
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Welcome Back!',
-        text: 'Login successful',
-        timer: 1500,
-        showConfirmButton: false,
-        background: '#1a1a2e',
-        color: '#fff'
-      });
-
+      // ✅ Décoder le rôle (si envoyé)
       const payload = JSON.parse(atob(data.token.split(".")[1]));
-
-      setTimeout(() => {
-        if (payload.role === "admin") {
-          navigate("/backoffice/dashboard");
-        } else if (payload.role === "participant") {
-          navigate("/home");
-        } else {
-          navigate("/");
-        }
-      }, 1500);
+      console.log("🎫 2FA Token Payload:", payload);
 
       setTwoFactorRequired(false);
       setTwoFactorMethod("");
       setTwoFactorToken("");
       setTwoFactorCode("");
+
+      // 🚀 Rediriger IMMÉDIATEMENT selon le rôle
+      if (payload.role === "admin") {
+        console.log("➡️ Redirection vers /backoffice/dashboard");
+        navigate("/backoffice/dashboard");
+      } else if (payload.role === "participant" || payload.role === "recruiter") {
+        console.log("➡️ Redirection vers /home");
+        navigate("/home");
+      } else {
+        console.log("➡️ Redirection vers /");
+        navigate("/");
+      }
+
+      // ✅ Afficher le Swal de succès (non-bloquant)
+      Swal.fire({
+        icon: 'success',
+        title: 'Welcome Back!',
+        text: 'Login successful',
+        timer: 2000,
+        showConfirmButton: false,
+        background: '#1a1a2e',
+        color: '#fff'
+      });
     } catch (error) {
       Swal.fire({
         icon: 'error',

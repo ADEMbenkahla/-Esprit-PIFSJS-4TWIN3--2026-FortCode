@@ -572,7 +572,14 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { username, email, password, nickname, settings } = req.body;
-    const user = await User.findById(req.user.id);
+    const userId = String(req.user.id);  // ✅ Ensure userId is a string
+    
+    // ✅ Validate userId is not empty or invalid
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+    
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -669,6 +676,52 @@ exports.registerAdmin = async (req, res) => {
 
     res.status(201).json({
       message: "Admin user created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 REGISTER RECRUITER (Admin Only)
+// =============================
+exports.registerRecruiter = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Check if email exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Check if username exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: "recruiter",
+      nickname: username  // Default nickname is username
+    });
+
+    res.status(201).json({
+      message: "Recruiter user created successfully",
       user: {
         id: user._id,
         username: user.username,
@@ -956,3 +1009,40 @@ exports.updateUser = async (req, res) => {
 };
 
 
+// =============================
+// 🔄 REFRESH TOKEN
+// =============================
+exports.refreshToken = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Générer un nouveau token avec les informations à jour
+    const newToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const userObj = user.toObject();
+    if (userObj.settings && userObj.settings.twoFactor) {
+      delete userObj.settings.twoFactor.totpSecret;
+      delete userObj.settings.twoFactor.tempTotpSecret;
+      delete userObj.settings.twoFactor.emailOtpHash;
+      delete userObj.settings.twoFactor.emailOtpExpires;
+    }
+
+    res.json({
+      message: "Token refreshed successfully",
+      token: newToken,
+      role: user.role,
+      user: userObj
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

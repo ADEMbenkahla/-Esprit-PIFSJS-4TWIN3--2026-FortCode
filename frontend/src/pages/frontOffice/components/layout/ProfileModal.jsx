@@ -43,7 +43,7 @@ export function ProfileModal({ isOpen, onClose, userData, onUpdateSuccess }) {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("token");
+            const token = sessionStorage.getItem("token") || localStorage.getItem("token");
             const response = await fetch("http://localhost:5000/api/auth/profile", {
                 method: "PUT",
                 headers: {

@@ -24,7 +24,7 @@ const UserTracker: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
       const url = new URL("http://localhost:5000/api/auth/admin/users");
       url.searchParams.append("page", currentPage.toString());
       url.searchParams.append("limit", pageSize.toString());
