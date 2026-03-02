@@ -18,7 +18,9 @@ const {
   createUser,
   updateUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -33,6 +35,10 @@ router.post("/register", register);
 
 // Register admin (optionnel)
 router.post("/register-admin", registerAdmin);
+
+// Verify Email
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
 
 // Login
 router.post("/login", login);

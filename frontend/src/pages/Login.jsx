@@ -62,6 +62,21 @@ function Login({ onSwitchToRegister }) {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.notVerified) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Email Not Verified',
+            text: data.message || 'Please verify your email before logging in.',
+            background: '#1a1a2e',
+            color: '#fff',
+            confirmButtonColor: '#7c3aed'
+          }).then(() => {
+            navigate(`/verify-email?email=${encodeURIComponent(data.email || identifier)}`);
+          });
+          setLoading(false);
+          return;
+        }
+
         console.warn("DEBUG: Login Failed. Server responded:", data);
         Swal.fire({
           icon: 'error',
@@ -95,15 +110,15 @@ function Login({ onSwitchToRegister }) {
 
       // ✅ Stocker token dans sessionStorage (isolé par onglet)
       sessionStorage.setItem("token", data.token);
-      
+
       // ✅ Décoder le rôle et l'ID (si envoyé)
       const payload = JSON.parse(atob(data.token.split(".")[1]));
       console.log("🎫 Login Token Payload:", payload);
-      
+
       // ✅ Stocker aussi l'ID et le rôle dans sessionStorage
       sessionStorage.setItem("userId", payload.id);
       sessionStorage.setItem("userRole", payload.role);
-      
+
       // Notifier les autres composants du changement de token
       window.dispatchEvent(new Event('tokenChanged'));
       connect(data.token);

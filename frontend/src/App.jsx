@@ -15,6 +15,7 @@ import MyActivity from "./pages/MyActivity";
 // Front Office Imports
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import { Home } from "./pages/frontOffice/pages/Home";
 import WorldMap from "./pages/frontOffice/pages/WorldMap";
 import TrainingGrounds from "./pages/frontOffice/pages/TrainingGrounds";
@@ -35,13 +36,13 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 function AppContent() {
   const location = useLocation();
-  const hideNavbarRoutes = ["/", "/register", "/forgot-password", "/auth/callback"];
+  const hideNavbarRoutes = ["/", "/register", "/forgot-password", "/verify-email", "/auth/callback"];
   const shouldHideNavbar =
     hideNavbarRoutes.includes(location.pathname) ||
     location.pathname.startsWith("/reset-password") ||
     location.pathname.startsWith("/backoffice") ||
     location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/training/")||
+    location.pathname.startsWith("/training/") ||
     location.pathname.startsWith("/my-activity");
 
   return (
@@ -52,6 +53,7 @@ function AppContent() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<OAuthCallback />} />
 
         {/* Front Office Routes */}
@@ -61,20 +63,20 @@ function AppContent() {
         <Route path="/training/:levelId" element={<TrainingLevel />} />
         <Route path="/arena" element={<BattleArena />} />
         <Route path="/dashboard" element={<CommanderDashboard />} />
-        
+
         <Route path="/armory" element={<Armory />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/castle" element={<UnityCastlePage />} />
         <Route path="/level/:id" element={<div>Challenge Page Coming Soon!</div>} />
         <Route path="/request-recruiter" element={<RequestRecruiterRole />} />
         <Route path="/programming-rooms" element={<ProgrammingRooms />} />
-        <Route 
-          path="/create-room" 
+        <Route
+          path="/create-room"
           element={
             <ProtectedRoute requiredRole={['recruiter', 'admin']}>
               <CreateProgrammingRoom />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Back Office & Activity Routes */}

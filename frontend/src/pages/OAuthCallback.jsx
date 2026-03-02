@@ -12,6 +12,16 @@ function OAuthCallback() {
         if (token) {
             // Store token in sessionStorage (isolated per tab)
             sessionStorage.setItem('token', token);
+
+            // Extract and store payload
+            try {
+                const payload = JSON.parse(atob(token.split(".")[1]));
+                sessionStorage.setItem("userId", payload.id);
+                sessionStorage.setItem("userRole", payload.role);
+            } catch (e) {
+                console.error("Failed to parse token payload in callback");
+            }
+
             // Notify other components of token change
             window.dispatchEvent(new Event('tokenChanged'));
 

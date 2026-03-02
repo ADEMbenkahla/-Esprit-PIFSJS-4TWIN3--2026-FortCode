@@ -96,7 +96,11 @@ function Register() {
           color: '#fff',
           confirmButtonColor: '#7c3aed'
         }).then(() => {
-          navigate("/");
+          if (data.requiresVerification) {
+            navigate(`/verify-email?email=${encodeURIComponent(data.email || email)}`);
+          } else {
+            navigate("/");
+          }
         });
       } else {
         Swal.fire({

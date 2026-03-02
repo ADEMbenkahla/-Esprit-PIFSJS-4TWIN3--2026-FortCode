@@ -61,6 +61,14 @@ export const SettingsProvider = ({ children }) => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // fast load username and ID if available
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          if (payload.username && !localStorage.getItem('nickname')) {
+            setNickname(payload.username);
+          }
+        } catch (e) { }
+
         if (response.ok) {
           const data = await response.json();
           const user = data.user;
@@ -127,10 +135,10 @@ export const SettingsProvider = ({ children }) => {
   // Apply settings to document
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // Apply theme
     root.setAttribute('data-theme', theme);
-    
+
     // Apply accent color - set CSS variables directly
     const accentColorMap = {
       blue: { color: '#3b82f6', hover: '#2563eb', light: '#60a5fa', rgb: '59, 130, 246' },
@@ -140,14 +148,14 @@ export const SettingsProvider = ({ children }) => {
       red: { color: '#ef4444', hover: '#dc2626', light: '#f87171', rgb: '239, 68, 68' },
       cyan: { color: '#06b6d4', hover: '#0891b2', light: '#22d3ee', rgb: '6, 182, 212' }
     };
-    
+
     const selectedColor = accentColorMap[accentColor] || accentColorMap.blue;
     root.style.setProperty('--accent-color', selectedColor.color);
     root.style.setProperty('--accent-hover', selectedColor.hover);
     root.style.setProperty('--accent-light', selectedColor.light);
     root.style.setProperty('--accent-color-rgb', selectedColor.rgb);
     root.setAttribute('data-accent', accentColor);
-    
+
     // Apply font size to root
     const fontSizeMap = {
       small: '14px',
@@ -156,21 +164,21 @@ export const SettingsProvider = ({ children }) => {
       xlarge: '20px'
     };
     root.style.fontSize = fontSizeMap[fontSize] || '16px';
-    
+
     // Apply high contrast
     if (highContrast) {
       root.classList.add('high-contrast');
     } else {
       root.classList.remove('high-contrast');
     }
-    
+
     // Apply reduce motion
     if (reduceMotion) {
       root.classList.add('reduce-motion');
     } else {
       root.classList.remove('reduce-motion');
     }
-    
+
     // Apply font family to root
     const fontFamilyMap = {
       inter: "'Inter', sans-serif",
@@ -364,7 +372,7 @@ export const SettingsProvider = ({ children }) => {
     setSoundEnabled(true);
     setAvatar(defaultAvatar);
     setNickname(defaultNickname);
-    
+
     localStorage.setItem('theme', 'dark');
     localStorage.setItem('accentColor', 'blue');
     localStorage.setItem('fontSize', 'medium');
@@ -377,7 +385,7 @@ export const SettingsProvider = ({ children }) => {
 
     // Sync all settings with backend
     syncWithBackend(defaultSettings);
-    
+
     const token = localStorage.getItem('token');
     if (token) {
       fetch('http://localhost:5000/api/auth/profile', {

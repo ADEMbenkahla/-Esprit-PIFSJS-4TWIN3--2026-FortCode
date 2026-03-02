@@ -56,6 +56,14 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationCode: String,
+  verificationCodeExpire: Date,
+
+
   // User personalization settings
   settings: {
     theme: {
