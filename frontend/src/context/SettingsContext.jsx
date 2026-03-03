@@ -12,7 +12,7 @@ export const useSettings = () => {
 
 export const SettingsProvider = ({ children }) => {
   const defaultAvatar = 'https://api.dicebear.com/9.x/avataaars/svg?seed=default';
-  const defaultNickname = 'Commander';
+  const defaultUsername = 'Commander';
   const normalizeTheme = (value) => {
     if (value === 'super-light') return 'light';
     if (value === 'super-dark') return 'dark';
@@ -29,108 +29,103 @@ export const SettingsProvider = ({ children }) => {
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('reduceMotion') === 'true');
   const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('soundEnabled') !== 'false');
   const [avatar, setAvatar] = useState(localStorage.getItem('avatar') || defaultAvatar);
-  const [nickname, setNickname] = useState(localStorage.getItem('nickname') || defaultNickname);
+  const [username, setUsername] = useState(localStorage.getItem('username') || defaultUsername);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorMethod, setTwoFactorMethod] = useState('totp');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load all settings from backend on mount
-  useEffect(() => {
-    const loadUserSettings = async () => {
-      try {
-        // Try sessionStorage first (current tab), then localStorage (fallback)
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        if (!token) {
-          // No token = not logged in, reset to defaults
-          setTheme('dark');
-          setAccentColor('blue');
-          setFontSize('medium');
-          setFontFamily('inter');
-          setHighContrast(false);
-          setReduceMotion(false);
-          setSoundEnabled(true);
-          setAvatar(defaultAvatar);
-          setNickname(defaultNickname);
-          setTwoFactorEnabled(false);
-          setTwoFactorMethod('totp');
-          setIsLoaded(true);
-          return;
-        }
-
-        const response = await fetch('http://localhost:5000/api/auth/profile', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        // fast load username and ID if available
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          if (payload.username && !localStorage.getItem('nickname')) {
-            setNickname(payload.username);
-          }
-        } catch (e) { }
-
-        if (response.ok) {
-          const data = await response.json();
-          const user = data.user;
-
-          // Load settings from backend (USER-SPECIFIC)
-          if (user.settings) {
-            const nextTheme = normalizeTheme(user.settings.theme || 'dark');
-            setTheme(nextTheme);
-            setAccentColor(user.settings.accentColor || 'blue');
-            setFontSize(user.settings.fontSize || 'medium');
-            setFontFamily(user.settings.fontFamily || 'inter');
-            setHighContrast(user.settings.highContrast || false);
-            setReduceMotion(user.settings.reduceMotion || false);
-            setSoundEnabled(user.settings.soundEnabled !== false);
-
-            if (user.settings.twoFactor) {
-              setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
-              setTwoFactorMethod(user.settings.twoFactor.method || 'totp');
-            }
-
-            // Update localStorage cache
-            localStorage.setItem('theme', nextTheme);
-            localStorage.setItem('accentColor', user.settings.accentColor || 'blue');
-            localStorage.setItem('fontSize', user.settings.fontSize || 'medium');
-            localStorage.setItem('fontFamily', user.settings.fontFamily || 'inter');
-            localStorage.setItem('highContrast', user.settings.highContrast || false);
-            localStorage.setItem('reduceMotion', user.settings.reduceMotion || false);
-            localStorage.setItem('soundEnabled', user.settings.soundEnabled !== false);
-          }
-
-          // Load avatar and nickname (USER-SPECIFIC)
-          if (user.avatar) {
-            setAvatar(user.avatar);
-            localStorage.setItem('avatar', user.avatar);
-          }
-          if (user.nickname) {
-            setNickname(user.nickname);
-            localStorage.setItem('nickname', user.nickname);
-          }
-        } else {
-          // Invalid token, reset to defaults
-          setTheme('dark');
-          setAccentColor('blue');
-          setFontSize('medium');
-          setFontFamily('inter');
-          setHighContrast(false);
-          setReduceMotion(false);
-          setSoundEnabled(true);
-          setAvatar(defaultAvatar);
-          setNickname(defaultNickname);
-          setTwoFactorEnabled(false);
-          setTwoFactorMethod('totp');
-        }
-      } catch (error) {
-        console.error('Error loading user settings:', error);
-      } finally {
+  // Load all settings from backend
+  const loadUserSettings = useCallback(async () => {
+    try {
+      // Try sessionStorage first (current tab), then localStorage (fallback)
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!token) {
+        // No token = not logged in, reset to defaults
+        setTheme('dark');
+        setAccentColor('blue');
+        setFontSize('medium');
+        setFontFamily('inter');
+        setHighContrast(false);
+        setReduceMotion(false);
+        setSoundEnabled(true);
+        setAvatar(defaultAvatar);
+        setUsername(defaultUsername);
+        setTwoFactorEnabled(false);
+        setTwoFactorMethod('totp');
         setIsLoaded(true);
+        return;
       }
-    };
 
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      // fast load username and ID if available
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.username) {
+          setUsername(payload.username);
+        }
+      } catch (e) { }
+
+      if (response.ok) {
+        const data = await response.json();
+        const user = data.user;
+
+        // Load settings from backend (USER-SPECIFIC)
+        if (user.settings) {
+          const nextTheme = normalizeTheme(user.settings.theme || 'dark');
+          setTheme(nextTheme);
+          setAccentColor(user.settings.accentColor || 'blue');
+          setFontSize(user.settings.fontSize || 'medium');
+          setFontFamily(user.settings.fontFamily || 'inter');
+          setHighContrast(user.settings.highContrast || false);
+          setReduceMotion(user.settings.reduceMotion || false);
+          setSoundEnabled(user.settings.soundEnabled !== false);
+
+          if (user.settings.twoFactor) {
+            setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
+            setTwoFactorMethod(user.settings.twoFactor.method || 'totp');
+          }
+
+          // Update localStorage cache
+          localStorage.setItem('theme', nextTheme);
+          localStorage.setItem('accentColor', user.settings.accentColor || 'blue');
+          localStorage.setItem('fontSize', user.settings.fontSize || 'medium');
+          localStorage.setItem('fontFamily', user.settings.fontFamily || 'inter');
+          localStorage.setItem('highContrast', user.settings.highContrast || false);
+          localStorage.setItem('reduceMotion', user.settings.reduceMotion || false);
+          localStorage.setItem('soundEnabled', user.settings.soundEnabled !== false);
+        }
+
+        // Load avatar and username (USER-SPECIFIC)
+        if (user.avatar) {
+          setAvatar(user.avatar);
+          localStorage.setItem('avatar', user.avatar);
+        }
+        if (user.username) {
+          setUsername(user.username);
+          localStorage.setItem('username', user.username);
+        }
+      } else {
+        // Invalid token or server error, reset local state
+        setAvatar(defaultAvatar);
+        setUsername(defaultUsername);
+      }
+    } catch (error) {
+      console.error('Error loading user settings:', error);
+    } finally {
+      setIsLoaded(true);
+    }
+  }, [defaultAvatar, defaultUsername]);
+
+  useEffect(() => {
     loadUserSettings();
-  }, []);
+
+    // Listen for token changes to refresh settings immediately
+    window.addEventListener('tokenChanged', loadUserSettings);
+    return () => window.removeEventListener('tokenChanged', loadUserSettings);
+  }, [loadUserSettings]);
 
   // Apply settings to document
   useEffect(() => {
@@ -335,10 +330,10 @@ export const SettingsProvider = ({ children }) => {
     }
   }, []);
 
-  const updateNickname = useCallback((value) => {
-    setNickname(value);
-    localStorage.setItem('nickname', value);
-    // Sync nickname separately (not in settings object)
+  const updateUsername = useCallback((value) => {
+    setUsername(value);
+    localStorage.setItem('username', value);
+    // Sync username separately (not in settings object)
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       fetch('http://localhost:5000/api/auth/profile', {
@@ -347,9 +342,34 @@ export const SettingsProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ nickname: value })
-      }).catch(err => console.error('Error syncing nickname:', err));
+        body: JSON.stringify({ username: value })
+      }).catch(err => console.error('Error syncing username:', err));
     }
+  }, []);
+
+  const deleteAccount = useCallback(async (confirmation) => {
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await fetch('http://localhost:5000/api/auth/profile', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ confirmation })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Account deletion failed');
+    }
+
+    // Logout after deletion
+    sessionStorage.clear();
+    localStorage.clear();
+    window.location.href = '/';
+    return data;
   }, []);
 
   const resetSettings = useCallback(() => {
@@ -371,7 +391,7 @@ export const SettingsProvider = ({ children }) => {
     setReduceMotion(false);
     setSoundEnabled(true);
     setAvatar(defaultAvatar);
-    setNickname(defaultNickname);
+    setUsername(defaultUsername);
 
     localStorage.setItem('theme', 'dark');
     localStorage.setItem('accentColor', 'blue');
@@ -381,7 +401,7 @@ export const SettingsProvider = ({ children }) => {
     localStorage.setItem('reduceMotion', 'false');
     localStorage.setItem('soundEnabled', 'true');
     localStorage.setItem('avatar', defaultAvatar);
-    localStorage.setItem('nickname', defaultNickname);
+    localStorage.setItem('username', defaultUsername);
 
     // Sync all settings with backend
     syncWithBackend(defaultSettings);
@@ -396,11 +416,11 @@ export const SettingsProvider = ({ children }) => {
         },
         body: JSON.stringify({
           avatar: defaultAvatar,
-          nickname: defaultNickname
+          username: defaultUsername
         })
       }).catch(err => console.error('Error syncing reset:', err));
     }
-  }, [defaultAvatar, defaultNickname, syncWithBackend]);
+  }, [defaultAvatar, defaultUsername, syncWithBackend]);
 
   const value = {
     theme,
@@ -411,7 +431,8 @@ export const SettingsProvider = ({ children }) => {
     reduceMotion,
     soundEnabled,
     avatar,
-    nickname,
+    username,
+    nickname: username, // Backward compatibility
     twoFactorEnabled,
     twoFactorMethod,
     isLoaded,
@@ -426,7 +447,8 @@ export const SettingsProvider = ({ children }) => {
     verifyTwoFactorSetup,
     disableTwoFactor,
     updateAvatar,
-    updateNickname,
+    updateUsername,
+    deleteAccount,
     resetSettings
   };
 

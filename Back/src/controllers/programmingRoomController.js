@@ -16,14 +16,14 @@ exports.createRoom = async (req, res) => {
       isPublic,
       scheduledAt
     } = req.body;
-    
+
     const creatorId = req.user.id;
 
     // Vérifier que l'utilisateur est un recruiter
     const user = await User.findById(creatorId);
     if (!user || (user.role !== "recruiter" && user.role !== "admin")) {
-      return res.status(403).json({ 
-        message: "Only recruiters can create programming rooms" 
+      return res.status(403).json({
+        message: "Only recruiters can create programming rooms"
       });
     }
 
@@ -39,7 +39,7 @@ exports.createRoom = async (req, res) => {
       scheduledAt: scheduledAt || null
     });
 
-    await room.populate("creatorId", "username email avatar nickname");
+    await room.populate("creatorId", "username email avatar");
 
     res.status(201).json({
       message: "Programming room created successfully",
@@ -48,9 +48,9 @@ exports.createRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Create Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -69,17 +69,17 @@ exports.getAllRooms = async (req, res) => {
     if (isPublic !== undefined) filter.isPublic = isPublic === 'true';
 
     const rooms = await ProgrammingRoom.find(filter)
-      .populate("creatorId", "username email avatar nickname")
-      .populate("currentParticipants.userId", "username avatar nickname")
+      .populate("creatorId", "username email avatar")
+      .populate("currentParticipants.userId", "username avatar")
       .sort({ createdAt: -1 });
 
     res.json({ rooms });
 
   } catch (error) {
     console.error("Get All Rooms Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -92,8 +92,8 @@ exports.getRoomById = async (req, res) => {
     const { roomId } = req.params;
 
     const room = await ProgrammingRoom.findById(roomId)
-      .populate("creatorId", "username email avatar nickname")
-      .populate("currentParticipants.userId", "username avatar nickname");
+      .populate("creatorId", "username email avatar")
+      .populate("currentParticipants.userId", "username avatar");
 
     if (!room) {
       return res.status(404).json({ message: "Room not found" });
@@ -103,9 +103,9 @@ exports.getRoomById = async (req, res) => {
 
   } catch (error) {
     console.error("Get Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -141,8 +141,8 @@ exports.joinRoom = async (req, res) => {
     room.currentParticipants.push({ userId });
     await room.save();
 
-    await room.populate("creatorId", "username email avatar nickname");
-    await room.populate("currentParticipants.userId", "username avatar nickname");
+    await room.populate("creatorId", "username email avatar");
+    await room.populate("currentParticipants.userId", "username avatar");
 
     res.json({
       message: "Joined room successfully",
@@ -151,9 +151,9 @@ exports.joinRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Join Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -181,9 +181,9 @@ exports.leaveRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Leave Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -203,14 +203,14 @@ exports.startRoom = async (req, res) => {
 
     // Seul le créateur peut démarrer la salle
     if (room.creatorId.toString() !== userId.toString()) {
-      return res.status(403).json({ 
-        message: "Only the room creator can start the room" 
+      return res.status(403).json({
+        message: "Only the room creator can start the room"
       });
     }
 
     if (room.status !== "waiting") {
-      return res.status(400).json({ 
-        message: "Room is not in waiting status" 
+      return res.status(400).json({
+        message: "Room is not in waiting status"
       });
     }
 
@@ -218,8 +218,8 @@ exports.startRoom = async (req, res) => {
     room.startedAt = new Date();
     await room.save();
 
-    await room.populate("creatorId", "username email avatar nickname");
-    await room.populate("currentParticipants.userId", "username avatar nickname");
+    await room.populate("creatorId", "username email avatar");
+    await room.populate("currentParticipants.userId", "username avatar");
 
     res.json({
       message: "Room started successfully",
@@ -228,9 +228,9 @@ exports.startRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Start Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -250,8 +250,8 @@ exports.completeRoom = async (req, res) => {
 
     // Seul le créateur peut compléter la salle
     if (room.creatorId.toString() !== userId.toString()) {
-      return res.status(403).json({ 
-        message: "Only the room creator can complete the room" 
+      return res.status(403).json({
+        message: "Only the room creator can complete the room"
       });
     }
 
@@ -266,9 +266,9 @@ exports.completeRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Complete Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -289,15 +289,15 @@ exports.deleteRoom = async (req, res) => {
 
     // Seul le créateur ou un admin peut supprimer
     if (room.creatorId.toString() !== userId.toString() && userRole !== "admin") {
-      return res.status(403).json({ 
-        message: "You don't have permission to delete this room" 
+      return res.status(403).json({
+        message: "You don't have permission to delete this room"
       });
     }
 
     // On ne peut supprimer que les salles en attente ou terminées
     if (room.status === "active") {
-      return res.status(400).json({ 
-        message: "Cannot delete an active room" 
+      return res.status(400).json({
+        message: "Cannot delete an active room"
       });
     }
 
@@ -307,9 +307,9 @@ exports.deleteRoom = async (req, res) => {
 
   } catch (error) {
     console.error("Delete Room Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };

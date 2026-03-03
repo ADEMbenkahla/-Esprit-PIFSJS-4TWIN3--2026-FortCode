@@ -40,7 +40,6 @@ router.get('/google/callback',
                 email,
                 googleId,
                 avatar,
-                nickname: uniqueUsername,
                 isVerified: true
             });
 

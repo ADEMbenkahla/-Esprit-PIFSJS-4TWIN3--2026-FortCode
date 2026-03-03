@@ -36,14 +36,21 @@ const initSocket = (server) => {
             socket.on("disconnect", async () => {
                 console.log("User disconnected:", socket.userId);
                 if (socket.userId) {
-                    // Check if user has other tabs open
-                    const sockets = await io.fetchSockets();
-                    const isStillConnected = sockets.some(s => s.userId === socket.userId);
+                    // Give it a small delay to allow list to update OR check current socket list
+                    setTimeout(async () => {
+                        const sockets = await io.fetchSockets();
+                        const isStillConnected = sockets.some(s => s.userId === socket.userId);
 
-                    if (!isStillConnected) {
-                        await User.findByIdAndUpdate(socket.userId, { isOnline: false });
-                        io.emit("userStatusChanged", { userId: socket.userId, isOnline: false });
-                    }
+                        if (!isStillConnected) {
+                            try {
+                                await User.findByIdAndUpdate(socket.userId, { isOnline: false });
+                                io.emit("userStatusChanged", { userId: socket.userId, isOnline: false });
+                                console.log(`User ${socket.userId} is now offline (no active sockets).`);
+                            } catch (err) {
+                                console.error("Error updating user status on disconnect:", err);
+                            }
+                        }
+                    }, 1000); // Small grace period
                 }
             });
 

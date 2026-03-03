@@ -15,10 +15,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-  nickname: {
-    type: String,
-    default: "Commander"
-  },
+
   password: {
     type: String,
     required: false
