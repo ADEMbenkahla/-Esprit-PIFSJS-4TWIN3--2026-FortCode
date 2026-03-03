@@ -40,7 +40,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem("token") || localStorage.getItem("token");
             const body: any = { username, email, role, avatar };
 
             // Only include password if it's provided

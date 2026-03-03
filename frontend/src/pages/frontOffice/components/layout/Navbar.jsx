@@ -94,7 +94,7 @@ export function Navbar() {
 
     // Écouter l'événement personnalisé 'tokenChanged'
     window.addEventListener('tokenChanged', handleTokenChange);
-    
+
     return () => {
       window.removeEventListener('tokenChanged', handleTokenChange);
     };
@@ -148,7 +148,7 @@ export function Navbar() {
 
   const handleLogout = () => {
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-    
+
     Swal.fire({
       title: 'Are you sure?',
       text: "You will be redirected to the login page.",
@@ -163,20 +163,12 @@ export function Navbar() {
     }).then((result) => {
       if (result.isConfirmed) {
         // Clear all user data including settings
-        sessionStorage.removeItem("token");  // Clear from current tab
-        localStorage.removeItem("token");     // Clear from browser storage
-        localStorage.removeItem("theme");
-        localStorage.removeItem("accentColor");
-        localStorage.removeItem("fontSize");
-        localStorage.removeItem("highContrast");
-        localStorage.removeItem("reduceMotion");
-        localStorage.removeItem("soundEnabled");
-        localStorage.removeItem("avatar");
-        localStorage.removeItem("nickname");
+        sessionStorage.clear();
+        localStorage.clear();
 
         // Notifier les autres composants du changement de token
         window.dispatchEvent(new Event('tokenChanged'));
-        
+
         disconnect();
         navigate("/");
 
@@ -254,7 +246,7 @@ export function Navbar() {
             <Castle className="w-4 h-4" />
             Enter Castle
           </Link>
-          
+
           {/* User Profile Badge */}
           <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
             <div className="w-8 h-8 rounded-full border-2 overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
@@ -297,7 +289,7 @@ export function Navbar() {
                     <Settings className="w-4 h-4" />
                     <span>Settings</span>
                   </Link>
-                  
+
                   {userRole === 'participant' && (
                     <Link
                       to="/request-recruiter"
@@ -308,7 +300,7 @@ export function Navbar() {
                       <span>Become Recruiter</span>
                     </Link>
                   )}
-                  
+
                   {(userRole === 'recruiter' || userRole === 'admin') && (
                     <Link
                       to="/create-room"
@@ -319,7 +311,7 @@ export function Navbar() {
                       <span>Create Room</span>
                     </Link>
                   )}
-                  
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -361,7 +353,7 @@ export function Navbar() {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
@@ -382,46 +374,46 @@ export function Navbar() {
 
               {/* Navigation Links */}
               <div className="space-y-2 mb-4">
-                <MobileNavItem 
-                  to="/map" 
-                  icon={<Map className="w-5 h-5" />} 
-                  label="World Map" 
+                <MobileNavItem
+                  to="/map"
+                  icon={<Map className="w-5 h-5" />}
+                  label="World Map"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/training" 
-                  icon={<Sword className="w-5 h-5" />} 
-                  label="Training" 
+                <MobileNavItem
+                  to="/training"
+                  icon={<Sword className="w-5 h-5" />}
+                  label="Training"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/arena" 
-                  icon={<Cpu className="w-5 h-5" />} 
-                  label="Arena" 
+                <MobileNavItem
+                  to="/arena"
+                  icon={<Cpu className="w-5 h-5" />}
+                  label="Arena"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/dashboard" 
-                  icon={<User className="w-5 h-5" />} 
-                  label="Commander" 
+                <MobileNavItem
+                  to="/dashboard"
+                  icon={<User className="w-5 h-5" />}
+                  label="Commander"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/armory" 
-                  icon={<Trophy className="w-5 h-5" />} 
-                  label="Armory" 
+                <MobileNavItem
+                  to="/armory"
+                  icon={<Trophy className="w-5 h-5" />}
+                  label="Armory"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/programming-rooms" 
-                  icon={<Code2 className="w-5 h-5" />} 
-                  label="Programming Rooms" 
+                <MobileNavItem
+                  to="/programming-rooms"
+                  icon={<Code2 className="w-5 h-5" />}
+                  label="Programming Rooms"
                   onClick={handleMobileMenuClose}
                 />
-                <MobileNavItem 
-                  to="/settings" 
-                  icon={<Settings className="w-5 h-5" />} 
-                  label="Settings" 
+                <MobileNavItem
+                  to="/settings"
+                  icon={<Settings className="w-5 h-5" />}
+                  label="Settings"
                   onClick={handleMobileMenuClose}
                 />
               </div>
@@ -438,7 +430,7 @@ export function Navbar() {
                   <Castle className="w-5 h-5" />
                   <span>Enter Castle</span>
                 </Link>
-                
+
                 {userRole === 'participant' && (
                   <Link
                     to="/request-recruiter"
@@ -449,7 +441,7 @@ export function Navbar() {
                     <span>Become Recruiter</span>
                   </Link>
                 )}
-                
+
                 {(userRole === 'recruiter' || userRole === 'admin') && (
                   <Link
                     to="/create-room"
@@ -460,7 +452,7 @@ export function Navbar() {
                     <span>Create Room</span>
                   </Link>
                 )}
-                
+
                 <button
                   onClick={() => {
                     handleResetLevels();

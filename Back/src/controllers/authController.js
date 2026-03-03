@@ -59,7 +59,6 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       googleId: googleId || undefined,
       avatar: userAvatar,
-      nickname: username, // Default nickname is username
       isVerified: isGoogleAuth, // Auto verify Google Auth
       verificationCode: isGoogleAuth ? undefined : hashOtp(verificationCode),
       verificationCodeExpire: isGoogleAuth ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
@@ -733,7 +732,7 @@ exports.getProfile = async (req, res) => {
 // =============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, password, nickname, settings } = req.body;
+    const { username, email, password, avatar, settings } = req.body;
     const userId = String(req.user.id);  // ✅ Ensure userId is a string
 
     // ✅ Validate userId is not empty or invalid
@@ -767,15 +766,17 @@ exports.updateProfile = async (req, res) => {
       user.email = email;
     }
 
+    // Update avatar if provided
+    if (avatar) {
+      user.avatar = avatar;
+    }
+
     // Update password if provided (optional)
     if (password) {
       user.password = await bcrypt.hash(password, 10);
     }
 
-    // Update nickname if provided
-    if (nickname !== undefined) {
-      user.nickname = nickname;
-    }
+
 
     // Update settings if provided
     if (settings) {
@@ -878,8 +879,7 @@ exports.registerRecruiter = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role: "recruiter",
-      nickname: username  // Default nickname is username
+      role: "recruiter"
     });
 
     res.status(201).json({
@@ -1208,3 +1208,31 @@ exports.refreshToken = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+// =============================
+// 👤 DELETE ACCOUNT
+// =============================
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { confirmation } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const expectedConfirmation = `${user.username}/delete-account`;
+    if (confirmation !== expectedConfirmation) {
+      return res.status(400).json({ message: "Invalid confirmation string" });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+

@@ -16,7 +16,7 @@ export default function Settings() {
     reduceMotion,
     soundEnabled,
     avatar,
-    nickname,
+    username,
     twoFactorEnabled,
     twoFactorMethod,
     updateTheme,
@@ -30,7 +30,8 @@ export default function Settings() {
     verifyTwoFactorSetup,
     disableTwoFactor,
     updateAvatar,
-    updateNickname,
+    updateUsername,
+    deleteAccount,
     resetSettings
   } = useSettings();
 
@@ -107,9 +108,29 @@ export default function Settings() {
     updateAvatar(url);
   };
 
-  const handleNicknameChange = (value) => {
+  const handleUsernameChange = (value) => {
     if (value.length <= 20) {
-      updateNickname(value);
+      updateUsername(value);
+    }
+  };
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    const expected = `${username}/delete-account`;
+    if (deleteConfirmation !== expected) {
+      setDeleteError(`Please type "${expected}" to confirm.`);
+      return;
+    }
+
+    try {
+      setTwoFactorLoading(true);
+      await deleteAccount(deleteConfirmation);
+    } catch (error) {
+      setDeleteError(error.message || 'Failed to delete account');
+      setTwoFactorLoading(false);
     }
   };
 
@@ -205,11 +226,10 @@ export default function Settings() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleThemeChange('dark')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
-                    theme === 'dark'
-                      ? 'bg-slate-800'
-                      : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${theme === 'dark'
+                    ? 'bg-slate-800'
+                    : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
                   style={theme === 'dark' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                 >
                   <Moon className="w-5 h-5" />
@@ -217,11 +237,10 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={() => handleThemeChange('light')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
-                    theme === 'light'
-                      ? 'bg-slate-800'
-                      : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${theme === 'light'
+                    ? 'bg-slate-800'
+                    : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
                   style={theme === 'light' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                 >
                   <Sun className="w-5 h-5" />
@@ -229,11 +248,10 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={() => handleThemeChange('auto')}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
-                    theme === 'auto'
-                      ? 'bg-slate-800'
-                      : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${theme === 'auto'
+                    ? 'bg-slate-800'
+                    : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
                   style={theme === 'auto' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                 >
                   <Monitor className="w-5 h-5" />
@@ -250,15 +268,13 @@ export default function Settings() {
                   <button
                     key={color.name}
                     onClick={() => handleAccentColorChange(color.name)}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
-                      accentColor === color.name
-                        ? 'bg-slate-800 border-slate-600'
-                        : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'
-                    }`}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${accentColor === color.name
+                      ? 'bg-slate-800 border-slate-600'
+                      : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'
+                      }`}
                   >
-                    <div className={`w-10 h-10 rounded-full ${color.color} shadow-lg ${
-                      accentColor === color.name ? 'ring-2 ring-slate-400 ring-offset-2 ring-offset-slate-900' : ''
-                    }`} />
+                    <div className={`w-10 h-10 rounded-full ${color.color} shadow-lg ${accentColor === color.name ? 'ring-2 ring-slate-400 ring-offset-2 ring-offset-slate-900' : ''
+                      }`} />
                     <span className="text-xs text-slate-400">{color.label}</span>
                   </button>
                 ))}
@@ -291,11 +307,10 @@ export default function Settings() {
                   <button
                     key={size.value}
                     onClick={() => handleFontSizeChange(size.value)}
-                    className={`px-4 py-3 rounded-lg border transition-all ${
-                      fontSize === size.value
-                        ? 'bg-slate-800'
-                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                    }`}
+                    className={`px-4 py-3 rounded-lg border transition-all ${fontSize === size.value
+                      ? 'bg-slate-800'
+                      : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                      }`}
                     style={fontSize === size.value ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                   >
                     <span className={size.size}>{size.label}</span>
@@ -315,11 +330,10 @@ export default function Settings() {
                   <button
                     key={family.value}
                     onClick={() => handleFontFamilyChange(family.value)}
-                    className={`px-4 py-3 rounded-lg border transition-all ${
-                      fontFamily === family.value
-                        ? 'bg-slate-800'
-                        : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                    }`}
+                    className={`px-4 py-3 rounded-lg border transition-all ${fontFamily === family.value
+                      ? 'bg-slate-800'
+                      : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                      }`}
                     style={fontFamily === family.value ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                   >
                     <span style={{ fontFamily: family.fontFamily }}>{family.label}</span>
@@ -344,9 +358,8 @@ export default function Settings() {
                   className="relative w-12 h-6 rounded-full transition-colors"
                   style={{ backgroundColor: highContrast ? 'var(--accent-color)' : '#334155' }}
                 >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    highContrast ? 'translate-x-6' : ''
-                  }`} />
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${highContrast ? 'translate-x-6' : ''
+                    }`} />
                 </button>
               </div>
 
@@ -364,9 +377,8 @@ export default function Settings() {
                   className="relative w-12 h-6 rounded-full transition-colors"
                   style={{ backgroundColor: reduceMotion ? 'var(--accent-color)' : '#334155' }}
                 >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    reduceMotion ? 'translate-x-6' : ''
-                  }`} />
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${reduceMotion ? 'translate-x-6' : ''
+                    }`} />
                 </button>
               </div>
 
@@ -384,9 +396,8 @@ export default function Settings() {
                   className="relative w-12 h-6 rounded-full transition-colors"
                   style={{ backgroundColor: soundEnabled ? 'var(--accent-color)' : '#334155' }}
                 >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    soundEnabled ? 'translate-x-6' : ''
-                  }`} />
+                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${soundEnabled ? 'translate-x-6' : ''
+                    }`} />
                 </button>
               </div>
             </div>
@@ -402,7 +413,7 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="text-2xl font-serif font-bold text-slate-100">Profile</h2>
-                <p className="text-sm text-slate-400">Customize your avatar and nickname</p>
+                <p className="text-sm text-slate-400">Customize your avatar and username</p>
               </div>
             </div>
 
@@ -410,27 +421,27 @@ export default function Settings() {
               {/* Avatar Picker */}
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-3">Avatar</label>
-                <AvatarPicker 
+                <AvatarPicker
                   currentAvatar={avatar}
                   onSelect={handleAvatarChange}
                 />
               </div>
 
-              {/* Nickname */}
+              {/* Username */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-3">Nickname</label>
+                <label className="block text-sm font-semibold text-slate-300 mb-3">Username</label>
                 <div className="space-y-4">
                   <input
                     type="text"
-                    value={nickname}
-                    onChange={(e) => handleNicknameChange(e.target.value)}
+                    value={username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
                     onFocus={() => playClick()}
-                    placeholder="Enter your nickname"
+                    placeholder="Enter your username"
                     maxLength={20}
                     className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
                   />
-                  <p className="text-xs text-slate-500">{nickname.length}/20 characters</p>
-                  
+                  <p className="text-xs text-slate-500">{username.length}/20 characters</p>
+
                   {/* Preview */}
                   <div className="mt-6 p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
                     <p className="text-xs text-slate-400 mb-3">Preview</p>
@@ -439,7 +450,7 @@ export default function Settings() {
                         <img src={avatar} alt="Avatar preview" className="w-full h-full object-cover" />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-100">{nickname || 'Commander'}</p>
+                        <p className="font-semibold text-slate-100">{username || 'Commander'}</p>
                         <p className="text-xs text-slate-400">Your display name</p>
                       </div>
                     </div>
@@ -489,22 +500,20 @@ export default function Settings() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => setTwoFactorMethodChoice('totp')}
-                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
-                          twoFactorMethodChoice === 'totp'
-                            ? 'bg-slate-800'
-                            : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                        }`}
+                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${twoFactorMethodChoice === 'totp'
+                          ? 'bg-slate-800'
+                          : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                          }`}
                         style={twoFactorMethodChoice === 'totp' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                       >
                         Authenticator App
                       </button>
                       <button
                         onClick={() => setTwoFactorMethodChoice('email')}
-                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${
-                          twoFactorMethodChoice === 'email'
-                            ? 'bg-slate-800'
-                            : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
-                        }`}
+                        className={`flex-1 px-4 py-3 rounded-lg border transition-all ${twoFactorMethodChoice === 'email'
+                          ? 'bg-slate-800'
+                          : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'
+                          }`}
                         style={twoFactorMethodChoice === 'email' ? { borderColor: 'var(--accent-color)', color: 'var(--accent-color)' } : {}}
                       >
                         Email Code
@@ -571,7 +580,7 @@ export default function Settings() {
               <h3 className="text-xl font-semibold text-slate-100">Live Preview</h3>
             </div>
             <div className="space-y-4">
-              <div 
+              <div
                 className="p-4 rounded-lg border-2 bg-slate-950/50"
                 style={{ borderColor: 'var(--accent-color)' }}
               >
@@ -588,7 +597,7 @@ export default function Settings() {
                   This preview shows your customized settings in action. The accent color is used for highlights, borders, and interactive elements throughout the application.
                 </p>
               </div>
-              <button 
+              <button
                 className="px-6 py-3 rounded-lg text-white font-semibold transition-all"
                 style={{
                   backgroundColor: 'var(--accent-color)',
@@ -602,6 +611,85 @@ export default function Settings() {
             </div>
           </Card>
         </div>
+
+        {/* Danger Zone */}
+        <div className="mt-12">
+          <Card className="p-6 bg-red-950/20 border-red-900/50">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-red-900/20 border border-red-500/30 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-red-500">Danger Zone</h2>
+                <p className="text-sm text-red-400/70">Irreversible actions for your account</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-lg bg-red-950/30 border border-red-900/30 gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-red-100">Delete Account</h3>
+                <p className="text-sm text-red-400/80">Permanently remove your account and all associated data</p>
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-red-900/20"
+              >
+                Delete Account
+              </button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+            <Card className="w-full max-w-md p-6 bg-slate-900 border-red-900/50 shadow-2xl">
+              <h3 className="text-2xl font-serif font-bold text-slate-100 mb-4">Are you absolutely sure?</h3>
+              <p className="text-slate-400 mb-6">
+                This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Please type <span className="font-mono text-red-400 font-bold">{username}/delete-account</span> to confirm.
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmation}
+                    onChange={(e) => {
+                      setDeleteConfirmation(e.target.value);
+                      setDeleteError('');
+                    }}
+                    placeholder="Type the confirmation string"
+                    className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-red-500 transition-colors"
+                  />
+                  {deleteError && <p className="mt-2 text-xs text-red-500">{deleteError}</p>}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsDeleteModalOpen(false);
+                      setDeleteConfirmation('');
+                      setDeleteError('');
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={twoFactorLoading}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {twoFactorLoading ? 'Deleting...' : 'Confirm Delete'}
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Reset Button */}
         <div className="flex justify-center pb-8">

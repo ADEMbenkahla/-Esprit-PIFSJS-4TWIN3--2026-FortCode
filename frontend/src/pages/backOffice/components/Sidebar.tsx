@@ -4,11 +4,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import logo from '../../../assets/logo.png';
 import { useSidebar } from '../../../context/SidebarContext';
+import { useSocket } from '../../../context/SocketContext';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSidebarOpen, closeSidebar } = useSidebar();
+  const { disconnect } = useSocket();
   const [currentUser, setCurrentUser] = useState({
     name: "User",
     role: "Guest",
@@ -73,7 +75,10 @@ const Sidebar: React.FC = () => {
       color: '#fff'
     }).then((result) => {
       if (result.isConfirmed) {
-        localStorage.removeItem("token");
+        localStorage.clear();
+        sessionStorage.clear();
+        disconnect();
+        window.dispatchEvent(new Event('tokenChanged'));
         navigate("/");
         Swal.fire({
           title: 'Logged Out!',
@@ -126,25 +131,25 @@ const Sidebar: React.FC = () => {
           {navItems
             .filter(item => !item.adminOnly || currentUser.role === 'admin')
             .map((item) => (
-            <button
-              key={item.label}
-              onClick={() => {
-                if (item.path !== '#') {
-                  navigate(item.path);
-                  closeSidebar();
-                }
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
-                ? 'bg-primary/10 text-primary border-l-4 border-primary'
-                : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
-                }`}
-            >
-              <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
-                {item.icon}
-              </span>
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
+              <button
+                key={item.label}
+                onClick={() => {
+                  if (item.path !== '#') {
+                    navigate(item.path);
+                    closeSidebar();
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
+                  ? 'bg-primary/10 text-primary border-l-4 border-primary'
+                  : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
+                  }`}
+              >
+                <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
+                  {item.icon}
+                </span>
+                <span className="font-medium">{item.label}</span>
+              </button>
+            ))}
 
           <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
             <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>

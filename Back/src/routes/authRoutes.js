@@ -20,7 +20,8 @@ const {
   forgotPassword,
   resetPassword,
   verifyEmail,
-  resendVerificationEmail
+  resendVerificationEmail,
+  deleteAccount
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -65,6 +66,9 @@ router.post("/refresh-token", authMiddleware, refreshToken);
 
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
+
+// Delete logged-in user account
+router.delete("/profile", authMiddleware, deleteAccount);
 
 // 2FA setup/verify/disable
 router.post("/2fa/setup", authMiddleware, setupTwoFactor);

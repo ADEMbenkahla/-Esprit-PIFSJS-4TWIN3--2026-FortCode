@@ -108,8 +108,9 @@ function Login({ onSwitchToRegister }) {
         return;
       }
 
-      // ✅ Stocker token dans sessionStorage (isolé par onglet)
+      // ✅ Stocker token dans sessionStorage et localStorage
       sessionStorage.setItem("token", data.token);
+      localStorage.setItem("token", data.token);
 
       // ✅ Décoder le rôle et l'ID (si envoyé)
       const payload = JSON.parse(atob(data.token.split(".")[1]));
@@ -199,6 +200,7 @@ function Login({ onSwitchToRegister }) {
         return;
       }
 
+      sessionStorage.setItem("token", data.token);
       localStorage.setItem("token", data.token);
       // Notifier les autres composants du changement de token
       window.dispatchEvent(new Event('tokenChanged'));

@@ -16,8 +16,8 @@ exports.createRoleRequest = async (req, res) => {
     }
 
     if (user.role !== "participant") {
-      return res.status(403).json({ 
-        message: "Only participants can request role upgrade" 
+      return res.status(403).json({
+        message: "Only participants can request role upgrade"
       });
     }
 
@@ -28,8 +28,8 @@ exports.createRoleRequest = async (req, res) => {
     });
 
     if (existingRequest) {
-      return res.status(400).json({ 
-        message: "You already have a pending request" 
+      return res.status(400).json({
+        message: "You already have a pending request"
       });
     }
 
@@ -53,9 +53,9 @@ exports.createRoleRequest = async (req, res) => {
 
   } catch (error) {
     console.error("Create Role Request Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -75,9 +75,9 @@ exports.getMyRoleRequests = async (req, res) => {
 
   } catch (error) {
     console.error("Get My Role Requests Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -95,7 +95,7 @@ exports.getAllRoleRequests = async (req, res) => {
     }
 
     const requests = await RoleRequest.find(filter)
-      .populate("userId", "username email avatar nickname")
+      .populate("userId", "username email avatar")
       .populate("reviewedBy", "username email")
       .sort({ createdAt: -1 });
 
@@ -103,9 +103,9 @@ exports.getAllRoleRequests = async (req, res) => {
 
   } catch (error) {
     console.error("Get All Role Requests Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -125,8 +125,8 @@ exports.approveRoleRequest = async (req, res) => {
     }
 
     if (roleRequest.status !== "pending") {
-      return res.status(400).json({ 
-        message: "This request has already been processed" 
+      return res.status(400).json({
+        message: "This request has already been processed"
       });
     }
 
@@ -152,9 +152,9 @@ exports.approveRoleRequest = async (req, res) => {
 
   } catch (error) {
     console.error("Approve Role Request Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -174,8 +174,8 @@ exports.rejectRoleRequest = async (req, res) => {
     }
 
     if (roleRequest.status !== "pending") {
-      return res.status(400).json({ 
-        message: "This request has already been processed" 
+      return res.status(400).json({
+        message: "This request has already been processed"
       });
     }
 
@@ -196,9 +196,9 @@ exports.rejectRoleRequest = async (req, res) => {
 
   } catch (error) {
     console.error("Reject Role Request Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
@@ -219,15 +219,15 @@ exports.deleteRoleRequest = async (req, res) => {
 
     // Seul l'utilisateur qui a créé la demande ou un admin peut la supprimer
     if (roleRequest.userId.toString() !== userId.toString() && userRole !== "admin") {
-      return res.status(403).json({ 
-        message: "You don't have permission to delete this request" 
+      return res.status(403).json({
+        message: "You don't have permission to delete this request"
       });
     }
 
     // On ne peut supprimer que les demandes en attente ou rejetées
     if (roleRequest.status === "approved") {
-      return res.status(400).json({ 
-        message: "Cannot delete approved requests" 
+      return res.status(400).json({
+        message: "Cannot delete approved requests"
       });
     }
 
@@ -237,9 +237,9 @@ exports.deleteRoleRequest = async (req, res) => {
 
   } catch (error) {
     console.error("Delete Role Request Error:", error);
-    res.status(500).json({ 
-      message: "Server error", 
-      error: error.message 
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
