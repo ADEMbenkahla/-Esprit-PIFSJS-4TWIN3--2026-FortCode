@@ -2,9 +2,21 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const speakeasy = require("speakeasy");
+const qrcode = require("qrcode");
 const sendEmail = require("../utils/sendEmail");
 const fs = require("fs");
 const path = require("path");
+
+const TWO_FA_EMAIL_TTL_MS = 10 * 60 * 1000;
+
+const generateEmailOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const hashOtp = (otp) => {
+  return crypto.createHash("sha256").update(otp).digest("hex");
+};
 
 
 // =============================
@@ -33,19 +45,60 @@ exports.register = async (req, res) => {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    // Generate DiceBear Avatar if not provided
     const userAvatar = avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+
+    const isGoogleAuth = !!googleId;
+    let verificationCode;
+    if (!isGoogleAuth) {
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
 
     const user = await User.create({
       username,
       email,
       password: hashedPassword,
       googleId: googleId || undefined,
-      avatar: userAvatar
+      avatar: userAvatar,
+      isVerified: isGoogleAuth, // Auto verify Google Auth
+      verificationCode: isGoogleAuth ? undefined : hashOtp(verificationCode),
+      verificationCodeExpire: isGoogleAuth ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     });
 
+    if (!isGoogleAuth) {
+      // Send verification email
+      const templatePath = path.join(__dirname, "../templates/emailVerification.html");
+      const logoPath = path.join(__dirname, "../assets/logo.png");
+      let htmlContent = fs.readFileSync(templatePath, "utf8");
+
+      htmlContent = htmlContent
+        .replace("{{username}}", user.username)
+        .replace("{{verificationCode}}", verificationCode);
+
+      try {
+        await sendEmail({
+          email: user.email,
+          subject: "Verify Your FortCode Account",
+          message: "Verify your email",
+          html: htmlContent,
+          attachments: [
+            {
+              filename: "logo.png",
+              path: logoPath,
+              cid: "logo",
+            },
+          ],
+        });
+      } catch (emailError) {
+        console.error("Email send error during registration:", emailError);
+      }
+    }
+
     res.status(201).json({
-      message: "User created successfully"
+      message: isGoogleAuth
+        ? "User created successfully"
+        : "User created successfully. Please check your email for the verification code.",
+      requiresVerification: !isGoogleAuth,
+      email: user.email
     });
 
   } catch (error) {
@@ -59,6 +112,122 @@ exports.register = async (req, res) => {
       });
     }
 
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 VERIFY EMAIL
+// =============================
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and code are required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account is already verified" });
+    }
+
+    if (!user.verificationCode || !user.verificationCodeExpire) {
+      return res.status(400).json({ message: "Verification code not found or already verified" });
+    }
+
+    if (user.verificationCodeExpire.getTime() < Date.now()) {
+      return res.status(400).json({ message: "Verification code expired. Please request a new one." });
+    }
+
+    const hashedInputCode = hashOtp(code);
+    if (hashedInputCode !== user.verificationCode) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // Mark as verified
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpire = undefined;
+
+    await user.save();
+
+    // Optionally generate token to auto-login
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Email verified successfully",
+      token,
+      role: user.role,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// =============================
+// 🔐 RESEND VERIFICATION EMAIL
+// =============================
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account is already verified" });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.verificationCode = hashOtp(verificationCode);
+    user.verificationCodeExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await user.save();
+
+    // Send verification email
+    const templatePath = path.join(__dirname, "../templates/emailVerification.html");
+    const logoPath = path.join(__dirname, "../assets/logo.png");
+    let htmlContent = fs.readFileSync(templatePath, "utf8");
+
+    htmlContent = htmlContent
+      .replace("{{username}}", user.username)
+      .replace("{{verificationCode}}", verificationCode);
+
+    await sendEmail({
+      email: user.email,
+      subject: "Verify Your FortCode Account",
+      message: "Verify your email",
+      html: htmlContent,
+      attachments: [
+        {
+          filename: "logo.png",
+          path: logoPath,
+          cid: "logo",
+        },
+      ],
+    });
+
+    res.json({ message: "Verification code resent to your email" });
+  } catch (error) {
+    console.error("Resend error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -96,10 +265,55 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Account is deactivated" });
     }
 
+    // 🔥 Check if account is verified
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Please verify your email to login", notVerified: true, email: user.email });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     console.log("DEBUG: Password match result:", isMatch);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (twoFactor && twoFactor.enabled) {
+      const method = twoFactor.method || "totp";
+
+      if (method === "email") {
+        const otp = generateEmailOtp();
+        user.settings.twoFactor.emailOtpHash = hashOtp(otp);
+        user.settings.twoFactor.emailOtpExpires = new Date(Date.now() + TWO_FA_EMAIL_TTL_MS);
+        await user.save();
+
+        const html = `
+          <div style="font-family: Arial, sans-serif;">
+            <h2>FortCode 2FA Code</h2>
+            <p>Your one-time code is:</p>
+            <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
+            <p>This code expires in 10 minutes.</p>
+          </div>
+        `;
+
+        await sendEmail({
+          email: user.email,
+          subject: "Your FortCode 2FA Code",
+          html
+        });
+      }
+
+      const twoFactorToken = jwt.sign(
+        { id: user._id, type: "2fa" },
+        process.env.JWT_SECRET,
+        { expiresIn: "5m" }
+      );
+
+      return res.json({
+        message: "2FA required",
+        twoFactorRequired: true,
+        method,
+        twoFactorToken
+      });
     }
 
     const token = jwt.sign(
@@ -116,6 +330,271 @@ exports.login = async (req, res) => {
     });
 
 
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 LOGIN 2FA VERIFY
+// =============================
+exports.login2fa = async (req, res) => {
+  try {
+    const { twoFactorToken, code } = req.body;
+
+    if (!twoFactorToken || !code) {
+      return res.status(400).json({ message: "2FA token and code are required" });
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(twoFactorToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid or expired 2FA token" });
+    }
+
+    if (!payload || payload.type !== "2fa") {
+      return res.status(401).json({ message: "Invalid 2FA token" });
+    }
+
+    const user = await User.findById(payload.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (!twoFactor || !twoFactor.enabled) {
+      return res.status(400).json({ message: "2FA is not enabled" });
+    }
+
+    let verified = false;
+
+    const method = twoFactor.method || "totp";
+    if (method === "totp") {
+      if (!twoFactor.totpSecret) {
+        return res.status(400).json({ message: "2FA secret not found" });
+      }
+      verified = speakeasy.totp.verify({
+        secret: twoFactor.totpSecret,
+        encoding: "base32",
+        token: code,
+        window: 1
+      });
+    } else if (method === "email") {
+      if (!twoFactor.emailOtpHash || !twoFactor.emailOtpExpires) {
+        return res.status(400).json({ message: "2FA code not requested" });
+      }
+      if (twoFactor.emailOtpExpires.getTime() < Date.now()) {
+        return res.status(400).json({ message: "2FA code expired" });
+      }
+      verified = hashOtp(code) === twoFactor.emailOtpHash;
+      if (verified) {
+        user.settings.twoFactor.emailOtpHash = "";
+        user.settings.twoFactor.emailOtpExpires = null;
+        await user.save();
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ message: "Invalid 2FA code" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+      role: user.role,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+// =============================
+// 🔐 2FA SETUP
+// =============================
+exports.setupTwoFactor = async (req, res) => {
+  try {
+    const { method } = req.body;
+    if (method !== "totp" && method !== "email") {
+      return res.status(400).json({ message: "Invalid 2FA method" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.settings) {
+      user.settings = {};
+    }
+    if (!user.settings.twoFactor) {
+      user.settings.twoFactor = {};
+    }
+
+    user.settings.twoFactor.method = method;
+    user.settings.twoFactor.enabled = false;
+
+    if (method === "totp") {
+      const secret = speakeasy.generateSecret({
+        name: `FortCode (${user.email})`
+      });
+
+      user.settings.twoFactor.tempTotpSecret = secret.base32;
+      await user.save();
+
+      const qrCode = await qrcode.toDataURL(secret.otpauth_url);
+
+      return res.json({
+        method: "totp",
+        qrCode,
+        otpauthUrl: secret.otpauth_url
+      });
+    }
+
+    const otp = generateEmailOtp();
+    user.settings.twoFactor.emailOtpHash = hashOtp(otp);
+    user.settings.twoFactor.emailOtpExpires = new Date(Date.now() + TWO_FA_EMAIL_TTL_MS);
+    await user.save();
+
+    const html = `
+      <div style="font-family: Arial, sans-serif;">
+        <h2>FortCode 2FA Setup</h2>
+        <p>Your verification code is:</p>
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${otp}</div>
+        <p>This code expires in 10 minutes.</p>
+      </div>
+    `;
+
+    await sendEmail({
+      email: user.email,
+      subject: "Your FortCode 2FA Setup Code",
+      html
+    });
+
+    res.json({
+      method: "email",
+      message: "2FA code sent"
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 2FA VERIFY
+// =============================
+exports.verifyTwoFactor = async (req, res) => {
+  try {
+    const { method, code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: "2FA code is required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const twoFactor = user.settings && user.settings.twoFactor ? user.settings.twoFactor : null;
+    if (!twoFactor) {
+      return res.status(400).json({ message: "2FA is not configured" });
+    }
+
+    const resolvedMethod = method || twoFactor.method || "totp";
+    let verified = false;
+
+    if (resolvedMethod === "totp") {
+      if (!twoFactor.tempTotpSecret) {
+        return res.status(400).json({ message: "2FA setup not started" });
+      }
+      verified = speakeasy.totp.verify({
+        secret: twoFactor.tempTotpSecret,
+        encoding: "base32",
+        token: code,
+        window: 1
+      });
+
+      if (verified) {
+        user.settings.twoFactor.totpSecret = twoFactor.tempTotpSecret;
+        user.settings.twoFactor.tempTotpSecret = "";
+        user.settings.twoFactor.enabled = true;
+        user.settings.twoFactor.method = "totp";
+      }
+    } else if (resolvedMethod === "email") {
+      if (!twoFactor.emailOtpHash || !twoFactor.emailOtpExpires) {
+        return res.status(400).json({ message: "2FA code not requested" });
+      }
+      if (twoFactor.emailOtpExpires.getTime() < Date.now()) {
+        return res.status(400).json({ message: "2FA code expired" });
+      }
+      verified = hashOtp(code) === twoFactor.emailOtpHash;
+
+      if (verified) {
+        user.settings.twoFactor.emailOtpHash = "";
+        user.settings.twoFactor.emailOtpExpires = null;
+        user.settings.twoFactor.enabled = true;
+        user.settings.twoFactor.method = "email";
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ message: "Invalid 2FA code" });
+    }
+
+    await user.save();
+
+    res.json({
+      message: "2FA enabled",
+      twoFactor: {
+        enabled: user.settings.twoFactor.enabled,
+        method: user.settings.twoFactor.method
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 2FA DISABLE
+// =============================
+exports.disableTwoFactor = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.settings) {
+      user.settings = {};
+    }
+    if (!user.settings.twoFactor) {
+      user.settings.twoFactor = {};
+    }
+
+    user.settings.twoFactor.enabled = false;
+    user.settings.twoFactor.method = "totp";
+    user.settings.twoFactor.totpSecret = "";
+    user.settings.twoFactor.tempTotpSecret = "";
+    user.settings.twoFactor.emailOtpHash = "";
+    user.settings.twoFactor.emailOtpExpires = null;
+
+    await user.save();
+
+    res.json({ message: "2FA disabled" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -229,9 +708,17 @@ exports.getProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const userObj = user.toObject();
+    if (userObj.settings && userObj.settings.twoFactor) {
+      delete userObj.settings.twoFactor.totpSecret;
+      delete userObj.settings.twoFactor.tempTotpSecret;
+      delete userObj.settings.twoFactor.emailOtpHash;
+      delete userObj.settings.twoFactor.emailOtpExpires;
+    }
+
     res.json({
       message: "Profile retrieved successfully",
-      user
+      user: userObj
     });
 
   } catch (error) {
@@ -245,8 +732,15 @@ exports.getProfile = async (req, res) => {
 // =============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, password, avatar } = req.body;
-    const user = await User.findById(req.user.id);
+    const { username, email, password, avatar, settings } = req.body;
+    const userId = String(req.user.id);  // ✅ Ensure userId is a string
+
+    // ✅ Validate userId is not empty or invalid
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -272,21 +766,46 @@ exports.updateProfile = async (req, res) => {
       user.email = email;
     }
 
-    // Update password if provided (optional)
-    if (password) {
-      user.password = await bcrypt.hash(password, 10);
-    }
-
     // Update avatar if provided
     if (avatar) {
       user.avatar = avatar;
     }
 
+    // Update password if provided (optional)
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+
+
+    // Update settings if provided
+    if (settings) {
+      if (!user.settings) {
+        user.settings = {};
+      }
+      if (settings.theme) user.settings.theme = settings.theme;
+      if (settings.accentColor) user.settings.accentColor = settings.accentColor;
+      if (settings.fontSize) user.settings.fontSize = settings.fontSize;
+      if (settings.fontFamily) user.settings.fontFamily = settings.fontFamily;
+      if (settings.highContrast !== undefined) user.settings.highContrast = settings.highContrast;
+      if (settings.reduceMotion !== undefined) user.settings.reduceMotion = settings.reduceMotion;
+      if (settings.soundEnabled !== undefined) user.settings.soundEnabled = settings.soundEnabled;
+    }
+
     await user.save();
+
+    const updatedUser = await User.findById(user._id).select("-password");
+    const updatedObj = updatedUser.toObject();
+    if (updatedObj.settings && updatedObj.settings.twoFactor) {
+      delete updatedObj.settings.twoFactor.totpSecret;
+      delete updatedObj.settings.twoFactor.tempTotpSecret;
+      delete updatedObj.settings.twoFactor.emailOtpHash;
+      delete updatedObj.settings.twoFactor.emailOtpExpires;
+    }
 
     res.json({
       message: "Profile updated successfully",
-      user: await User.findById(user._id).select("-password")
+      user: updatedObj
     });
 
   } catch (error) {
@@ -320,6 +839,51 @@ exports.registerAdmin = async (req, res) => {
 
     res.status(201).json({
       message: "Admin user created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 REGISTER RECRUITER (Admin Only)
+// =============================
+exports.registerRecruiter = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Check if email exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Check if username exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: "recruiter"
+    });
+
+    res.status(201).json({
+      message: "Recruiter user created successfully",
       user: {
         id: user._id,
         username: user.username,
@@ -370,9 +934,20 @@ exports.getAllUsers = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    const sanitizedUsers = users.map((user) => {
+      const userObj = user.toObject();
+      if (userObj.settings && userObj.settings.twoFactor) {
+        delete userObj.settings.twoFactor.totpSecret;
+        delete userObj.settings.twoFactor.tempTotpSecret;
+        delete userObj.settings.twoFactor.emailOtpHash;
+        delete userObj.settings.twoFactor.emailOtpExpires;
+      }
+      return userObj;
+    });
+
     res.json({
       message: "Users retrieved successfully",
-      users,
+      users: sanitizedUsers,
       totalUsers,
       totalPages: Math.ceil(totalUsers / limit),
       currentPage: page,
@@ -595,4 +1170,69 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+
+// =============================
+// 🔄 REFRESH TOKEN
+// =============================
+exports.refreshToken = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Générer un nouveau token avec les informations à jour
+    const newToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const userObj = user.toObject();
+    if (userObj.settings && userObj.settings.twoFactor) {
+      delete userObj.settings.twoFactor.totpSecret;
+      delete userObj.settings.twoFactor.tempTotpSecret;
+      delete userObj.settings.twoFactor.emailOtpHash;
+      delete userObj.settings.twoFactor.emailOtpExpires;
+    }
+
+    res.json({
+      message: "Token refreshed successfully",
+      token: newToken,
+      role: user.role,
+      user: userObj
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👤 DELETE ACCOUNT
+// =============================
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { confirmation } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const expectedConfirmation = `${user.username}/delete-account`;
+    if (confirmation !== expectedConfirmation) {
+      return res.status(400).json({ message: "Invalid confirmation string" });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 

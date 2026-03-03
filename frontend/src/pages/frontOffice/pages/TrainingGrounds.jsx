@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Lock, Star, Play, Book, Code, Sword } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { ScrollButton } from '../components/ui/ScrollButton';
 
 const levels = [
   { id: 1, title: 'The Basics', description: 'Variables & Types', status: 'completed', stars: 3, type: 'training' },
@@ -96,6 +97,7 @@ export default function TrainingGrounds() {
           </motion.div>
         ))}
       </div>
+      <ScrollButton />
     </div>
   );
 }

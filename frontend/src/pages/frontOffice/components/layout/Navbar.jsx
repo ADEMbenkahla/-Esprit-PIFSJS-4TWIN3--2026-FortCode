@@ -1,25 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X } from "lucide-react";
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, UserPlus, Code2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
+import { useSoundEffects } from "../../../../hooks/useSoundEffects";
+import { useSettings } from "../../../../context/SettingsContext";
 import Swal from "sweetalert2";
-import { ProfileModal } from "./ProfileModal";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { disconnect } = useSocket();
+  const { playClick } = useSoundEffects();
+  const { avatar, nickname } = useSettings();
+
+  // Fonction pour extraire le rôle du JWT token
+  const extractRoleFromToken = () => {
+    try {
+      // Try sessionStorage first (current tab), then localStorage (fallback)
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("🎫 Rôle du token JWT:", payload.role);
+        return payload.role;
+      }
+    } catch (error) {
+      console.error("❌ Erreur extraction rôle du token:", error);
+    }
+    return null;
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        // Try sessionStorage first (current tab), then localStorage (fallback)
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) {
+          console.log("ℹ️ Pas de token trouvé");
+          return;
+        }
 
+        console.log("🔍 Fetching profile avec token...");
         const response = await fetch("http://localhost:5000/api/auth/profile", {
           headers: {
             "Authorization": `Bearer ${token}`
@@ -28,17 +52,103 @@ export function Navbar() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("✅ Profile reçu:", data.user);
+          console.log("👤 Rôle utilisateur:", data.user?.role);
           setUserData(data.user);
+          setUserRole(data.user?.role);
+        } else {
+          console.error("❌ Erreur réponse profile:", response.status);
+          // Fallback : récupérer le rôle du token directement
+          const roleFromToken = extractRoleFromToken();
+          if (roleFromToken) {
+            setUserRole(roleFromToken);
+          }
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
+        console.error("❌ Erreur fetch profile:", error);
+        // Fallback : récupérer le rôle du token directement
+        const roleFromToken = extractRoleFromToken();
+        if (roleFromToken) {
+          setUserRole(roleFromToken);
+        }
       }
     };
 
     fetchProfile();
+
+    // Listener pour détecter les changements de token (login/logout)
+    const handleTokenChange = () => {
+      console.log("🔄 Token change détecté!");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        console.log("🔄 Token trouvé, fetching profile...");
+        // Token a changé → récupérer le profil mis à jour
+        fetchProfile();
+      } else {
+        console.log("🔄 Token supprimé, réinitialisant userData");
+        // Token supprimé → réinitialiser
+        setUserData(null);
+        setUserRole(null);
+      }
+    };
+
+    // Écouter l'événement personnalisé 'tokenChanged'
+    window.addEventListener('tokenChanged', handleTokenChange);
+
+    return () => {
+      window.removeEventListener('tokenChanged', handleTokenChange);
+    };
   }, []);
 
+  // Debug log pour userData et userRole
+  useEffect(() => {
+    console.log("📊 userData mis à jour:", userData);
+    console.log("📊 userRole mis à jour:", userRole);
+  }, [userData, userRole]);
+
+  // Sync role automatically after admin approval (works from any front-office page)
+  useEffect(() => {
+    if (!userRole || userRole === "recruiter" || userRole === "admin") {
+      return;
+    }
+
+    const checkRoleUpgrade = async () => {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data?.token || !data?.role) return;
+
+        const currentRole = extractRoleFromToken();
+        if (currentRole !== data.role) {
+          sessionStorage.setItem("token", data.token);
+          localStorage.setItem("token", data.token);
+          setUserRole(data.role);
+          if (data.user) setUserData(data.user);
+          window.dispatchEvent(new Event("tokenChanged"));
+        }
+      } catch (error) {
+        console.error("❌ Error while syncing upgraded role:", error);
+      }
+    };
+
+    const intervalId = setInterval(checkRoleUpgrade, 5000);
+    return () => clearInterval(intervalId);
+  }, [userRole]);
+
   const handleLogout = () => {
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+
     Swal.fire({
       title: 'Are you sure?',
       text: "You will be redirected to the login page.",
@@ -46,13 +156,19 @@ export function Navbar() {
       showCancelButton: true,
       background: '#1a1a2e',
       color: '#fff',
-      confirmButtonColor: '#3b82f6',
+      confirmButtonColor: accentColor || '#3b82f6',
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, logout!',
       cancelButtonText: 'Stay here'
     }).then((result) => {
       if (result.isConfirmed) {
-        localStorage.removeItem("token");
+        // Clear all user data including settings
+        sessionStorage.clear();
+        localStorage.clear();
+
+        // Notifier les autres composants du changement de token
+        window.dispatchEvent(new Event('tokenChanged'));
+
         disconnect();
         navigate("/");
 
@@ -69,39 +185,60 @@ export function Navbar() {
     });
   };
 
-  const handleUpdateSuccess = (updatedUser) => {
-    setUserData(updatedUser);
+  const handleResetLevels = () => {
+    playClick();
+    localStorage.removeItem("levelProgress");
+    for (let i = 1; i <= 4; i += 1) {
+      localStorage.removeItem(`level${i}_challenges`);
+    }
+    window.dispatchEvent(new Event("fortcode:progress-reset"));
+  };
+
+  const handleMobileMenuClose = () => {
+    playClick();
+    setIsMobileMenuOpen(false);
   };
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 shadow-2xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-6 py-3 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 shadow-2xl">
         <div className="flex items-center gap-4">
-          <NavLink to="/home" className="flex items-center gap-2 group">
-            <div className="relative w-12 h-12 flex items-center justify-center rounded-lg overflow-hidden">
+          <NavLink to="/home" className="flex items-center gap-2">
+            <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-lg overflow-hidden">
               <img
                 src="/images/logo.png"
                 alt="FortCode Logo"
                 className="w-full h-full object-cover scale-135"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="font-serif font-bold text-xl text-slate-100 tracking-wider group-hover:text-blue-400 transition-colors">FortCode</span>
+            <div className="hidden sm:flex flex-col">
+              <span className="font-bold text-xl tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                <span className="text-slate-100">FORT</span>
+                <span style={{ color: 'var(--accent-color)' }}>CODE</span>
+              </span>
               <span className="text-[10px] text-slate-400 uppercase tracking-widest">Code Conqueror</span>
             </div>
           </NavLink>
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
-          <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" />
-          <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" />
-          <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" />
-          <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" />
-          <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" />
+        <div className="hidden lg:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
+          <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
+          <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
+          <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
+          <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
+          <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
+          <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Desktop Right Section */}
+        <div className="hidden lg:flex items-center gap-4">
+          <button
+            onClick={handleResetLevels}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-600 text-rose-50 text-xs font-bold uppercase tracking-wide shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
+          >
+            Reset Levels
+          </button>
           <Link
             to="/castle"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-slate-950 text-sm font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
@@ -109,51 +246,72 @@ export function Navbar() {
             <Castle className="w-4 h-4" />
             Enter Castle
           </Link>
-          <div className="flex items-center gap-2 px-3 py-1 bg-amber-900/20 border border-amber-500/30 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-xs font-mono text-amber-200">
-              {userData?.role === "admin" ? "Grand Master" : "Lvl 12 Champion"}
+
+          {/* User Profile Badge */}
+          <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
+            <div className="w-8 h-8 rounded-full border-2 overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-sm font-semibold text-slate-100">
+              {nickname || 'Commander'}
             </span>
           </div>
 
           {/* Profile Dropdown - Desktop */}
-          <div className="hidden md:block relative">
+          <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
             >
-              {userData?.avatar ? (
-                <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-5 h-5 text-slate-400" />
-              )}
+              <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
             </button>
 
-            {showDropdown && userData && (
+            {showDropdown && (
               <div className="absolute right-0 mt-3 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full border border-slate-700 overflow-hidden">
-                    <img src={userData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-slate-100 font-bold truncate">{userData.username}</span>
-                    <span className="text-slate-400 text-xs truncate">{userData.email}</span>
+                    <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
+                    <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
                 </div>
 
                 <div className="h-px bg-slate-800 my-2" />
 
                 <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      setIsProfileModalOpen(true);
-                      setShowDropdown(false);
-                    }}
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowDropdown(false)}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
                     <Settings className="w-4 h-4" />
-                    <span>Update Profile</span>
-                  </button>
+                    <span>Settings</span>
+                  </Link>
+
+                  {userRole === 'participant' && (
+                    <Link
+                      to="/request-recruiter"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Become Recruiter</span>
+                    </Link>
+                  )}
+
+                  {(userRole === 'recruiter' || userRole === 'admin') && (
+                    <Link
+                      to="/create-room"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg transition-colors border border-transparent hover:border-green-500/20"
+                    >
+                      <Code2 className="w-4 h-4" />
+                      <span>Create Room</span>
+                    </Link>
+                  )}
+
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -165,88 +323,171 @@ export function Navbar() {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Mobile Menu Button */}
+        {/* Mobile Right Section */}
+        <div className="flex lg:hidden items-center gap-2">
+          {/* Profile Avatar - Mobile */}
+          <div className="w-8 h-8 rounded-full border-2 border-slate-700 overflow-hidden flex items-center justify-center bg-slate-800">
+            {userData?.avatar ? (
+              <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-4 h-4 text-slate-400" />
+            )}
+          </div>
+
+          {/* Burger Menu Button */}
           <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 hover:border-blue-500 transition-colors"
           >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5 text-slate-300" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-300" />
+            )}
           </button>
         </div>
       </nav>
 
-      {/* Mobile Navigation Sidebar/Overlay */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <>
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsMenuOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="absolute right-0 top-0 bottom-0 w-64 bg-slate-950 border-l border-slate-800 shadow-2xl animate-in slide-in-from-right duration-300 p-6 flex flex-col pt-24">
-            <div className="flex flex-col gap-2">
-              <NavItem to="/map" icon={<Map className="w-5 h-5" />} label="World Map" onClick={() => setIsMenuOpen(false)} />
-              <NavItem to="/training" icon={<Sword className="w-5 h-5" />} label="Combat Training" onClick={() => setIsMenuOpen(false)} />
-              <NavItem to="/arena" icon={<Cpu className="w-5 h-5" />} label="Battle Arena" onClick={() => setIsMenuOpen(false)} />
-              <NavItem to="/dashboard" icon={<User className="w-5 h-5" />} label="Commander Desk" onClick={() => setIsMenuOpen(false)} />
-              <NavItem to="/armory" icon={<Trophy className="w-5 h-5" />} label="War Armory" onClick={() => setIsMenuOpen(false)} />
-            </div>
-
-            <div className="mt-auto pt-8 border-t border-slate-800 flex flex-col gap-4">
-              {userData && (
-                <div className="flex items-center gap-3 mb-4 px-2">
-                  <div className="w-10 h-10 rounded-full border border-slate-700 overflow-hidden">
-                    <img src={userData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+          <div className="fixed top-[73px] right-0 w-80 max-w-[85vw] h-[calc(100vh-73px)] bg-slate-950 border-l border-slate-800 z-50 lg:hidden overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-300">
+            <div className="p-4">
+              {/* User Info Section */}
+              <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full border overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
+                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-slate-100 font-bold truncate text-sm">{userData.username}</span>
-                    <span className="text-slate-400 text-[10px] truncate">{userData.email}</span>
+                    <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
+                    <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div className="flex flex-col gap-2">
+              {/* Navigation Links */}
+              <div className="space-y-2 mb-4">
+                <MobileNavItem
+                  to="/map"
+                  icon={<Map className="w-5 h-5" />}
+                  label="World Map"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/training"
+                  icon={<Sword className="w-5 h-5" />}
+                  label="Training"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/arena"
+                  icon={<Cpu className="w-5 h-5" />}
+                  label="Arena"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/dashboard"
+                  icon={<User className="w-5 h-5" />}
+                  label="Commander"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/armory"
+                  icon={<Trophy className="w-5 h-5" />}
+                  label="Armory"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/programming-rooms"
+                  icon={<Code2 className="w-5 h-5" />}
+                  label="Programming Rooms"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/settings"
+                  icon={<Settings className="w-5 h-5" />}
+                  label="Settings"
+                  onClick={handleMobileMenuClose}
+                />
+              </div>
+
+              <div className="h-px bg-slate-800 my-4" />
+
+              {/* Action Buttons */}
+              <div className="space-y-2 mb-4">
+                <Link
+                  to="/castle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-amber-500 text-slate-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
+                >
+                  <Castle className="w-5 h-5" />
+                  <span>Enter Castle</span>
+                </Link>
+
+                {userRole === 'participant' && (
+                  <Link
+                    to="/request-recruiter"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Become Recruiter</span>
+                  </Link>
+                )}
+
+                {(userRole === 'recruiter' || userRole === 'admin') && (
+                  <Link
+                    to="/create-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
+                  >
+                    <Code2 className="w-5 h-5" />
+                    <span>Create Room</span>
+                  </Link>
+                )}
+
                 <button
                   onClick={() => {
-                    setIsProfileModalOpen(true);
-                    setIsMenuOpen(false);
+                    handleResetLevels();
+                    setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl transition-colors bg-slate-900/50 border border-slate-800"
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
                 >
+                  <Shield className="w-5 h-5" />
+                  <span>Reset Levels</span>
+                </button>
+              </div>
+
+              <div className="h-px bg-slate-800 my-4" />
+
+              {/* Profile Actions */}
+              <div className="space-y-2">
+                <button className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors">
                   <Settings className="w-5 h-5" />
                   <span>Update Profile</span>
                 </button>
                 <button
                   onClick={() => {
-                    setIsMenuOpen(false);
                     handleLogout();
+                    setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors bg-red-500/5 border border-red-500/20"
+                  className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
                 >
                   <LogOut className="w-5 h-5" />
                   <span>Logout</span>
                 </button>
               </div>
-
-              <NavLink
-                to="/castle"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500 text-slate-950 font-bold"
-              >
-                <Castle className="w-5 h-5" />
-                <span>Enter Castle</span>
-              </NavLink>
             </div>
           </div>
-        </div>
+        </>
       )}
-
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        userData={userData}
-        onUpdateSuccess={handleUpdateSuccess}
-      />
     </>
   );
 }
@@ -266,6 +507,26 @@ function NavItem({ to, icon, label, onClick }) {
       }
     >
       {icon ? icon : null}
+      <span>{label}</span>
+    </NavLink>
+  );
+}
+
+function MobileNavItem({ to, icon, label, onClick }) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className={({ isActive }) =>
+        twMerge(
+          "flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-all duration-300 font-medium",
+          isActive
+            ? "bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+            : "text-slate-300 hover:text-white hover:bg-slate-800"
+        )
+      }
+    >
+      {icon}
       <span>{label}</span>
     </NavLink>
   );

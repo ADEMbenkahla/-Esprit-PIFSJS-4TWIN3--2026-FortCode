@@ -5,6 +5,7 @@ import Header from './backOffice/components/Header';
 import { ActivityLog } from './backOffice/types';
 import api from '../services/api';
 import { format } from 'date-fns';
+import { ScrollButton } from './frontOffice/components/ui/ScrollButton';
 
 const MyActivity: React.FC = () => {
     const navigate = useNavigate();
@@ -212,6 +213,7 @@ const MyActivity: React.FC = () => {
                     </div>
                 </div>
             </main>
+            <ScrollButton />
         </div>
     );
 };

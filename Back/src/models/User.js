@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+
   password: {
     type: String,
     required: false
@@ -50,6 +51,77 @@ const userSchema = new mongoose.Schema({
   deactivatedAt: {
     type: Date,
     default: null
+  },
+
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationCode: String,
+  verificationCodeExpire: Date,
+
+
+  // User personalization settings
+  settings: {
+    theme: {
+      type: String,
+      enum: ["dark", "light", "auto"],
+      default: "dark"
+    },
+    accentColor: {
+      type: String,
+      enum: ["blue", "purple", "green", "amber", "red", "cyan"],
+      default: "blue"
+    },
+    fontSize: {
+      type: String,
+      enum: ["small", "medium", "large", "xlarge"],
+      default: "medium"
+    },
+    fontFamily: {
+      type: String,
+      enum: ["inter", "outfit", "orbitron", "serif"],
+      default: "inter"
+    },
+    highContrast: {
+      type: Boolean,
+      default: false
+    },
+    reduceMotion: {
+      type: Boolean,
+      default: false
+    },
+    soundEnabled: {
+      type: Boolean,
+      default: true
+    },
+    twoFactor: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      method: {
+        type: String,
+        enum: ["totp", "email"],
+        default: "totp"
+      },
+      totpSecret: {
+        type: String,
+        default: ""
+      },
+      tempTotpSecret: {
+        type: String,
+        default: ""
+      },
+      emailOtpHash: {
+        type: String,
+        default: ""
+      },
+      emailOtpExpires: {
+        type: Date,
+        default: null
+      }
+    }
   }
 
 }, { timestamps: true });

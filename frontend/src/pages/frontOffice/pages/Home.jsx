@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { ScrollButton } from '../components/ui/ScrollButton';
 
 export function Home() {
   return (
@@ -28,6 +29,7 @@ export function Home() {
           </Link>
         </div>
       </div>
+      <ScrollButton />
     </div>
   );
 }

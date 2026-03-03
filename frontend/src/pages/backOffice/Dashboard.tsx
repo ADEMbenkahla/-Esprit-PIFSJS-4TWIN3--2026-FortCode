@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import { format } from "date-fns";
+import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
 
 interface ActivityLog {
     _id: string;
@@ -33,7 +34,7 @@ const Dashboard: React.FC = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const token = localStorage.getItem("token");
+                const token = sessionStorage.getItem("token") || localStorage.getItem("token");
                 const res = await fetch("http://localhost:5000/api/admin/dashboard/stats", {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -245,6 +246,7 @@ const Dashboard: React.FC = () => {
                     )}
                 </div>
             </main>
+            <ScrollButton />
         </div>
     );
 };

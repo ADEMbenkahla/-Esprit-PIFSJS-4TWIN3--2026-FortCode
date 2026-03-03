@@ -17,7 +17,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
 
   const handleToggleStatus = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
       const response = await fetch(`http://localhost:5000/api/auth/admin/users/${user._id}/toggle`, {
         method: "PATCH",
         headers: {

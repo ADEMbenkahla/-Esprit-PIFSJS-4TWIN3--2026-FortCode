@@ -5,15 +5,23 @@ const {
   register,
   registerAdmin,
   login,
+  login2fa,
   getProfile,
+  refreshToken,
   updateProfile,
+  setupTwoFactor,
+  verifyTwoFactor,
+  disableTwoFactor,
   getAllUsers,
   toggleUserActivation,
   assignRole,
   createUser,
   updateUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail,
+  deleteAccount
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -29,8 +37,15 @@ router.post("/register", register);
 // Register admin (optionnel)
 router.post("/register-admin", registerAdmin);
 
+// Verify Email
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
+
 // Login
 router.post("/login", login);
+
+// Login 2FA verify
+router.post("/login/2fa", login2fa);
 
 // Forgot password
 router.put("/forgot-password", forgotPassword);
@@ -46,8 +61,19 @@ router.put("/reset-password/:token", resetPassword);
 // Get logged-in user profile
 router.get("/profile", authMiddleware, getProfile);
 
+// Refresh token with updated user info
+router.post("/refresh-token", authMiddleware, refreshToken);
+
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
+
+// Delete logged-in user account
+router.delete("/profile", authMiddleware, deleteAccount);
+
+// 2FA setup/verify/disable
+router.post("/2fa/setup", authMiddleware, setupTwoFactor);
+router.post("/2fa/verify", authMiddleware, verifyTwoFactor);
+router.post("/2fa/disable", authMiddleware, disableTwoFactor);
 
 
 /* =====================================================
