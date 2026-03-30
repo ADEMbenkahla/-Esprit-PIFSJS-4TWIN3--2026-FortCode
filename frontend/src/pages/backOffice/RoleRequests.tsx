@@ -31,49 +31,21 @@ export default function RoleRequests() {
     }
   };
 
-  const handleApprove = async (requestId) => {
+  const handleAIReview = async (requestId) => {
     setProcessing(true);
     setMessage({ type: '', text: '' });
 
     try {
-      await api.put(`/role-requests/${requestId}/approve`, { 
-        adminComment: adminComment || undefined 
-      });
-      setMessage({ type: 'success', text: 'Request approved successfully!' });
+      const response = await api.post(`/role-requests/${requestId}/ai-review`);
+      setMessage({ type: 'success', text: response.data.message });
       setSelectedRequest(null);
-      setAdminComment('');
       fetchRequests();
     } catch (error) {
+      const errMsg = error.response?.data?.message || 'AI service error';
+      const debugMsg = error.response?.data?.debug ? ` - ${error.response.data.debug}` : '';
       setMessage({ 
         type: 'error', 
-        text: error.response?.data?.message || 'Error while approving request' 
-      });
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleReject = async (requestId) => {
-    if (!adminComment.trim()) {
-      setMessage({ type: 'error', text: 'Please provide a comment for rejection' });
-      return;
-    }
-
-    setProcessing(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      await api.put(`/role-requests/${requestId}/reject`, { 
-        adminComment 
-      });
-      setMessage({ type: 'success', text: 'Request rejected' });
-      setSelectedRequest(null);
-      setAdminComment('');
-      fetchRequests();
-    } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.message || 'Error while rejecting request' 
+        text: errMsg + debugMsg
       });
     } finally {
       setProcessing(false);
@@ -189,141 +161,112 @@ export default function RoleRequests() {
                 {getStatusBadge(request.status)}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <span className="text-sm text-gray-500 font-medium">Justification:</span>
-                  <p className="text-white mt-1">{request.justification}</p>
+                  <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Justification:</span>
+                  <p className="text-gray-200 mt-1 leading-relaxed">{request.justification}</p>
                 </div>
 
                 {request.proofDocument && (
-                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-                    <span className="text-sm text-gray-300 font-semibold block mb-2">📎 Attached proof document:</span>
+                  <div className="flex items-center gap-3 p-3 bg-purple-900/10 border border-purple-900/30 rounded-lg">
+                    <FileText className="w-5 h-5 text-blue-400" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-300">Proof Document</span>
+                    </div>
                     <a
                       href={`http://localhost:5000${request.proofDocument}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/30"
+                      className="p-2 hover:bg-purple-900/30 rounded-lg transition-colors text-blue-400"
+                      title="Download Proof"
                     >
-                      <FileText className="w-5 h-5" />
-                      <span>Download/View document</span>
-                      <Download className="w-4 h-4 ml-1" />
+                      <Download className="w-5 h-5" />
                     </a>
                   </div>
                 )}
 
-                <div className="flex gap-4 text-sm text-gray-500">
-                  <span>Created on: {new Date(request.createdAt).toLocaleDateString('en-US', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}</span>
-                  {request.reviewedAt && (
-                    <span>Reviewed on: {new Date(request.reviewedAt).toLocaleDateString('en-US', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}</span>
-                  )}
-                </div>
-
-                {request.adminComment && (
-                  <div className="mt-3 p-4 bg-background-dark/70 rounded-lg border border-purple-500/30">
-                    <div className="flex items-center justify-between mb-2">
+                {/* AI Scores Summary (if analyzed) */}
+                {request.aiDecision !== 'NONE' && (
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-surface-dark/30 rounded-lg border border-purple-900/20">
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase font-bold">Document Score</span>
                       <div className="flex items-center gap-2">
-                        <MessageSquare className="w-5 h-5 text-purple-400" />
-                        <span className="text-sm text-gray-300 font-semibold">Admin Comment:</span>
-                      </div>
-                      {request.reviewedBy && (
-                        <div className="flex items-center gap-2 bg-purple-500/20 px-3 py-1 rounded-full">
-                          <User className="w-4 h-4 text-purple-300" />
-                          <span className="text-sm text-purple-200 font-medium">
-                            {request.reviewedBy.username}
-                          </span>
+                        <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${request.documentScore >= 0.7 ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${(request.documentScore || 0) * 100}%` }}
+                          />
                         </div>
-                      )}
+                        <span className="text-sm font-mono font-bold text-gray-300">
+                          {Math.round((request.documentScore || 0) * 100)}%
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-gray-100 text-base leading-relaxed font-medium bg-purple-500/5 p-3 rounded border-l-4 border-purple-500">{request.adminComment}</p>
+                    <div className="space-y-1">
+                      <span className="text-xs text-gray-500 uppercase font-bold">Text Score</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${request.textScore >= 0.6 ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${(request.textScore || 0) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-mono font-bold text-gray-300">
+                          {Math.round((request.textScore || 0) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-purple-900/10">
+                      <div className="flex items-start gap-2">
+                         <div className={`p-1 rounded ${request.aiDecision === 'ACCEPT' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                           <Shield className="w-4 h-4" />
+                         </div>
+                         <p className="text-sm text-gray-400 italic">
+                           AI Explanation: <span className="text-gray-200 not-italic">{request.aiExplanation}</span>
+                         </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* Pending request actions */}
+                <div className="flex gap-4 text-xs text-gray-600">
+                  <span>Created: {new Date(request.createdAt).toLocaleString()}</span>
+                  {request.reviewedAt && (
+                    <span>Analyzed: {new Date(request.reviewedAt).toLocaleString()}</span>
+                  )}
+                </div>
+
+                {/* AI Review Action for PENDING */}
                 {request.status === 'pending' && (
                   <div className="mt-4 pt-4 border-t border-purple-900/30">
-                    {selectedRequest === request._id ? (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-400 mb-2">
-                            Comment (optional for approval, required for rejection)
-                          </label>
-                          <textarea
-                            value={adminComment}
-                            onChange={(e) => setAdminComment(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="w-full px-4 py-2 bg-background-dark border border-purple-900/30 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
-                            rows={3}
-                            maxLength={500}
-                          />
-                          <div className="text-xs text-gray-600 mt-1 text-right">
-                            {adminComment.length}/500
-                          </div>
-                        </div>
+                    <button
+                      onClick={() => handleAIReview(request._id)}
+                      disabled={processing}
+                      className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
+                    >
+                      {processing ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <>
+                          <Loader2 className="w-6 h-6" />
+                          <span>🤖 Launch AI Auto-Analysis</span>
+                        </>
+                      )}
+                    </button>
+                    <p className="text-center text-xs text-gray-500 mt-2">
+                      AI will analyze the document and justification to auto-decide.
+                    </p>
+                  </div>
+                )}
 
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleApprove(request._id)}
-                            disabled={processing}
-                            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-background-dark/50 disabled:text-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
-                          >
-                            {processing ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="w-5 h-5" />
-                                Approve
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => handleReject(request._id)}
-                            disabled={processing}
-                            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-background-dark/50 disabled:text-gray-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
-                          >
-                            {processing ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <>
-                                <XCircle className="w-5 h-5" />
-                                Reject
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedRequest(null);
-                              setAdminComment('');
-                              setMessage({ type: '', text: '' });
-                            }}
-                            disabled={processing}
-                            className="px-4 py-2 bg-background-dark/50 hover:bg-background-dark/70 disabled:bg-background-dark border border-purple-900/30 text-white rounded-lg font-semibold transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setSelectedRequest(request._id)}
-                        className="w-full px-4 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg font-semibold transition-colors"
-                      >
-                        Review this request
-                      </button>
-                    )}
+                {/* Manual fallback (comment only if already processed / or manual override) */}
+                {request.status !== 'pending' && request.adminComment && (
+                  <div className="mt-2 p-3 bg-background-dark/40 rounded-lg border-l-4 border-primary/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-bold text-gray-400 uppercase">Decision Log:</span>
+                    </div>
+                    <p className="text-sm text-gray-300 italic">{request.adminComment}</p>
                   </div>
                 )}
               </div>

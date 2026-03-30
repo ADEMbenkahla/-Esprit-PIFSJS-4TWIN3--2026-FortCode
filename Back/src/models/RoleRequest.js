@@ -36,6 +36,25 @@ const roleRequestSchema = new mongoose.Schema({
   adminComment: {
     type: String,
     maxlength: 500
+  },
+  // AI-Specific Fields
+  aiDecision: {
+    type: String,
+    enum: ["ACCEPT", "REJECT", "NONE"],
+    default: "NONE"
+  },
+  aiConfidence: {
+    type: Number,
+    default: 0
+  },
+  aiExplanation: {
+    type: String
+  },
+  documentScore: {
+    type: Number
+  },
+  textScore: {
+    type: Number
   }
 }, { timestamps: true });
 
