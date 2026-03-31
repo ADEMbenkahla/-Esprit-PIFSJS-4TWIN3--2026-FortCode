@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
 const SettingsContext = createContext();
 
@@ -34,6 +35,8 @@ export const SettingsProvider = ({ children }) => {
   const [username, setUsername] = useState(localStorage.getItem('username') || defaultUsername);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorMethod, setTwoFactorMethod] = useState('totp');
+  const [webauthnEnabled, setWebauthnEnabled] = useState(false);
+  const [faceRegistered, setFaceRegistered] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load all settings from backend
@@ -93,6 +96,9 @@ export const SettingsProvider = ({ children }) => {
             setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
             setTwoFactorMethod(user.settings.twoFactor.method || 'totp');
           }
+
+          setWebauthnEnabled(user.webauthn && user.webauthn.length > 0);
+          setFaceRegistered(!!user.faceRegistered);
 
           // Update localStorage cache
           localStorage.setItem('theme', nextTheme);
@@ -463,6 +469,8 @@ export const SettingsProvider = ({ children }) => {
     nickname: username, // Backward compatibility
     twoFactorEnabled,
     twoFactorMethod,
+    webauthnEnabled,
+    faceRegistered,
     isLoaded,
     updateTheme,
     updateAccentColor,
@@ -479,7 +487,59 @@ export const SettingsProvider = ({ children }) => {
     updateAvatar,
     updateUsername,
     deleteAccount,
-    resetSettings
+    resetSettings,
+    startWebAuthnRegistration: async () => {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      // 1. Get options from server
+      const optionsRes = await fetch('http://localhost:5000/api/auth/webauthn/register-options', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const options = await optionsRes.json();
+
+      // 2. Start registration ceremony
+      const attResp = await startRegistration(options);
+
+      // 3. Verify response with server
+      const verificationRes = await fetch('http://localhost:5000/api/auth/webauthn/register-verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(attResp)
+      });
+
+      const verificationJSON = await verificationRes.json();
+
+      if (verificationJSON.verified) {
+        setWebauthnEnabled(true);
+        return { success: true };
+      } else {
+      }
+    },
+    registerFace: async (descriptor) => {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('http://localhost:5000/api/auth/face/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ descriptor })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setFaceRegistered(true);
+        return { success: true };
+      } else {
+        throw new Error(data.message || 'Face registration failed');
+      }
+    }
   };
 
   return (
