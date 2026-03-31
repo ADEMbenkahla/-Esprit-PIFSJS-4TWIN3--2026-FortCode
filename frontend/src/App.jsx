@@ -31,8 +31,10 @@ import ProgrammingRooms from "./pages/frontOffice/pages/ProgrammingRooms";
 import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
 import { Footer } from "./pages/frontOffice/components/layout/Footer";
 import { SidebarProvider } from "./context/SidebarContext";
-import { SettingsProvider } from "./context/SettingsContext";
+import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import AccessibilityMenu from "./components/AccessibilityMenu";
+import { useEffect, useState } from "react";
 
 function AppContent() {
   const location = useLocation();
@@ -88,7 +90,39 @@ function AppContent() {
         <Route path="/my-activity" element={<MyActivity />} />
       </Routes>
       {!shouldHideNavbar && <Footer />}
+
+      <AccessibilityMenu />
+
+      <ReadingGuideLine />
     </>
+  );
+}
+
+function ReadingGuideLine() {
+  const { readingGuide } = useSettings();
+  const [mousePos, setMousePos] = useState({ y: 0 });
+
+  useEffect(() => {
+    if (!readingGuide) return;
+
+    const handleMouseMove = (e) => {
+      setMousePos({ y: e.clientY });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [readingGuide]);
+
+  if (!readingGuide) return null;
+
+  return (
+    <div
+      className="reading-guide"
+      style={{
+        transform: `translateY(${mousePos.y}px)`,
+        top: 0
+      }}
+    />
   );
 }
 
