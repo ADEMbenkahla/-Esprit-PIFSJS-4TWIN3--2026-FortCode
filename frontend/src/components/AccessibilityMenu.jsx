@@ -14,7 +14,63 @@ const AccessibilityMenu = () => {
         updateMonochrome
     } = useSettings();
 
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    // Pre-fetch voices to ensure they are ready when needed
+    React.useEffect(() => {
+        const synth = window.speechSynthesis;
+        const loadVoices = () => {
+            synth.getVoices();
+        };
+        loadVoices();
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+    }, []);
+
     const toggleMenu = () => setIsOpen(!isOpen);
+
+    const handleSpeech = () => {
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+
+        // Prepare speech
+        window.speechSynthesis.cancel(); // Safety first
+
+        const text = "Welcome to FortCode. This platform is designed for learning and mastering programming through interactive challenges, battle arenas, and collaborative coding rooms. Use this accessibility menu to customize your reading and navigation experience.";
+        const utterance = new SpeechSynthesisUtterance(text);
+
+        // Find an English voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(v => v.lang.startsWith('en'));
+        if (englishVoice) {
+            utterance.voice = englishVoice;
+        } else {
+            utterance.lang = 'en-US';
+        }
+
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        utterance.onstart = () => {
+            console.log("Speech started");
+            setIsSpeaking(true);
+        };
+        utterance.onend = () => {
+            console.log("Speech ended");
+            setIsSpeaking(false);
+        };
+        utterance.onerror = (e) => {
+            console.error("Speech error:", e);
+            setIsSpeaking(false);
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
 
     const fontSizes = ['small', 'medium', 'large', 'xlarge'];
     const cycleFontSize = () => {
@@ -26,27 +82,33 @@ const AccessibilityMenu = () => {
     const menuItems = [
         {
             icon: 'format_size',
-            label: `Taille du texte (${fontSize})`,
+            label: `Text Size (${fontSize})`,
             onClick: cycleFontSize,
             active: fontSize !== 'medium',
         },
         {
             icon: 'straighten',
-            label: 'Guide de lecture',
+            label: 'Reading Guide',
             onClick: () => updateReadingGuide(!readingGuide),
             active: readingGuide,
         },
         {
             icon: 'contrast',
-            label: 'Contraste élevé',
+            label: 'High Contrast',
             onClick: () => updateHighContrast(!highContrast),
             active: highContrast,
         },
         {
             icon: 'filter_b_and_w',
-            label: 'Noir et Blanc',
+            label: 'Monochrome',
             onClick: () => updateMonochrome(!monochrome),
             active: monochrome,
+        },
+        {
+            icon: isSpeaking ? 'volume_off' : 'record_voice_over',
+            label: isSpeaking ? 'Stop Description' : 'Audio Description',
+            onClick: handleSpeech,
+            active: isSpeaking,
         },
     ];
 
@@ -57,7 +119,7 @@ const AccessibilityMenu = () => {
                 onClick={toggleMenu}
                 className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'bg-primary text-white rotate-90' : 'bg-surface-dark text-primary border-2 border-primary'
                     }`}
-                title="Accessibilité"
+                title="Accessibility"
             >
                 <span className="material-icons-outlined text-3xl">
                     {isOpen ? 'close' : 'accessibility_new'}
@@ -74,8 +136,8 @@ const AccessibilityMenu = () => {
                         <button
                             onClick={item.onClick}
                             className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110 active:scale-90 ${item.active
-                                    ? 'bg-primary text-white'
-                                    : 'bg-surface-dark text-white hover:bg-gray-700'
+                                ? 'bg-primary text-white'
+                                : 'bg-surface-dark text-white hover:bg-gray-700'
                                 }`}
                             title={item.label}
                         >
