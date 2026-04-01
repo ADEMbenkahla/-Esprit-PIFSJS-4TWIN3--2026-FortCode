@@ -14,12 +14,12 @@ export default function RequestRecruiterRole() {
 
   useEffect(() => {
     fetchMyRequests();
-    
+
     // Poll every 5 seconds to check whether a request has been approved
     pollIntervalRef.current = setInterval(() => {
       fetchMyRequests();
     }, 5000);
-    
+
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
@@ -31,7 +31,7 @@ export default function RequestRecruiterRole() {
     try {
       const response = await api.get('/role-requests/my-requests');
       setMyRequests(response.data.requests);
-      
+
       // If a request is approved, refresh the token automatically
       const approvedRequest = response.data.requests.find(req => req.status === 'approved');
       if (approvedRequest) {
@@ -40,12 +40,12 @@ export default function RequestRecruiterRole() {
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
         }
-        
-        setMessage({ 
-          type: 'success', 
-          text: '🎉 Congratulations! Your request has been approved! Your permissions have been updated. You can now create rooms from your profile.' 
+
+        setMessage({
+          type: 'success',
+          text: '🎉 Congratulations! Your request has been approved! Your permissions have been updated. You can now create rooms from your profile.'
         });
-        
+
         // Refresh JWT token with the new role
         const result = await refreshUserProfile();
         if (result.success) {
@@ -60,7 +60,7 @@ export default function RequestRecruiterRole() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (justification.trim().length < 20) {
       setMessage({ type: 'error', text: 'Justification must contain at least 20 characters' });
       return;
@@ -82,15 +82,15 @@ export default function RequestRecruiterRole() {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       setMessage({ type: 'success', text: 'Request submitted successfully!' });
       setJustification('');
       setProofDocument(null);
       fetchMyRequests();
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.message || 'Error while submitting the request' 
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Error while submitting the request'
       });
     } finally {
       setLoading(false);
@@ -107,9 +107,9 @@ export default function RequestRecruiterRole() {
       setMessage({ type: 'success', text: 'Request deleted successfully' });
       fetchMyRequests();
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.message || 'Error while deleting the request' 
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Error while deleting the request'
       });
     }
   };
@@ -151,11 +151,10 @@ export default function RequestRecruiterRole() {
 
         {/* Message */}
         {message.text && (
-          <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
-            message.type === 'success' 
+          <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${message.type === 'success'
               ? 'bg-green-500/10 border-green-500/30 text-green-400'
               : 'bg-red-500/10 border-red-500/30 text-red-400'
-          }`}>
+            }`}>
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             ) : (
@@ -168,7 +167,7 @@ export default function RequestRecruiterRole() {
         {/* Request form */}
         <Card className="p-6 mb-8">
           <h2 className="text-2xl font-bold text-white mb-4">New Request</h2>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -186,9 +185,8 @@ export default function RequestRecruiterRole() {
                 <span className="text-slate-500">
                   Minimum 20 characters, maximum 500
                 </span>
-                <span className={`${
-                  justification.length < 20 ? 'text-red-400' : 'text-slate-500'
-                }`}>
+                <span className={`${justification.length < 20 ? 'text-red-400' : 'text-slate-500'
+                  }`}>
                   {justification.length}/500
                 </span>
               </div>
@@ -211,9 +209,8 @@ export default function RequestRecruiterRole() {
                 />
                 <label
                   htmlFor="proofDocument"
-                  className={`w-full px-4 py-4 bg-slate-700/50 border-2 border-dashed border-slate-600 rounded-lg flex items-center gap-3 cursor-pointer hover:border-blue-500 hover:bg-slate-700 transition-all ${
-                    (hasPendingRequest || loading) ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full px-4 py-4 bg-slate-700/50 border-2 border-dashed border-slate-600 rounded-lg flex items-center gap-3 cursor-pointer hover:border-blue-500 hover:bg-slate-700 transition-all ${(hasPendingRequest || loading) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                 >
                   {proofDocument ? (
                     <>
@@ -255,7 +252,7 @@ export default function RequestRecruiterRole() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Submitting...
+                  AI is analyzing your request...
                 </>
               ) : hasPendingRequest ? (
                 <>
@@ -275,7 +272,7 @@ export default function RequestRecruiterRole() {
         {/* My requests */}
         <Card className="p-6">
           <h2 className="text-2xl font-bold text-white mb-4">My Requests</h2>
-          
+
           {myRequests.length === 0 ? (
             <p className="text-slate-400 text-center py-8">
               You have not submitted any requests yet
@@ -345,6 +342,45 @@ export default function RequestRecruiterRole() {
                           )}
                         </div>
                         <p className="text-slate-100 text-base leading-relaxed font-medium bg-purple-500/5 p-3 rounded border-l-4 border-purple-500">{request.adminComment}</p>
+                      </div>
+                    )}
+
+                    {/* AI Feedback Section */}
+                    {request.aiDecision && request.aiDecision !== 'NONE' && (
+                      <div className="mt-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-slate-200 font-semibold text-sm flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-blue-400" />
+                            AI Analysis:
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-1 rounded ${request.aiDecision === 'ACCEPT' ? 'bg-green-500/20 text-green-400' :
+                              request.aiDecision === 'REJECT' ? 'bg-red-500/20 text-red-400' :
+                                'bg-amber-500/20 text-amber-400'
+                            }`}>
+                            {request.aiDecision} ({(request.aiConfidence * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-sm italic mb-2">"{request.aiExplanation}"</p>
+                        <div className="flex gap-4 mt-2">
+                          <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500"
+                              style={{ width: `${request.documentScore * 100}%` }}
+                              title={`Document Score: ${(request.documentScore * 100).toFixed(0)}%`}
+                            />
+                          </div>
+                          <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-purple-500"
+                              style={{ width: `${request.textScore * 100}%` }}
+                              title={`Text Score: ${(request.textScore * 100).toFixed(0)}%`}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                          <span>Doc Score</span>
+                          <span>Justification Score</span>
+                        </div>
                       </div>
                     )}
                   </div>

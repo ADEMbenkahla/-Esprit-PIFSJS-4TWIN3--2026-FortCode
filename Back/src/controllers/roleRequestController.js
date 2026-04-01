@@ -1,5 +1,107 @@
 const RoleRequest = require("../models/RoleRequest");
 const User = require("../models/User");
+const axios = require("axios");
+const FormData = require("form-data");
+const fs = require("fs");
+const path = require("path");
+
+// =============================
+// 📝 AI ANALYSIS HELPER
+// =============================
+const analyzeRequestWithAI = async (justification, proofDocumentPath) => {
+  try {
+    const formData = new FormData();
+    formData.append("justification", justification);
+
+    if (proofDocumentPath) {
+      // Fix: remove leading / to ensure path.join works correctly on Windows
+      const relativePath = proofDocumentPath.startsWith('/') ? proofDocumentPath.substring(1) : proofDocumentPath;
+      const absolutePath = path.resolve(__dirname, "../../", relativePath);
+      
+      if (fs.existsSync(absolutePath)) {
+        formData.append("file", fs.createReadStream(absolutePath));
+      } else {
+        console.warn("AI Analysis Warning: Proof document file not found at", absolutePath);
+      }
+    }
+
+    const response = await axios.post("http://localhost:8000/analyze", formData, {
+      headers: {
+        ...formData.getHeaders()
+      },
+      timeout: 30000 // 30s timeout for AI
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("AI Analysis Error:", error.response?.data || error.message);
+    return null;
+  }
+};
+
+// ... (existing createRoleRequest etc) ...
+
+// =============================
+// 🤖 AI REVIEW REQUEST (Admin trigger)
+// =============================
+exports.aiReviewRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const roleRequest = await RoleRequest.findById(requestId);
+
+    if (!roleRequest) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    if (roleRequest.status !== "pending") {
+      return res.status(400).json({ message: "This request is not pending" });
+    }
+
+    console.log("🤖 AI REVIEW START - Request ID:", requestId);
+    console.log("📝 Justification sent to AI:", roleRequest.justification);
+    console.log("📄 Proof document path:", roleRequest.proofDocument);
+
+    const aiAnalysis = await analyzeRequestWithAI(roleRequest.justification, roleRequest.proofDocument);
+
+    if (!aiAnalysis) {
+      return res.status(503).json({ 
+        message: "AI service error. The system could not reach the analysis agent.",
+        debug: "Make sure you have a valid API Key (OpenAI or Gemini) in ai_service/.env and restarted the service."
+      });
+    }
+
+    // Apply AI-specific fields
+    roleRequest.aiDecision = aiAnalysis.decision;
+    roleRequest.aiConfidence = aiAnalysis.confidence;
+    roleRequest.aiExplanation = aiAnalysis.explanation;
+    roleRequest.documentScore = aiAnalysis.document_score;
+    roleRequest.textScore = aiAnalysis.text_score;
+    roleRequest.reviewedAt = new Date();
+
+    if (aiAnalysis.decision === "ACCEPT") {
+      roleRequest.status = "approved";
+      roleRequest.adminComment = "[AI AUTO-APPROVED] " + aiAnalysis.explanation;
+      await User.findByIdAndUpdate(roleRequest.userId, { role: "recruiter" });
+    } else {
+      roleRequest.status = "rejected";
+      roleRequest.adminComment = "[AI AUTO-REJECTED] " + aiAnalysis.explanation;
+    }
+
+    await roleRequest.save();
+
+    res.json({
+      message: roleRequest.status === "approved" 
+        ? "AI has approved this request." 
+        : "AI has rejected this request.",
+      request: roleRequest
+    });
+
+  } catch (error) {
+    console.error("AI Review Request Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 // =============================
 // 📝 CREATE ROLE REQUEST (Participant)
@@ -36,7 +138,7 @@ exports.createRoleRequest = async (req, res) => {
     // Récupérer le chemin du fichier uploadé (si présent)
     const proofDocument = req.file ? `/uploads/proof-documents/${req.file.filename}` : null;
 
-    // Créer la demande
+    // Créer la demande initialement
     const roleRequest = await RoleRequest.create({
       userId,
       requestedRole: "recruiter",
@@ -44,10 +146,47 @@ exports.createRoleRequest = async (req, res) => {
       proofDocument
     });
 
+    // 🤖 Lancer l'analyse AI de manière asynchrone (ou attendre si on veut un retour immédiat)
+    // Pour ce projet, on attend pour pouvoir donner un feedback immédiat ou auto-approuver
+    const aiAnalysis = await analyzeRequestWithAI(justification, proofDocument);
+
+    if (aiAnalysis) {
+      roleRequest.aiDecision = aiAnalysis.decision;
+      roleRequest.aiConfidence = aiAnalysis.confidence;
+      roleRequest.aiExplanation = aiAnalysis.explanation;
+      roleRequest.documentScore = aiAnalysis.document_score;
+      roleRequest.textScore = aiAnalysis.text_score;
+
+      // 🤖 Full auto-decision — no human review needed
+      if (aiAnalysis.decision === "ACCEPT") {
+        roleRequest.status = "approved";
+        roleRequest.reviewedAt = new Date();
+        roleRequest.adminComment = "[AI AUTO-APPROVED] " + aiAnalysis.explanation;
+
+        // Upgrade user role immediately
+        await User.findByIdAndUpdate(userId, { role: "recruiter" });
+      } else {
+        // REJECT — any non-ACCEPT decision is a rejection
+        roleRequest.status = "rejected";
+        roleRequest.reviewedAt = new Date();
+        roleRequest.adminComment = "[AI AUTO-REJECTED] " + aiAnalysis.explanation;
+      }
+
+      await roleRequest.save();
+    }
+    // If AI call failed → request stays "pending" as fallback for admin
+
     await roleRequest.populate("userId", "username email avatar");
 
+    const msg =
+      roleRequest.status === "approved"
+        ? "🎉 Congratulations! Your recruiter request has been automatically approved."
+        : roleRequest.status === "rejected"
+        ? "❌ Your recruiter request has been automatically rejected. " + (roleRequest.adminComment || "")
+        : "⏳ Role request submitted. Under review (AI unavailable).";
+
     res.status(201).json({
-      message: "Role request submitted successfully",
+      message: msg,
       request: roleRequest
     });
 
