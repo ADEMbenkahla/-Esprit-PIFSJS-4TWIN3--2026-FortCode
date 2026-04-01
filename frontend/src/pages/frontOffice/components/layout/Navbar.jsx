@@ -249,9 +249,6 @@ export function Navbar() {
 
           {/* User Profile Badge */}
           <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
-            <div className="w-8 h-8 rounded-full border-2 overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-            </div>
             <span className="text-sm font-semibold text-slate-100">
               {nickname || 'Commander'}
             </span>
@@ -362,9 +359,6 @@ export function Navbar() {
               {/* User Info Section */}
               <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full border overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
                     <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>

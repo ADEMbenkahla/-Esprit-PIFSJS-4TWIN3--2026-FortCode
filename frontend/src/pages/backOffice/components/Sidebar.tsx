@@ -174,15 +174,6 @@ const Sidebar: React.FC = () => {
         {/* Current User */}
         <div className="p-4 border-t border-purple-900/20 min-w-[256px]">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-purple p-[2px]">
-              <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
-                <img
-                  src={currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.name}&background=random`}
-                  alt={currentUser.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-white truncate">{currentUser.name}</span>
               <span className="text-[10px] text-gray-500 capitalize">{currentUser.role}</span>
