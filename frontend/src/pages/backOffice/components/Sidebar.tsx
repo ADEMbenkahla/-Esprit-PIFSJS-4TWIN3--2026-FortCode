@@ -153,13 +153,19 @@ const Sidebar: React.FC = () => {
 
           <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
             <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-purple-900/20 hover:text-white transition-all group"
+            <button
+              onClick={() => {
+                navigate('/backoffice/settings');
+                closeSidebar();
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${location.pathname === '/backoffice/settings'
+                ? 'bg-primary/10 text-primary border-l-4 border-primary'
+                : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
+                }`}
             >
-              <span className="material-icons-outlined text-xl group-hover:text-primary transition-colors">settings</span>
+              <span className={`material-icons-outlined text-xl ${location.pathname === '/backoffice/settings' ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>settings</span>
               <span className="font-medium">Settings</span>
-            </a>
+            </button>
 
             <button
               onClick={handleLogout}
