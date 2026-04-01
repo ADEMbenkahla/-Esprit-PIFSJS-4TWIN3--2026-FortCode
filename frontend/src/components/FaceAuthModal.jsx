@@ -41,7 +41,13 @@ const FaceAuthModal = ({ isOpen, onClose, onCapture, mode = 'register', email = 
 
         try {
             const video = webcamRef.current.video;
-            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+            const detections = await faceapi.detectSingleFace(
+                video,
+                new faceapi.TinyFaceDetectorOptions({
+                    inputSize: 512,
+                    scoreThreshold: 0.3
+                })
+            )
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
