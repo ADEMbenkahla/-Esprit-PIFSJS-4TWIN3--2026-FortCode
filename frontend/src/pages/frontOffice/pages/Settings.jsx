@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Palette, Eye, Monitor, Volume2, Moon, Sun, Type, Contrast, Sparkles, User, ShieldCheck } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Eye, Monitor, Volume2, Moon, Sun, Type, Contrast, Sparkles, User, ShieldCheck, Camera } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { ScrollButton } from '../components/ui/ScrollButton';
+import FaceAuthModal from '../../../components/FaceAuthModal';
 import { useSettings } from '../../../context/SettingsContext';
 import { useSoundEffects } from '../../../hooks/useSoundEffects';
 import { AvatarPicker } from '../components/layout/AvatarPicker';
@@ -19,6 +20,8 @@ export default function Settings() {
     username,
     twoFactorEnabled,
     twoFactorMethod,
+    webauthnEnabled,
+    faceRegistered,
     updateTheme,
     updateAccentColor,
     updateFontSize,
@@ -32,7 +35,9 @@ export default function Settings() {
     updateAvatar,
     updateUsername,
     deleteAccount,
-    resetSettings
+    resetSettings,
+    startWebAuthnRegistration,
+    registerFace
   } = useSettings();
 
   const { playClick, playToggle, playSelect, playSuccess } = useSoundEffects();
@@ -66,6 +71,7 @@ export default function Settings() {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [twoFactorStatus, setTwoFactorStatus] = useState('');
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
 
   useEffect(() => {
     if (twoFactorMethod) {
@@ -571,6 +577,60 @@ export default function Settings() {
             </div>
           </Card>
         </div>
+
+        {/* Custom Face ID Section (Replacement for failed WebAuthn) */}
+        <div>
+          <Card className="p-6 bg-slate-900/90 border-slate-800">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-purple-900/20 border border-purple-500/30 flex items-center justify-center">
+                <Camera className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-slate-100">Custom Face ID</h2>
+                <p className="text-sm text-slate-400">Software-based facial recognition for your webcam</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-900/50 border border-slate-800">
+                <div>
+                  <p className="text-sm font-semibold text-slate-300">Facial Recognition</p>
+                  <p className="text-xs text-slate-500">
+                    {faceRegistered ? '✓ Face registered' : 'Not registered yet'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsFaceModalOpen(true)}
+                  className="px-6 py-2 rounded-lg text-white font-semibold transition-all"
+                  style={{
+                    backgroundColor: '#7c3aed',
+                    boxShadow: '0 0 15px rgba(124, 58, 237, 0.3)'
+                  }}
+                >
+                  {faceRegistered ? 'Update Face Scan' : 'Register My Face'}
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <FaceAuthModal
+          isOpen={isFaceModalOpen}
+          onClose={() => setIsFaceModalOpen(false)}
+          mode="register"
+          onCapture={async (descriptor) => {
+            try {
+              setTwoFactorLoading(true);
+              await registerFace(descriptor);
+              playSuccess();
+              setTwoFactorStatus('Face registered successfully!');
+            } catch (err) {
+              setTwoFactorStatus(err.message);
+            } finally {
+              setTwoFactorLoading(false);
+            }
+          }}
+        />
 
         {/* Preview Card */}
         <div>

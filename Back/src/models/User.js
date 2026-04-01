@@ -122,8 +122,18 @@ const userSchema = new mongoose.Schema({
         default: null
       }
     }
-  }
-
+  },
+  webauthn: [{
+    credentialID: { type: String, required: true },
+    publicKey: { type: String, required: true },
+    counter: { type: Number, required: true },
+    transports: [{ type: String }],
+    fmt: { type: String },
+    created: { type: Date, default: Date.now }
+  }],
+  currentChallenge: { type: String },
+  faceDescriptor: { type: [Number], default: [] },
+  faceRegistered: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

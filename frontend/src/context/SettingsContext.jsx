@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
 const SettingsContext = createContext();
 
@@ -27,11 +28,15 @@ export const SettingsProvider = ({ children }) => {
   const [fontFamily, setFontFamily] = useState(localStorage.getItem('fontFamily') || 'inter');
   const [highContrast, setHighContrast] = useState(localStorage.getItem('highContrast') === 'true');
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('reduceMotion') === 'true');
+  const [monochrome, setMonochrome] = useState(localStorage.getItem('monochrome') === 'true');
+  const [readingGuide, setReadingGuide] = useState(localStorage.getItem('readingGuide') === 'true');
   const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('soundEnabled') !== 'false');
   const [avatar, setAvatar] = useState(localStorage.getItem('avatar') || defaultAvatar);
   const [username, setUsername] = useState(localStorage.getItem('username') || defaultUsername);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorMethod, setTwoFactorMethod] = useState('totp');
+  const [webauthnEnabled, setWebauthnEnabled] = useState(false);
+  const [faceRegistered, setFaceRegistered] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load all settings from backend
@@ -48,6 +53,8 @@ export const SettingsProvider = ({ children }) => {
         setHighContrast(false);
         setReduceMotion(false);
         setSoundEnabled(true);
+        setMonochrome(false);
+        setReadingGuide(false);
         setAvatar(defaultAvatar);
         setUsername(defaultUsername);
         setTwoFactorEnabled(false);
@@ -82,11 +89,16 @@ export const SettingsProvider = ({ children }) => {
           setHighContrast(user.settings.highContrast || false);
           setReduceMotion(user.settings.reduceMotion || false);
           setSoundEnabled(user.settings.soundEnabled !== false);
+          setMonochrome(user.settings.monochrome || false);
+          setReadingGuide(user.settings.readingGuide || false);
 
           if (user.settings.twoFactor) {
             setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
             setTwoFactorMethod(user.settings.twoFactor.method || 'totp');
           }
+
+          setWebauthnEnabled(user.webauthn && user.webauthn.length > 0);
+          setFaceRegistered(!!user.faceRegistered);
 
           // Update localStorage cache
           localStorage.setItem('theme', nextTheme);
@@ -96,6 +108,8 @@ export const SettingsProvider = ({ children }) => {
           localStorage.setItem('highContrast', user.settings.highContrast || false);
           localStorage.setItem('reduceMotion', user.settings.reduceMotion || false);
           localStorage.setItem('soundEnabled', user.settings.soundEnabled !== false);
+          localStorage.setItem('monochrome', user.settings.monochrome || false);
+          localStorage.setItem('readingGuide', user.settings.readingGuide || false);
         }
 
         // Load avatar and username (USER-SPECIFIC)
@@ -174,6 +188,13 @@ export const SettingsProvider = ({ children }) => {
       root.classList.remove('reduce-motion');
     }
 
+    // Apply monochrome
+    if (monochrome) {
+      root.classList.add('monochrome');
+    } else {
+      root.classList.remove('monochrome');
+    }
+
     // Apply font family to root
     const fontFamilyMap = {
       inter: "'Inter', sans-serif",
@@ -183,7 +204,7 @@ export const SettingsProvider = ({ children }) => {
     };
     root.style.setProperty('--app-font-family', fontFamilyMap[fontFamily] || "'Inter', sans-serif");
 
-  }, [theme, accentColor, fontSize, fontFamily, highContrast, reduceMotion]);
+  }, [theme, accentColor, fontSize, fontFamily, highContrast, reduceMotion, monochrome]);
 
   // Sync settings with backend
   const syncWithBackend = useCallback(async (settingsUpdate) => {
@@ -239,6 +260,18 @@ export const SettingsProvider = ({ children }) => {
     setReduceMotion(value);
     localStorage.setItem('reduceMotion', value);
     syncWithBackend({ reduceMotion: value });
+  }, [syncWithBackend]);
+
+  const updateMonochrome = useCallback((value) => {
+    setMonochrome(value);
+    localStorage.setItem('monochrome', value);
+    syncWithBackend({ monochrome: value });
+  }, [syncWithBackend]);
+
+  const updateReadingGuide = useCallback((value) => {
+    setReadingGuide(value);
+    localStorage.setItem('readingGuide', value);
+    syncWithBackend({ readingGuide: value });
   }, [syncWithBackend]);
 
   const updateSoundEnabled = useCallback((value) => {
@@ -429,12 +462,15 @@ export const SettingsProvider = ({ children }) => {
     fontFamily,
     highContrast,
     reduceMotion,
-    soundEnabled,
+    monochrome,
+    readingGuide,
     avatar,
     username,
     nickname: username, // Backward compatibility
     twoFactorEnabled,
     twoFactorMethod,
+    webauthnEnabled,
+    faceRegistered,
     isLoaded,
     updateTheme,
     updateAccentColor,
@@ -442,6 +478,8 @@ export const SettingsProvider = ({ children }) => {
     updateFontFamily,
     updateHighContrast,
     updateReduceMotion,
+    updateMonochrome,
+    updateReadingGuide,
     updateSoundEnabled,
     setupTwoFactor,
     verifyTwoFactorSetup,
@@ -449,7 +487,59 @@ export const SettingsProvider = ({ children }) => {
     updateAvatar,
     updateUsername,
     deleteAccount,
-    resetSettings
+    resetSettings,
+    startWebAuthnRegistration: async () => {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      // 1. Get options from server
+      const optionsRes = await fetch('http://localhost:5000/api/auth/webauthn/register-options', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const options = await optionsRes.json();
+
+      // 2. Start registration ceremony
+      const attResp = await startRegistration(options);
+
+      // 3. Verify response with server
+      const verificationRes = await fetch('http://localhost:5000/api/auth/webauthn/register-verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(attResp)
+      });
+
+      const verificationJSON = await verificationRes.json();
+
+      if (verificationJSON.verified) {
+        setWebauthnEnabled(true);
+        return { success: true };
+      } else {
+      }
+    },
+    registerFace: async (descriptor) => {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch('http://localhost:5000/api/auth/face/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ descriptor })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setFaceRegistered(true);
+        return { success: true };
+      } else {
+        throw new Error(data.message || 'Face registration failed');
+      }
+    }
   };
 
   return (

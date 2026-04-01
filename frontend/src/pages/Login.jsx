@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import logoImg from "../assets/logo.png";
 import "./pages.css";
+import FaceAuthModal from "../components/FaceAuthModal";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 
@@ -15,6 +16,7 @@ function Login({ onSwitchToRegister }) {
   const [twoFactorToken, setTwoFactorToken] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isFaceModalOpen, setIsFaceModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -161,6 +163,55 @@ function Login({ onSwitchToRegister }) {
     setLoading(false);
   };
 
+
+  const handleFaceLogin = async (descriptor) => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/face/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: identifier, descriptor }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        sessionStorage.setItem("token", data.token);
+        localStorage.setItem("token", data.token);
+        const payload = JSON.parse(atob(data.token.split(".")[1]));
+        sessionStorage.setItem("userId", payload.id);
+        sessionStorage.setItem("userRole", payload.role);
+        window.dispatchEvent(new Event('tokenChanged'));
+        connect(data.token);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Welcome Back!',
+          text: 'Face login successful',
+          timer: 2000,
+          showConfirmButton: false,
+          background: '#1a1a2e',
+          color: '#fff'
+        });
+
+        if (payload.role === "admin") navigate("/backoffice/dashboard");
+        else navigate("/home");
+      } else {
+        throw new Error(data.message || "Face login failed");
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Failed',
+        text: error.message,
+        background: '#1a1a2e',
+        color: '#fff'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleVerify2fa = async () => {
     if (!twoFactorCode) {
       Swal.fire({
@@ -285,8 +336,38 @@ function Login({ onSwitchToRegister }) {
             <button onClick={handleLogin} disabled={loading}>
               {loading ? "SIGNING IN..." : "SIGN IN →"}
             </button>
+
+            <button
+              onClick={() => {
+                if (!identifier) {
+                  Swal.fire({
+                    icon: 'warning',
+                    title: 'Missing Identifier',
+                    text: 'Please enter your email/username first.',
+                    background: '#1a1a2e',
+                    color: '#fff'
+                  });
+                  return;
+                }
+                setIsFaceModalOpen(true);
+              }}
+              disabled={loading}
+              className="google"
+              style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', backgroundColor: '#7c3aed' }}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              LOGIN WITH FACE ID
+            </button>
           </>
         )}
+
+        <FaceAuthModal
+          isOpen={isFaceModalOpen}
+          onClose={() => setIsFaceModalOpen(false)}
+          mode="login"
+          email={identifier}
+          onCapture={handleFaceLogin}
+        />
 
         {twoFactorRequired && (
           <>
