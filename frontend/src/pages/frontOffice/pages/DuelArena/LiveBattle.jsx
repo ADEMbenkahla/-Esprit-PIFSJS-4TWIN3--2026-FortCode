@@ -30,14 +30,9 @@ export default function LiveBattle() {
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const newSocket = io(SOCKET_URL, { auth: { token } });
 
-        newSocket.on("connect", () => {
-            newSocket.emit("joinMatch", { matchId, roomId });
-        });
-
-        // In socket.js I didn't add joinRoom event, let's fix that or rely on findMatch logic
-        // Actually the findMatch already put them in room.
-
+        // Register listeners FIRST
         newSocket.on("matchFound", ({ match }) => {
+            console.log("🎮 Match data received:", match);
             setMatch(match);
             if (match.challenge?.data?.[language]) {
                 setCode(match.challenge.data[language].starterCode);
@@ -64,6 +59,12 @@ export default function LiveBattle() {
                 icon: isMe ? "success" : "error",
                 confirmButtonText: "Return to Arena"
             }).then(() => navigate('/arena'));
+        });
+
+        // Then handle connection
+        newSocket.on("connect", () => {
+            console.log("🔌 Connected to socket, joining match...");
+            newSocket.emit("joinMatch", { matchId, roomId });
         });
 
         setSocket(newSocket);

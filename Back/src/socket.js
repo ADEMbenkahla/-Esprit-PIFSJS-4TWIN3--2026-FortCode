@@ -90,7 +90,13 @@ const initSocket = (server) => {
                     opponentSocket.join(roomId);
                     socket.join(roomId);
 
-                    io.to(roomId).emit("matchFound", { matchId, roomId, match });
+                    // Emit to each individually to ensure receipt
+                    const matchData = { matchId, roomId, match };
+                    opponentSocket.emit("matchFound", matchData);
+                    socket.emit("matchFound", matchData);
+
+                    // Also broadcast to room for good measure
+                    io.to(roomId).emit("matchFound", matchData);
                 } else {
                     queue.push(socket);
                     socket.emit("waitingInQueue", { type });
@@ -98,11 +104,18 @@ const initSocket = (server) => {
             });
 
             socket.on("joinMatch", async ({ matchId, roomId }) => {
+                console.log(`📡 JoinMatch request: user=${user.username}, matchId=${matchId}, roomId=${roomId}`);
                 socket.join(roomId);
-                const match = await Match.findById(matchId);
-                if (match) {
-                    socket.emit("matchFound", { matchId, roomId, match });
-                    console.log(`User ${user.username} joined battle ${matchId}`);
+                try {
+                    const match = await Match.findById(matchId);
+                    if (match) {
+                        socket.emit("matchFound", { matchId, roomId, match });
+                        console.log(`✅ Sent matchFound to ${user.username}`);
+                    } else {
+                        console.error(`❌ Match ${matchId} not found in DB`);
+                    }
+                } catch (err) {
+                    console.error("🔥 Error in joinMatch findById:", err);
                 }
             });
 
