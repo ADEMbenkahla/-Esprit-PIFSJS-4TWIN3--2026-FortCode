@@ -70,12 +70,14 @@ router.get('/google/callback',
 
             // Generate JWT token
             const token = jwt.sign(
-                { id: newUser._id, role: newUser.role, username: newUser.username },
+                { id: newUser._id, role: newUser.role || 'participant', username: newUser.username },
                 process.env.JWT_SECRET,
                 { expiresIn: '1h' }
             );
 
-            return res.redirect(`http://localhost:5173/auth/callback?token=${token}&role=${newUser.role}`);
+            return res.redirect(
+                `http://localhost:5173/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(newUser.role)}`
+            );
         }
 
         // 🔥 Check if account is active
@@ -85,13 +87,15 @@ router.get('/google/callback',
 
         // Existing user - generate JWT token
         const token = jwt.sign(
-            { id: user._id, role: user.role, username: user.username },
+            { id: user._id, role: user.role || 'participant', username: user.username },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
         // Redirect to frontend with token
-        res.redirect(`http://localhost:5173/auth/callback?token=${token}&role=${user.role}`);
+        res.redirect(
+            `http://localhost:5173/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(user.role)}`
+        );
     }
 );
 

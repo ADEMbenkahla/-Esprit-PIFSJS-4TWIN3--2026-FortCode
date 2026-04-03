@@ -162,21 +162,6 @@ function Login({ onSwitchToRegister }) {
         color: '#fff'
       });
 
-<<<<<<< HEAD
-      // ✅ Décoder le rôle (si envoyé)
-      const payload = JSON.parse(atob(data.token.split(".")[1]));
-
-      setTimeout(() => {
-        if (payload.role === "admin") {
-          navigate("/backoffice/dashboard");
-        } else {
-          // Participants and recruiters both go to the front-office home
-          navigate("/home");
-        }
-      }, 1500);
-=======
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
-
     } catch (error) {
       Swal.fire({
         icon: 'error',
@@ -286,19 +271,7 @@ function Login({ onSwitchToRegister }) {
 
       // ✅ Décoder le rôle (si envoyé)
       const payload = JSON.parse(atob(data.token.split(".")[1]));
-<<<<<<< HEAD
-
-      setTimeout(() => {
-        if (payload.role === "admin") {
-          navigate("/backoffice/dashboard");
-        } else {
-          // Participants and recruiters both go to the front-office home
-          navigate("/home");
-        }
-      }, 1500);
-=======
       console.log("🎫 2FA Token Payload:", payload);
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
       setTwoFactorRequired(false);
       setTwoFactorMethod("");

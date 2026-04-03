@@ -31,11 +31,12 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Handle 401 Unauthorized
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        // Only 401 = not authenticated — clear session and go to login.
+        // 403 = forbidden (wrong role, etc.) — keep the user logged in so they are not kicked out of the app.
+        if (error.response?.status === 401) {
             sessionStorage.removeItem('token');
             localStorage.removeItem('token');
-            window.location.href = '/'; // Redirect to login
+            window.location.href = '/';
         }
 
         return Promise.reject(error);
@@ -74,5 +75,32 @@ export const updateSubmissionEvaluation = (
     subId: string,
     data: { recruiterComment?: string; recruiterRating?: number }
 ) => api.patch(`/recruiter/battle-rooms/${roomId}/submissions/${subId}`, data);
+
+export const stagesApi = {
+    me: (params?: { category?: string }) => api.get('/stages/me', { params }),
+    get: (id: string) => api.get(`/stages/${id}`),
+    run: (stageId: string, challengeId: string, code: string) =>
+        api.post(`/stages/${stageId}/challenges/${challengeId}/run`, { code }),
+    submit: (stageId: string, challengeId: string, code: string) =>
+        api.post(`/stages/${stageId}/challenges/${challengeId}/submit`, { code }),
+    resetStage: (stageId: string, challengeId?: string) =>
+        api.post(`/stages/${stageId}/reset`, challengeId ? { challengeId } : {}),
+};
+
+export const adminStagesApi = {
+    list: () => api.get('/stages'),
+    get: (id: string) => api.get(`/stages/${id}`),
+    create: (body: Record<string, unknown>) => api.post('/stages', body),
+    update: (id: string, body: Record<string, unknown>) => api.put(`/stages/${id}`, body),
+    remove: (id: string) => api.delete(`/stages/${id}`),
+    assignChallenges: (id: string, challengeIds: string[]) =>
+        api.post(`/stages/${id}/challenges`, { challengeIds }),
+    removeChallenge: (stageId: string, challengeId: string) =>
+        api.delete(`/stages/${stageId}/challenges/${challengeId}`),
+};
+
+export const adminChallengesApi = {
+    list: () => api.get('/challenges'),
+};
 
 export default api;

@@ -84,13 +84,8 @@ router.post("/refresh-token", authMiddleware, refreshToken);
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
 
-<<<<<<< HEAD
 // Delete my account (participant only)
 router.delete("/profile", authMiddleware, deleteMyAccount);
-=======
-// Delete logged-in user account
-router.delete("/profile", authMiddleware, deleteAccount);
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
 // 2FA setup/verify/disable
 router.post("/2fa/setup", authMiddleware, setupTwoFactor);

@@ -161,7 +161,7 @@ exports.verifyEmail = async (req, res) => {
 
     // Optionally generate token to auto-login
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role || "participant" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -169,7 +169,7 @@ exports.verifyEmail = async (req, res) => {
     res.json({
       message: "Email verified successfully",
       token,
-      role: user.role,
+      role: user.role || "participant",
       email: user.email
     });
   } catch (error) {
@@ -319,7 +319,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role || "participant" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -327,7 +327,7 @@ exports.login = async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      role: user.role,
+      role: user.role || "participant",
       email: user.email
     });
 
@@ -403,7 +403,7 @@ exports.login2fa = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role || "participant" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -411,7 +411,7 @@ exports.login2fa = async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      role: user.role,
+      role: user.role || "participant",
       email: user.email
     });
   } catch (error) {
@@ -1221,7 +1221,7 @@ exports.refreshToken = async (req, res) => {
 
     // Générer un nouveau token avec les informations à jour
     const newToken = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user._id, role: user.role || "participant" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -1237,7 +1237,7 @@ exports.refreshToken = async (req, res) => {
     res.json({
       message: "Token refreshed successfully",
       token: newToken,
-      role: user.role,
+      role: user.role || "participant",
       user: userObj
     });
 

@@ -41,15 +41,13 @@ app.use("/api/auth", require("./routes/googleAuthRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/admin/activity", require("./routes/activityRoutes"));
 app.use("/api/admin/dashboard", require("./routes/dashboardRoutes"));
-<<<<<<< HEAD
-app.use("/api", require("./routes/virtualRoomRoutes"));
-app.use("/api", require("./routes/battleRoomRoutes"));
-=======
-app.use("/api/role-requests", require("./routes/roleRequestRoutes"));
-app.use("/api/programming-rooms", require("./routes/programmingRoomRoutes"));
+// Application routes — mount specific /api/... paths before generic app.use("/api", ...) routers
 app.use("/api/stages", require("./routes/stageRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
+app.use("/api", require("./routes/virtualRoomRoutes"));
+app.use("/api", require("./routes/battleRoomRoutes"));
+app.use("/api/role-requests", require("./routes/roleRequestRoutes"));
+app.use("/api/programming-rooms", require("./routes/programmingRoomRoutes"));
 
 module.exports = app;
 

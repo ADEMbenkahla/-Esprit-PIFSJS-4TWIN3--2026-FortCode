@@ -26,8 +26,8 @@ exports.createVirtualRoomRequest = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (req.user.role !== "recruiter") {
-      return res.status(403).json({ message: "Only recruiters can request a virtual room" });
+    if (!["recruiter", "admin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Only recruiters or admins can request a virtual room" });
     }
 
     // Prevent multiple active requests

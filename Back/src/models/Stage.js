@@ -1,50 +1,45 @@
 const mongoose = require("mongoose");
 
-const stageSchema = new mongoose.Schema({
+const stageSchema = new mongoose.Schema(
+  {
     title: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      required: true,
+      trim: true,
     },
     description: {
-        type: String,
-        required: true
-    },
-    category: {
-        type: String,
-        enum: ["training", "mission"],
-        default: "training"
-    },
-    level: {
-        type: Number,
-        required: true
+      type: String,
+      default: "",
     },
     difficulty: {
-        type: String,
-        enum: ["beginner", "intermediate", "advanced", "expert"],
-        default: "beginner"
+      type: String,
+      enum: ["easy", "medium", "hard", "expert"],
+      default: "easy",
     },
-    type: {
-        type: String,
-        enum: ["training", "battle", "boss"],
-        default: "training"
+    order: {
+      type: Number,
+      required: true,
     },
-    stars: {
-        type: Number,
-        default: 3
+    category: {
+      type: String,
+      enum: ["training", "mission"],
+      default: "training",
     },
-    prerequisites: [{
+    prerequisiteStageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Stage",
+      default: null,
+    },
+    challenges: [
+      {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Stage"
-    }],
-    challenges: [{
-        id: { type: Number, required: true },
-        title: { type: String, required: true },
-        description: { type: String, required: true },
-        starterCode: { type: String, default: "" },
-        tests: { type: String, default: "" },
-        language: { type: String, enum: ["javascript", "python"], default: "javascript" }
-    }]
-}, { timestamps: true });
+        ref: "Challenge",
+      },
+    ],
+  },
+  { timestamps: true }
+);
+
+stageSchema.index({ category: 1, order: 1 });
 
 module.exports = mongoose.model("Stage", stageSchema);

@@ -99,12 +99,9 @@ const Sidebar: React.FC = () => {
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
     { label: 'Role Requests', icon: 'badge', active: location.pathname === '/backoffice/role-requests', path: '/backoffice/role-requests', adminOnly: true },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
-<<<<<<< HEAD
     { label: 'Virtual Rooms', icon: 'video_camera_front', active: location.pathname === '/backoffice/virtual-rooms', path: '/backoffice/virtual-rooms' },
-    { label: 'Challenges', icon: 'emoji_events', active: false, path: '#' },
-=======
     { label: 'Challenges', icon: 'emoji_events', active: location.pathname === '/backoffice/challenges', path: '/backoffice/challenges' },
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
+    { label: 'Stages', icon: 'timeline', active: location.pathname === '/backoffice/stages', path: '/backoffice/stages', adminOnly: true },
     { label: 'Analytics', icon: 'analytics', active: false, path: '#' },
     { label: 'Moderation', icon: 'shield', active: false, path: '#' },
   ];

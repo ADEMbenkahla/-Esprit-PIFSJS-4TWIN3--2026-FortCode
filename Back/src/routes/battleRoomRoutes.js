@@ -12,15 +12,16 @@ const {
   updateSubmissionEvaluation,
 } = require("../controllers/battleRoomController");
 
-router.use(authMiddleware);
-router.use(roleMiddleware("recruiter"));
+// Apply recruiter/admin only on these paths — NOT router.use() on the whole /api mount,
+// otherwise every /api/* request (e.g. /api/stages/me) hits this middleware and blocks participants.
+const staff = [authMiddleware, roleMiddleware("recruiter", "admin")];
 
-router.get("/recruiter/participants", listParticipants);
-router.post("/recruiter/battle-rooms", createBattleRoom);
-router.get("/recruiter/battle-rooms", listMyBattleRooms);
-router.get("/recruiter/battle-rooms/:id", getBattleRoom);
-router.patch("/recruiter/battle-rooms/:id", updateBattleRoomStatus);
-router.get("/recruiter/battle-rooms/:id/submissions", getSubmissions);
-router.patch("/recruiter/battle-rooms/:id/submissions/:subId", updateSubmissionEvaluation);
+router.get("/recruiter/participants", ...staff, listParticipants);
+router.post("/recruiter/battle-rooms", ...staff, createBattleRoom);
+router.get("/recruiter/battle-rooms", ...staff, listMyBattleRooms);
+router.get("/recruiter/battle-rooms/:id", ...staff, getBattleRoom);
+router.patch("/recruiter/battle-rooms/:id", ...staff, updateBattleRoomStatus);
+router.get("/recruiter/battle-rooms/:id/submissions", ...staff, getSubmissions);
+router.patch("/recruiter/battle-rooms/:id/submissions/:subId", ...staff, updateSubmissionEvaluation);
 
 module.exports = router;

@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, Users } from "lucide-react";
-=======
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, UserPlus, Code2 } from "lucide-react";
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, UserPlus, Code2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import { useSoundEffects } from "../../../../hooks/useSoundEffects";
@@ -64,10 +60,9 @@ export function Navbar() {
           console.log("✅ Profile reçu:", data.user);
           console.log("👤 Rôle utilisateur:", data.user?.role);
           setUserData(data.user);
-<<<<<<< HEAD
+          setUserRole(data.user?.role);
 
-          // If recruiter, also fetch latest virtual room request status
-          if (data.user.role === "recruiter") {
+          if (data.user.role === "recruiter" || data.user.role === "admin") {
             try {
               const vrResponse = await getMyVirtualRoomRequest();
               const request = vrResponse.data.request;
@@ -76,15 +71,12 @@ export function Navbar() {
             } catch (err) {
               // If 404, no existing request - ignore
             }
-=======
-          setUserRole(data.user?.role);
+          }
         } else {
           console.error("❌ Erreur réponse profile:", response.status);
-          // Fallback : récupérer le rôle du token directement
           const roleFromToken = extractRoleFromToken();
           if (roleFromToken) {
             setUserRole(roleFromToken);
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
           }
         }
       } catch (error) {
@@ -123,30 +115,27 @@ export function Navbar() {
     };
   }, []);
 
-<<<<<<< HEAD
-  // Periodically refresh virtual room status for recruiters
   useEffect(() => {
-    if (userData?.role === "recruiter") {
+    if (userData?.role === "recruiter" || userData?.role === "admin") {
       const refreshStatus = async () => {
         try {
           const vrResponse = await getMyVirtualRoomRequest();
           const newStatus = vrResponse.data.request;
           const previousStatus = previousStatusRef.current;
-          
-          // If status changed to approved, show notification
-          if (newStatus.status === 'approved' && previousStatus !== 'approved') {
+
+          if (newStatus.status === "approved" && previousStatus !== "approved") {
             Swal.fire({
-              icon: 'success',
-              title: 'Virtual Room Approved!',
-              text: 'Your virtual room request has been approved. Click the button in your profile to access it.',
+              icon: "success",
+              title: "Virtual Room Approved!",
+              text: "Your virtual room request has been approved. Click the button in your profile to access it.",
               timer: 5000,
               showConfirmButton: true,
-              background: '#1a1a2e',
-              color: '#fff',
-              confirmButtonColor: '#3b82f6'
+              background: "#1a1a2e",
+              color: "#fff",
+              confirmButtonColor: "#3b82f6"
             });
           }
-          
+
           previousStatusRef.current = newStatus.status;
           setVirtualRoomStatus(newStatus);
         } catch (err) {
@@ -154,22 +143,17 @@ export function Navbar() {
         }
       };
 
-      // Initial refresh
       refreshStatus();
-      
-      // Refresh every 30 seconds
       const interval = setInterval(refreshStatus, 30000);
       return () => clearInterval(interval);
     }
   }, [userData?.role]);
-=======
-  // Debug log pour userData et userRole
+
   useEffect(() => {
     console.log("📊 userData mis à jour:", userData);
     console.log("📊 userRole mis à jour:", userRole);
   }, [userData, userRole]);
 
-  // Sync role automatically after admin approval (works from any front-office page)
   useEffect(() => {
     if (!userRole || userRole === "recruiter" || userRole === "admin") {
       return;
@@ -183,7 +167,7 @@ export function Navbar() {
         const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${token}`
+            Authorization: `Bearer ${token}`
           }
         });
 
@@ -208,7 +192,6 @@ export function Navbar() {
     const intervalId = setInterval(checkRoleUpgrade, 5000);
     return () => clearInterval(intervalId);
   }, [userRole]);
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
   const handleLogout = () => {
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
@@ -449,56 +432,19 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
-<<<<<<< HEAD
-          {userData?.role === "recruiter" ? (
-            // Recruiter Navigation
-            <>
-              <NavItem to="/home" icon={<Briefcase className="w-4 h-4" />} label="Dashboard" onClick={playClick} />
-              <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
-              <NavItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" onClick={playClick} />
-            </>
-          ) : (
-            // Participant Navigation
-            <>
-              <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
-              <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
-              <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
-              <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
-              <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
-            </>
+          {(userData?.role === "recruiter" || userData?.role === "admin") && (
+            <NavItem to="/home" icon={<Briefcase className="w-4 h-4" />} label="Dashboard" onClick={playClick} />
           )}
-=======
           <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
           <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
           <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
           <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
           <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
           <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
         </div>
 
         {/* Desktop Right Section */}
         <div className="hidden lg:flex items-center gap-4">
-<<<<<<< HEAD
-          {userData?.role !== "recruiter" && (
-            <>
-              <button
-                onClick={handleResetLevels}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-600 text-rose-50 text-xs font-bold uppercase tracking-wide shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
-              >
-                Reset Levels
-              </button>
-              <Link
-                to="/castle"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-slate-950 text-sm font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
-              >
-                <Castle className="w-4 h-4" />
-                Enter Castle
-              </Link>
-            </>
-          )}
-          
-=======
           <button
             onClick={handleResetLevels}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-600 text-rose-50 text-xs font-bold uppercase tracking-wide shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
@@ -512,8 +458,6 @@ export function Navbar() {
             <Castle className="w-4 h-4" />
             Enter Castle
           </Link>
-
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
           {/* User Profile Badge */}
           <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
             <span className="text-sm font-semibold text-slate-100">
@@ -544,6 +488,11 @@ export function Navbar() {
                           Recruiter
                         </span>
                       )}
+                      {userData?.role === "admin" && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
+                          Admin
+                        </span>
+                      )}
                     </div>
                     <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
@@ -571,38 +520,36 @@ export function Navbar() {
                     <span>Settings</span>
                   </Link>
 
-<<<<<<< HEAD
-                  {/* Recruiter virtual room request button */}
-                  {userData?.role === "recruiter" && (
+                  {(userData?.role === "recruiter" || userData?.role === "admin") && (
                     <button
                       onClick={() => {
                         handleVirtualRoomRequest();
                         setShowDropdown(false);
                       }}
                       className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors border ${
-                        virtualRoomStatus?.status === 'approved'
-                          ? 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? 'text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5'
-                          : 'text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30'
+                        virtualRoomStatus?.status === "approved"
+                          ? "text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5"
+                          : virtualRoomStatus?.status === "pending"
+                          ? "text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5"
+                          : virtualRoomStatus?.status === "rejected"
+                          ? "text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5"
+                          : "text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30"
                       }`}
                     >
                       <Video className="w-4 h-4" />
                       <span className="flex-1 text-left">
-                        {virtualRoomStatus?.status === 'approved'
-                          ? '✅ Virtual Room Approved'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? '⏳ Virtual Room Pending'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? '❌ Request Rejected'
-                          : 'Request Virtual Room'}
+                        {virtualRoomStatus?.status === "approved"
+                          ? "✅ Virtual Room Approved"
+                          : virtualRoomStatus?.status === "pending"
+                          ? "⏳ Virtual Room Pending"
+                          : virtualRoomStatus?.status === "rejected"
+                          ? "❌ Request Rejected"
+                          : "Request Virtual Room"}
                       </span>
                     </button>
                   )}
-=======
-                  {userRole === 'participant' && (
+
+                  {userRole === "participant" && (
                     <Link
                       to="/request-recruiter"
                       onClick={() => setShowDropdown(false)}
@@ -613,7 +560,7 @@ export function Navbar() {
                     </Link>
                   )}
 
-                  {(userRole === 'recruiter' || userRole === 'admin') && (
+                  {(userRole === "recruiter" || userRole === "admin") && (
                     <Link
                       to="/create-room"
                       onClick={() => setShowDropdown(false)}
@@ -623,8 +570,6 @@ export function Navbar() {
                       <span>Create Room</span>
                     </Link>
                   )}
-
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -683,79 +628,27 @@ export function Navbar() {
                           Recruiter
                         </span>
                       )}
+                      {userData?.role === "admin" && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
+                          Admin
+                        </span>
+                      )}
                     </div>
                     <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Navigation Links */}
+              {/* Navigation Links — same core journey as participants; recruiters/admins get Dashboard first */}
               <div className="space-y-2 mb-4">
-<<<<<<< HEAD
-                {userData?.role === "recruiter" ? (
-                  // Recruiter Mobile Navigation
-                  <>
-                    <MobileNavItem 
-                      to="/home" 
-                      icon={<Briefcase className="w-5 h-5" />} 
-                      label="Dashboard" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/map" 
-                      icon={<Map className="w-5 h-5" />} 
-                      label="World Map" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/settings" 
-                      icon={<Settings className="w-5 h-5" />} 
-                      label="Settings" 
-                      onClick={handleMobileMenuClose}
-                    />
-                  </>
-                ) : (
-                  // Participant Mobile Navigation
-                  <>
-                    <MobileNavItem 
-                      to="/map" 
-                      icon={<Map className="w-5 h-5" />} 
-                      label="World Map" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/training" 
-                      icon={<Sword className="w-5 h-5" />} 
-                      label="Training" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/arena" 
-                      icon={<Cpu className="w-5 h-5" />} 
-                      label="Arena" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/dashboard" 
-                      icon={<User className="w-5 h-5" />} 
-                      label="Commander" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/armory" 
-                      icon={<Trophy className="w-5 h-5" />} 
-                      label="Armory" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/settings" 
-                      icon={<Settings className="w-5 h-5" />} 
-                      label="Settings" 
-                      onClick={handleMobileMenuClose}
-                    />
-                  </>
+                {(userData?.role === "recruiter" || userData?.role === "admin") && (
+                  <MobileNavItem
+                    to="/home"
+                    icon={<Briefcase className="w-5 h-5" />}
+                    label="Dashboard"
+                    onClick={handleMobileMenuClose}
+                  />
                 )}
-=======
                 <MobileNavItem
                   to="/map"
                   icon={<Map className="w-5 h-5" />}
@@ -798,39 +691,9 @@ export function Navbar() {
                   label="Settings"
                   onClick={handleMobileMenuClose}
                 />
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
               </div>
 
-              {userData?.role !== "recruiter" && (
-                <>
-                  <div className="h-px bg-slate-800 my-4" />
-
-<<<<<<< HEAD
-                  {/* Action Buttons - Only for Participants */}
-                  <div className="space-y-2 mb-4">
-                    <Link
-                      to="/castle"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-amber-500 text-slate-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
-                    >
-                      <Castle className="w-5 h-5" />
-                      <span>Enter Castle</span>
-                    </Link>
-                    <button
-                      onClick={() => {
-                        handleResetLevels();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
-                    >
-                      <Shield className="w-5 h-5" />
-                      <span>Reset Levels</span>
-                    </button>
-                  </div>
-                </>
-              )}
-=======
-              {/* Action Buttons */}
+              <div className="h-px bg-slate-800 my-4" />
               <div className="space-y-2 mb-4">
                 <Link
                   to="/castle"
@@ -840,29 +703,6 @@ export function Navbar() {
                   <Castle className="w-5 h-5" />
                   <span>Enter Castle</span>
                 </Link>
-
-                {userRole === 'participant' && (
-                  <Link
-                    to="/request-recruiter"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    <span>Become Recruiter</span>
-                  </Link>
-                )}
-
-                {(userRole === 'recruiter' || userRole === 'admin') && (
-                  <Link
-                    to="/create-room"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
-                  >
-                    <Code2 className="w-5 h-5" />
-                    <span>Create Room</span>
-                  </Link>
-                )}
-
                 <button
                   onClick={() => {
                     handleResetLevels();
@@ -874,14 +714,37 @@ export function Navbar() {
                   <span>Reset Levels</span>
                 </button>
               </div>
->>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
+
+              <div className="space-y-2 mb-4">
+                {userRole === "participant" && (
+                  <Link
+                    to="/request-recruiter"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Become Recruiter</span>
+                  </Link>
+                )}
+
+                {(userRole === "recruiter" || userRole === "admin") && (
+                  <Link
+                    to="/create-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
+                  >
+                    <Code2 className="w-5 h-5" />
+                    <span>Create Room</span>
+                  </Link>
+                )}
+              </div>
 
               <div className="h-px bg-slate-800 my-4" />
 
               {/* Profile Actions */}
               <div className="space-y-2">
                 {/* Recruiter virtual room request button - Mobile */}
-                {userData?.role === "recruiter" && (
+                {(userData?.role === "recruiter" || userData?.role === "admin") && (
                   <button
                     onClick={() => {
                       handleVirtualRoomRequest();

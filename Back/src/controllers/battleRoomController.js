@@ -21,7 +21,8 @@ exports.createBattleRoom = async (req, res) => {
   try {
     const recruiterId = getRecruiterId(req);
     if (!recruiterId) return res.status(401).json({ message: "Unauthorized" });
-    if (req.user.role !== "recruiter") return res.status(403).json({ message: "Forbidden" });
+    if (!["recruiter", "admin"].includes(req.user.role))
+      return res.status(403).json({ message: "Forbidden" });
 
     const { title, description, participantIds, challenge, timeLimitMinutes } = req.body;
     if (!title || !timeLimitMinutes) {
