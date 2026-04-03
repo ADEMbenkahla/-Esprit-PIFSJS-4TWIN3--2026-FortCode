@@ -46,6 +46,23 @@ export default function RoleRequests() {
     }
   };
 
+  const handleDecision = async (requestId, action) => {
+    setProcessing(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // action is 'approve' or 'reject'
+      const response = await api.put(`/role-requests/${requestId}/${action}`, { adminComment: `Manual ${action}` });
+      setMessage({ type: 'success', text: response.data.message });
+      fetchRequests();
+    } catch (error) {
+      const errMsg = error.response?.data?.message || `Error`;
+      setMessage({ type: 'error', text: errMsg });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     const styles = {
       pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -71,7 +88,7 @@ export default function RoleRequests() {
           subtitle="Manage recruiter role requests from participants"
         />
 
-        <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 w-full max-w-full">
 
           {/* Message */}
           {message.text && (
@@ -225,7 +242,7 @@ export default function RoleRequests() {
 
                     {/* AI Review Action for PENDING */}
                     {request.status === 'pending' && (
-                      <div className="mt-4 pt-4 border-t border-purple-900/30">
+                      <div className="mt-4 pt-4 border-t border-purple-900/30 space-y-3">
                         <button
                           onClick={() => handleAIReview(request._id)}
                           disabled={processing}
@@ -240,9 +257,23 @@ export default function RoleRequests() {
                             </>
                           )}
                         </button>
-                        <p className="text-center text-xs text-gray-500 mt-2">
-                          AI will analyze the document and justification to auto-decide.
-                        </p>
+                        
+                        <div className="flex gap-4">
+                          <button
+                            onClick={() => handleDecision(request._id, 'approve')}
+                            disabled={processing}
+                            className="flex-1 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-400 font-bold rounded-xl transition-all border border-green-500/30"
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            onClick={() => handleDecision(request._id, 'reject')}
+                            disabled={processing}
+                            className="flex-1 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold rounded-xl transition-all border border-red-500/30"
+                          >
+                            Rejeter
+                          </button>
+                        </div>
                       </div>
                     )}
 

@@ -78,21 +78,11 @@ exports.aiReviewRequest = async (req, res) => {
     roleRequest.textScore = aiAnalysis.text_score;
     roleRequest.reviewedAt = new Date();
 
-    if (aiAnalysis.decision === "ACCEPT") {
-      roleRequest.status = "approved";
-      roleRequest.adminComment = "[AI AUTO-APPROVED] " + aiAnalysis.explanation;
-      await User.findByIdAndUpdate(roleRequest.userId, { role: "recruiter" });
-    } else {
-      roleRequest.status = "rejected";
-      roleRequest.adminComment = "[AI AUTO-REJECTED] " + aiAnalysis.explanation;
-    }
-
+    // No auto-approval/rejection anymore. Status stays pending.
     await roleRequest.save();
 
     res.json({
-      message: roleRequest.status === "approved" 
-        ? "AI has approved this request." 
-        : "AI has rejected this request.",
+      message: "AI analysis completed. Awaiting your manual decision.",
       request: roleRequest
     });
 
@@ -146,47 +136,10 @@ exports.createRoleRequest = async (req, res) => {
       proofDocument
     });
 
-    // 🤖 Lancer l'analyse AI de manière asynchrone (ou attendre si on veut un retour immédiat)
-    // Pour ce projet, on attend pour pouvoir donner un feedback immédiat ou auto-approuver
-    const aiAnalysis = await analyzeRequestWithAI(justification, proofDocument);
-
-    if (aiAnalysis) {
-      roleRequest.aiDecision = aiAnalysis.decision;
-      roleRequest.aiConfidence = aiAnalysis.confidence;
-      roleRequest.aiExplanation = aiAnalysis.explanation;
-      roleRequest.documentScore = aiAnalysis.document_score;
-      roleRequest.textScore = aiAnalysis.text_score;
-
-      // 🤖 Full auto-decision — no human review needed
-      if (aiAnalysis.decision === "ACCEPT") {
-        roleRequest.status = "approved";
-        roleRequest.reviewedAt = new Date();
-        roleRequest.adminComment = "[AI AUTO-APPROVED] " + aiAnalysis.explanation;
-
-        // Upgrade user role immediately
-        await User.findByIdAndUpdate(userId, { role: "recruiter" });
-      } else {
-        // REJECT — any non-ACCEPT decision is a rejection
-        roleRequest.status = "rejected";
-        roleRequest.reviewedAt = new Date();
-        roleRequest.adminComment = "[AI AUTO-REJECTED] " + aiAnalysis.explanation;
-      }
-
-      await roleRequest.save();
-    }
-    // If AI call failed → request stays "pending" as fallback for admin
-
     await roleRequest.populate("userId", "username email avatar");
 
-    const msg =
-      roleRequest.status === "approved"
-        ? "🎉 Congratulations! Your recruiter request has been automatically approved."
-        : roleRequest.status === "rejected"
-        ? "❌ Your recruiter request has been automatically rejected. " + (roleRequest.adminComment || "")
-        : "⏳ Role request submitted. Under review (AI unavailable).";
-
     res.status(201).json({
-      message: msg,
+      message: "⏳ Your role request has been submitted and is under human review.",
       request: roleRequest
     });
 
