@@ -173,10 +173,10 @@ export default function DuelLobby() {
                         className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6"
                     >
                         <div className="max-w-sm w-full text-center">
-                            <div className="relative mb-8">
-                                <div className="w-24 h-24 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin mx-auto" />
+                            <div className="relative mb-8 w-24 h-24 mx-auto">
+                                <div className="absolute inset-0 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="w-8 h-8 text-blue-400 animate-pulse" />
+                                    <Swords className="w-10 h-10 text-blue-400 animate-spin" />
                                 </div>
                             </div>
 
