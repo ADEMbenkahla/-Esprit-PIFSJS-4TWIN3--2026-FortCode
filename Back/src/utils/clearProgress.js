@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const UserProgress = require("../models/UserProgress");
+const UserStageProgress = require("../models/UserStageProgress");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
@@ -10,7 +11,8 @@ const clearProgress = async () => {
 
         await mongoose.connect(mongoUri);
         await UserProgress.deleteMany({});
-        console.log("UserProgress collection cleared to resolve schema conflicts.");
+        await UserStageProgress.deleteMany({});
+        console.log("UserProgress and UserStageProgress collections cleared.");
         process.exit(0);
     } catch (error) {
         console.error("Clearing failed:", error);

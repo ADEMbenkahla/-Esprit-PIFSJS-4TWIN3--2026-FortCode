@@ -33,7 +33,10 @@ export default function Challenges() {
     difficulty: 'medium',
     category: '',
     type: 'Stage',
-    constraints: ''
+    constraints: '',
+    language: 'javascript',
+    starterCode: '',
+    testCasesJson: '[]',
   });
 
   const apiUrl = 'http://localhost:5000/api/challenges';
@@ -46,9 +49,21 @@ export default function Challenges() {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!res.ok) throw new Error('Failed to fetch challenges');
-      const data = await res.json();
-      setChallenges(data);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const hint =
+          data.detail ||
+          (res.status === 403
+            ? 'Connectez-vous avec un compte admin, ou déconnectez-vous puis reconnectez-vous si votre rôle a été modifié en base.'
+            : '');
+        Swal.fire(
+          'Erreur',
+          [data.message || 'Impossible de charger les challenges.', hint].filter(Boolean).join('\n\n'),
+          'error'
+        );
+        return;
+      }
+      setChallenges(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
       Swal.fire('Erreur', 'Impossible de charger les challenges.', 'error');
@@ -74,7 +89,10 @@ export default function Challenges() {
       difficulty: 'medium',
       category: '',
       type: 'Stage',
-      constraints: ''
+      constraints: '',
+      language: 'javascript',
+      starterCode: '',
+      testCasesJson: '[]',
     });
     setIsModalOpen(true);
   };
@@ -87,7 +105,10 @@ export default function Challenges() {
       difficulty: challenge.difficulty,
       category: challenge.category,
       type: challenge.type,
-      constraints: challenge.constraints || ''
+      constraints: challenge.constraints || '',
+      language: challenge.language || 'javascript',
+      starterCode: challenge.starterCode || '',
+      testCasesJson: JSON.stringify(challenge.testCases?.length ? challenge.testCases : [], null, 2),
     });
     setIsModalOpen(true);
   };
@@ -95,8 +116,33 @@ export default function Challenges() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) {
+      Swal.fire('Erreur', 'Vous devez être connecté.', 'error');
+      return;
+    }
     const method = editingChallenge ? 'PUT' : 'POST';
     const url = editingChallenge ? `${apiUrl}/${editingChallenge._id}` : apiUrl;
+
+    let testCases: { name?: string; assertion?: string }[] = [];
+    try {
+      const parsed = JSON.parse(formData.testCasesJson || '[]');
+      testCases = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      Swal.fire('Erreur', 'JSON des tests invalide. Corrigez le champ « Tests (JSON) ».', 'error');
+      return;
+    }
+
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      difficulty: formData.difficulty,
+      category: (formData.category && formData.category.trim()) || 'general',
+      type: formData.type,
+      constraints: formData.constraints,
+      language: formData.language || 'javascript',
+      starterCode: formData.starterCode ?? '',
+      testCases,
+    };
 
     try {
       const res = await fetch(url, {
@@ -105,11 +151,24 @@ export default function Challenges() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Failed to save challenge');
-      
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const msg =
+          data.message ||
+          data.error ||
+          (res.status === 403
+            ? 'Accès refusé : seuls les administrateurs peuvent gérer les challenges.'
+            : res.status === 401
+              ? 'Session expirée. Reconnectez-vous.'
+              : `Erreur serveur (${res.status})`);
+        Swal.fire('Erreur', String(msg), 'error');
+        return;
+      }
+
       Swal.fire({
         title: 'Succès!',
         text: `Challenge ${editingChallenge ? 'modifié' : 'créé'} avec succès.`,
@@ -118,12 +177,12 @@ export default function Challenges() {
         color: '#fff',
         confirmButtonColor: '#7c3aed'
       });
-      
+
       setIsModalOpen(false);
       fetchChallenges();
     } catch (error) {
       console.error(error);
-      Swal.fire('Erreur', 'Impossible d\'enregistrer le challenge.', 'error');
+      Swal.fire('Erreur', 'Impossible d\'enregistrer le challenge (réseau ou serveur).', 'error');
     }
   };
 
@@ -228,8 +287,8 @@ export default function Challenges() {
                         </span>
                       </td>
                       <td className="p-4">
-                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${challenge.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' : challenge.difficulty === 'hard' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${challenge.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' : challenge.difficulty === 'hard' || challenge.difficulty === 'expert' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                          {(challenge.difficulty || 'medium').charAt(0).toUpperCase() + (challenge.difficulty || 'medium').slice(1)}
                         </span>
                       </td>
                       <td className="p-4 text-right space-x-2">
@@ -304,7 +363,54 @@ export default function Challenges() {
                 <option value="easy">Easy (Facile)</option>
                 <option value="medium">Medium (Moyen)</option>
                 <option value="hard">Hard (Difficile)</option>
+                <option value="expert">Expert</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">Langage</label>
+              <select
+                name="language"
+                value={formData.language}
+                onChange={handleInputChange}
+                className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary transition-colors"
+              >
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="typescript">TypeScript</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="csharp">C#</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-gray-300">Code de départ</label>
+              <textarea
+                name="starterCode"
+                value={formData.starterCode}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary transition-colors resize-none font-mono text-sm"
+                placeholder="function maFonction(x) {\n  \n}"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-gray-300">Tests (JSON) — optionnel</label>
+              <textarea
+                name="testCasesJson"
+                value={formData.testCasesJson}
+                onChange={handleInputChange}
+                rows={6}
+                className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary transition-colors resize-none font-mono text-xs"
+                placeholder='[{"name":"sum","assertion":"add(2,3)===5"}]'
+              />
+              <p className="text-xs text-gray-500">
+                Chaque test : <code className="text-gray-400">name</code> et <code className="text-gray-400">assertion</code> (expression JS après le code du participant).
+              </p>
             </div>
 
             <div className="space-y-2">

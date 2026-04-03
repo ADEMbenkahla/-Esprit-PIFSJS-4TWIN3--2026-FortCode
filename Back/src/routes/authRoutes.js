@@ -9,6 +9,7 @@ const {
   getProfile,
   refreshToken,
   updateProfile,
+  deleteMyAccount,
   setupTwoFactor,
   verifyTwoFactor,
   disableTwoFactor,
@@ -83,8 +84,8 @@ router.post("/refresh-token", authMiddleware, refreshToken);
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
 
-// Delete logged-in user account
-router.delete("/profile", authMiddleware, deleteAccount);
+// Delete my account (participant only)
+router.delete("/profile", authMiddleware, deleteMyAccount);
 
 // 2FA setup/verify/disable
 router.post("/2fa/setup", authMiddleware, setupTwoFactor);

@@ -162,7 +162,7 @@ exports.verifyAuthentication = async (req, res) => {
 
             // Issue JWT
             const token = jwt.sign(
-                { id: user._id, role: user.role },
+                { id: user._id, role: user.role || "participant" },
                 process.env.JWT_SECRET,
                 { expiresIn: "1h" }
             );

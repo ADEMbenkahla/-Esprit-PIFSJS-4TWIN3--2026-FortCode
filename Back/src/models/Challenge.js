@@ -1,32 +1,59 @@
 const mongoose = require("mongoose");
 
-const challengeSchema = new mongoose.Schema({
-    title: { 
-        type: String, 
-        required: true,
-        trim: true
+const testCaseSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "Test" },
+    assertion: {
+      type: String,
+      default: "",
     },
-    description: { 
-        type: String, 
-        required: true 
+  },
+  { _id: false }
+);
+
+const challengeSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
     },
-    difficulty: { 
-        type: String, 
-        enum: ["easy", "medium", "hard"],
-        default: "medium"
+    description: {
+      type: String,
+      required: true,
     },
-    category: { 
-        type: String,
-        required: true
+    difficulty: {
+      type: String,
+      enum: ["easy", "medium", "hard", "expert"],
+      default: "medium",
     },
-    type: { 
-        type: String, 
-        enum: ["Stage", "Battle"],
-        required: true
+    language: {
+      type: String,
+      enum: ["javascript", "python", "java", "cpp", "csharp", "go", "rust", "typescript"],
+      default: "javascript",
     },
-    constraints: { 
-        type: String 
-    }
-}, { timestamps: true });
+    starterCode: {
+      type: String,
+      default: "",
+    },
+    testCases: {
+      type: [testCaseSchema],
+      default: [],
+    },
+    category: {
+      type: String,
+      default: "general",
+    },
+    type: {
+      type: String,
+      enum: ["Stage", "Battle"],
+      default: "Stage",
+    },
+    constraints: {
+      type: String,
+    },
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Challenge", challengeSchema);

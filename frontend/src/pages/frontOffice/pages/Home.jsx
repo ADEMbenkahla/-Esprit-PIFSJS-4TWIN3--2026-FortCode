@@ -1,8 +1,41 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ScrollButton } from '../components/ui/ScrollButton';
+import { RecruiterDashboard } from './RecruiterDashboard';
 
 export function Home() {
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://localhost:5000/api/auth/profile", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserRole(data.user?.role);
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+      }
+    };
+
+    fetchUserRole();
+  }, []);
+
+  // Show recruiter dashboard for recruiters
+  if (userRole === "recruiter") {
+    return <RecruiterDashboard />;
+  }
+
+  // Show regular home for participants
   return (
     <div className="min-h-[calc(100vh-5rem)] px-6 py-12 flex items-center justify-center">
       <div className="max-w-3xl w-full bg-slate-900/60 border border-slate-800 rounded-3xl p-10 shadow-[0_0_40px_rgba(15,23,42,0.6)]">

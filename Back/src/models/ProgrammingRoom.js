@@ -95,6 +95,5 @@ function generateRoomCode() {
 // Indexes for performance
 programmingRoomSchema.index({ creatorId: 1, status: 1 });
 programmingRoomSchema.index({ status: 1, scheduledAt: 1 });
-programmingRoomSchema.index({ roomCode: 1 });
 
 module.exports = mongoose.model("ProgrammingRoom", programmingRoomSchema);

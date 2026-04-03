@@ -11,26 +11,33 @@ module.exports = function(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // ✅ S'assurer que req.user a l'ID correctement
+
+    // Anciens tokens / users sans role dans le payload → traiter comme participant (sinon roleMiddleware renvoie 403 partout)
+    const raw = decoded.role;
+    const role =
+      raw != null && String(raw).trim() !== ""
+        ? String(raw).toLowerCase().trim()
+        : "participant";
+
     req.user = {
-      id: String(decoded.id),  // ✅ Convertir en string pour éviter les problèmes MongoDB
-      role: decoded.role,
-      originalId: decoded.id  // Debug
+      id: String(decoded.id),
+      role,
+      originalId: decoded.id,
     };
     
-    console.log("🔐 authMiddleware decoded token:", { 
-      tokenId: decoded.id, 
+    console.log("🔐 authMiddleware decoded token:", {
+      tokenId: decoded.id,
       tokenType: typeof decoded.id,
       convertedId: String(decoded.id),
-      role: decoded.role,
-      path: req.path 
+      roleInToken: decoded.role,
+      roleUsed: role,
+      path: req.path,
     });
     
     next();
   } catch (err) {
     console.error("❌ Token verification failed:", err.message);
-    return res.status(403).json({ message: "Invalid token" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };
 
