@@ -47,8 +47,13 @@ exports.register = async (req, res) => {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    // Generate DiceBear Avatar if not provided
     const userAvatar = avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+
+    const isGoogleAuth = !!googleId;
+    let verificationCode;
+    if (!isGoogleAuth) {
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
 
     const user = await User.create({
       username,
@@ -56,11 +61,46 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       googleId: googleId || undefined,
       avatar: userAvatar,
-      nickname: username // Default nickname is username
+      isVerified: isGoogleAuth, // Auto verify Google Auth
+      verificationCode: isGoogleAuth ? undefined : hashOtp(verificationCode),
+      verificationCodeExpire: isGoogleAuth ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     });
 
+    if (!isGoogleAuth) {
+      // Send verification email
+      const templatePath = path.join(__dirname, "../templates/emailVerification.html");
+      const logoPath = path.join(__dirname, "../assets/logo.png");
+      let htmlContent = fs.readFileSync(templatePath, "utf8");
+
+      htmlContent = htmlContent
+        .replace("{{username}}", user.username)
+        .replace("{{verificationCode}}", verificationCode);
+
+      try {
+        await sendEmail({
+          email: user.email,
+          subject: "Verify Your FortCode Account",
+          message: "Verify your email",
+          html: htmlContent,
+          attachments: [
+            {
+              filename: "logo.png",
+              path: logoPath,
+              cid: "logo",
+            },
+          ],
+        });
+      } catch (emailError) {
+        console.error("Email send error during registration:", emailError);
+      }
+    }
+
     res.status(201).json({
-      message: "User created successfully"
+      message: isGoogleAuth
+        ? "User created successfully"
+        : "User created successfully. Please check your email for the verification code.",
+      requiresVerification: !isGoogleAuth,
+      email: user.email
     });
 
   } catch (error) {
@@ -74,6 +114,122 @@ exports.register = async (req, res) => {
       });
     }
 
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 🔐 VERIFY EMAIL
+// =============================
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and code are required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account is already verified" });
+    }
+
+    if (!user.verificationCode || !user.verificationCodeExpire) {
+      return res.status(400).json({ message: "Verification code not found or already verified" });
+    }
+
+    if (user.verificationCodeExpire.getTime() < Date.now()) {
+      return res.status(400).json({ message: "Verification code expired. Please request a new one." });
+    }
+
+    const hashedInputCode = hashOtp(code);
+    if (hashedInputCode !== user.verificationCode) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // Mark as verified
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpire = undefined;
+
+    await user.save();
+
+    // Optionally generate token to auto-login
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Email verified successfully",
+      token,
+      role: user.role,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// =============================
+// 🔐 RESEND VERIFICATION EMAIL
+// =============================
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account is already verified" });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.verificationCode = hashOtp(verificationCode);
+    user.verificationCodeExpire = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await user.save();
+
+    // Send verification email
+    const templatePath = path.join(__dirname, "../templates/emailVerification.html");
+    const logoPath = path.join(__dirname, "../assets/logo.png");
+    let htmlContent = fs.readFileSync(templatePath, "utf8");
+
+    htmlContent = htmlContent
+      .replace("{{username}}", user.username)
+      .replace("{{verificationCode}}", verificationCode);
+
+    await sendEmail({
+      email: user.email,
+      subject: "Verify Your FortCode Account",
+      message: "Verify your email",
+      html: htmlContent,
+      attachments: [
+        {
+          filename: "logo.png",
+          path: logoPath,
+          cid: "logo",
+        },
+      ],
+    });
+
+    res.json({ message: "Verification code resent to your email" });
+  } catch (error) {
+    console.error("Resend error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -109,6 +265,11 @@ exports.login = async (req, res) => {
     // 🔥 Check if account is active
     if (!user.isActive) {
       return res.status(403).json({ message: "Account is deactivated" });
+    }
+
+    // 🔥 Check if account is verified
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Please verify your email to login", notVerified: true, email: user.email });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -575,8 +736,15 @@ exports.getProfile = async (req, res) => {
 // =============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { username, email, password, nickname, settings } = req.body;
-    const user = await User.findById(req.user.id);
+    const { username, email, password, avatar, settings } = req.body;
+    const userId = String(req.user.id);  // ✅ Ensure userId is a string
+
+    // ✅ Validate userId is not empty or invalid
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -602,15 +770,17 @@ exports.updateProfile = async (req, res) => {
       user.email = email;
     }
 
+    // Update avatar if provided
+    if (avatar) {
+      user.avatar = avatar;
+    }
+
     // Update password if provided (optional)
     if (password) {
       user.password = await bcrypt.hash(password, 10);
     }
 
-    // Update nickname if provided
-    if (nickname !== undefined) {
-      user.nickname = nickname;
-    }
+
 
     // Update settings if provided
     if (settings) {
@@ -706,6 +876,51 @@ exports.registerAdmin = async (req, res) => {
 
     res.status(201).json({
       message: "Admin user created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👨‍💼 REGISTER RECRUITER (Admin Only)
+// =============================
+exports.registerRecruiter = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Check if email exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    // Check if username exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: "recruiter"
+    });
+
+    res.status(201).json({
+      message: "Recruiter user created successfully",
       user: {
         id: user._id,
         username: user.username,
@@ -992,4 +1207,69 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+
+// =============================
+// 🔄 REFRESH TOKEN
+// =============================
+exports.refreshToken = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Générer un nouveau token avec les informations à jour
+    const newToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const userObj = user.toObject();
+    if (userObj.settings && userObj.settings.twoFactor) {
+      delete userObj.settings.twoFactor.totpSecret;
+      delete userObj.settings.twoFactor.tempTotpSecret;
+      delete userObj.settings.twoFactor.emailOtpHash;
+      delete userObj.settings.twoFactor.emailOtpExpires;
+    }
+
+    res.json({
+      message: "Token refreshed successfully",
+      token: newToken,
+      role: user.role,
+      user: userObj
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// =============================
+// 👤 DELETE ACCOUNT
+// =============================
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { confirmation } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const expectedConfirmation = `${user.username}/delete-account`;
+    if (confirmation !== expectedConfirmation) {
+      return res.status(400).json({ message: "Invalid confirmation string" });
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 

@@ -11,9 +11,26 @@ module.exports = function(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    
+    // ✅ S'assurer que req.user a l'ID correctement
+    req.user = {
+      id: String(decoded.id),  // ✅ Convertir en string pour éviter les problèmes MongoDB
+      role: decoded.role,
+      originalId: decoded.id  // Debug
+    };
+    
+    console.log("🔐 authMiddleware decoded token:", { 
+      tokenId: decoded.id, 
+      tokenType: typeof decoded.id,
+      convertedId: String(decoded.id),
+      role: decoded.role,
+      path: req.path 
+    });
+    
     next();
   } catch (err) {
+    console.error("❌ Token verification failed:", err.message);
     return res.status(403).json({ message: "Invalid token" });
   }
 };
+

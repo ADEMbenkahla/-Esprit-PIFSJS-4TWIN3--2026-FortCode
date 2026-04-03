@@ -4,11 +4,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import logo from '../../../assets/logo.png';
 import { useSidebar } from '../../../context/SidebarContext';
+import { useSocket } from '../../../context/SocketContext';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSidebarOpen, closeSidebar } = useSidebar();
+  const { disconnect } = useSocket();
   const [currentUser, setCurrentUser] = useState({
     name: "User",
     role: "Guest",
@@ -18,7 +20,7 @@ const Sidebar: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
 
         // 1. Decode token for immediate display (optimistic UI)
@@ -73,7 +75,10 @@ const Sidebar: React.FC = () => {
       color: '#fff'
     }).then((result) => {
       if (result.isConfirmed) {
-        localStorage.removeItem("token");
+        localStorage.clear();
+        sessionStorage.clear();
+        disconnect();
+        window.dispatchEvent(new Event('tokenChanged'));
         navigate("/");
         Swal.fire({
           title: 'Logged Out!',
@@ -92,9 +97,14 @@ const Sidebar: React.FC = () => {
     { label: 'Dashboard', icon: 'dashboard', active: location.pathname === '/backoffice/dashboard', path: '/backoffice/dashboard' },
     { label: 'My Activity', icon: 'visibility', active: location.pathname === '/my-activity', path: '/my-activity' },
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
+    { label: 'Role Requests', icon: 'badge', active: location.pathname === '/backoffice/role-requests', path: '/backoffice/role-requests', adminOnly: true },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
+<<<<<<< HEAD
     { label: 'Virtual Rooms', icon: 'video_camera_front', active: location.pathname === '/backoffice/virtual-rooms', path: '/backoffice/virtual-rooms' },
     { label: 'Challenges', icon: 'emoji_events', active: false, path: '#' },
+=======
+    { label: 'Challenges', icon: 'emoji_events', active: location.pathname === '/backoffice/challenges', path: '/backoffice/challenges' },
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
     { label: 'Analytics', icon: 'analytics', active: false, path: '#' },
     { label: 'Moderation', icon: 'shield', active: false, path: '#' },
   ];
@@ -123,36 +133,44 @@ const Sidebar: React.FC = () => {
 
         {/* Navigation */}
         <nav className="flex-1 min-w-[256px] overflow-y-auto py-6 space-y-1 px-3">
-          {navItems.map((item) => (
+          {navItems
+            .filter(item => !item.adminOnly || currentUser.role === 'admin')
+            .map((item) => (
+              <button
+                key={item.label}
+                onClick={() => {
+                  if (item.path !== '#') {
+                    navigate(item.path);
+                    closeSidebar();
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
+                  ? 'bg-primary/10 text-primary border-l-4 border-primary'
+                  : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
+                  }`}
+              >
+                <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
+                  {item.icon}
+                </span>
+                <span className="font-medium">{item.label}</span>
+              </button>
+            ))}
+
+          <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
+            <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
             <button
-              key={item.label}
               onClick={() => {
-                if (item.path !== '#') {
-                  navigate(item.path);
-                  closeSidebar();
-                }
+                navigate('/backoffice/settings');
+                closeSidebar();
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${item.active
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group ${location.pathname === '/backoffice/settings'
                 ? 'bg-primary/10 text-primary border-l-4 border-primary'
                 : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
                 }`}
             >
-              <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
-                {item.icon}
-              </span>
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
-
-          <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
-            <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-purple-900/20 hover:text-white transition-all group"
-            >
-              <span className="material-icons-outlined text-xl group-hover:text-primary transition-colors">settings</span>
+              <span className={`material-icons-outlined text-xl ${location.pathname === '/backoffice/settings' ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>settings</span>
               <span className="font-medium">Settings</span>
-            </a>
+            </button>
 
             <button
               onClick={handleLogout}
@@ -167,15 +185,6 @@ const Sidebar: React.FC = () => {
         {/* Current User */}
         <div className="p-4 border-t border-purple-900/20 min-w-[256px]">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-purple p-[2px]">
-              <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
-                <img
-                  src={currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.name}&background=random`}
-                  alt={currentUser.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-white truncate">{currentUser.name}</span>
               <span className="text-[10px] text-gray-500 capitalize">{currentUser.role}</span>

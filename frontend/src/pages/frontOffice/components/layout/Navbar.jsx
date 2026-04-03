@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, Users } from "lucide-react";
+=======
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, UserPlus, Code2 } from "lucide-react";
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import { useSoundEffects } from "../../../../hooks/useSoundEffects";
@@ -11,6 +15,7 @@ import { ProfileModal } from "./ProfileModal";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,12 +26,33 @@ export function Navbar() {
   const { playClick } = useSoundEffects();
   const { avatar, nickname } = useSettings();
 
+  // Fonction pour extraire le rôle du JWT token
+  const extractRoleFromToken = () => {
+    try {
+      // Try sessionStorage first (current tab), then localStorage (fallback)
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("🎫 Rôle du token JWT:", payload.role);
+        return payload.role;
+      }
+    } catch (error) {
+      console.error("❌ Erreur extraction rôle du token:", error);
+    }
+    return null;
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        // Try sessionStorage first (current tab), then localStorage (fallback)
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) {
+          console.log("ℹ️ Pas de token trouvé");
+          return;
+        }
 
+        console.log("🔍 Fetching profile avec token...");
         const response = await fetch("http://localhost:5000/api/auth/profile", {
           headers: {
             "Authorization": `Bearer ${token}`
@@ -35,7 +61,10 @@ export function Navbar() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("✅ Profile reçu:", data.user);
+          console.log("👤 Rôle utilisateur:", data.user?.role);
           setUserData(data.user);
+<<<<<<< HEAD
 
           // If recruiter, also fetch latest virtual room request status
           if (data.user.role === "recruiter") {
@@ -47,16 +76,54 @@ export function Navbar() {
             } catch (err) {
               // If 404, no existing request - ignore
             }
+=======
+          setUserRole(data.user?.role);
+        } else {
+          console.error("❌ Erreur réponse profile:", response.status);
+          // Fallback : récupérer le rôle du token directement
+          const roleFromToken = extractRoleFromToken();
+          if (roleFromToken) {
+            setUserRole(roleFromToken);
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
           }
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
+        console.error("❌ Erreur fetch profile:", error);
+        // Fallback : récupérer le rôle du token directement
+        const roleFromToken = extractRoleFromToken();
+        if (roleFromToken) {
+          setUserRole(roleFromToken);
+        }
       }
     };
 
     fetchProfile();
+
+    // Listener pour détecter les changements de token (login/logout)
+    const handleTokenChange = () => {
+      console.log("🔄 Token change détecté!");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        console.log("🔄 Token trouvé, fetching profile...");
+        // Token a changé → récupérer le profil mis à jour
+        fetchProfile();
+      } else {
+        console.log("🔄 Token supprimé, réinitialisant userData");
+        // Token supprimé → réinitialiser
+        setUserData(null);
+        setUserRole(null);
+      }
+    };
+
+    // Écouter l'événement personnalisé 'tokenChanged'
+    window.addEventListener('tokenChanged', handleTokenChange);
+
+    return () => {
+      window.removeEventListener('tokenChanged', handleTokenChange);
+    };
   }, []);
 
+<<<<<<< HEAD
   // Periodically refresh virtual room status for recruiters
   useEffect(() => {
     if (userData?.role === "recruiter") {
@@ -95,10 +162,57 @@ export function Navbar() {
       return () => clearInterval(interval);
     }
   }, [userData?.role]);
+=======
+  // Debug log pour userData et userRole
+  useEffect(() => {
+    console.log("📊 userData mis à jour:", userData);
+    console.log("📊 userRole mis à jour:", userRole);
+  }, [userData, userRole]);
+
+  // Sync role automatically after admin approval (works from any front-office page)
+  useEffect(() => {
+    if (!userRole || userRole === "recruiter" || userRole === "admin") {
+      return;
+    }
+
+    const checkRoleUpgrade = async () => {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data?.token || !data?.role) return;
+
+        const currentRole = extractRoleFromToken();
+        if (currentRole !== data.role) {
+          sessionStorage.setItem("token", data.token);
+          localStorage.setItem("token", data.token);
+          setUserRole(data.role);
+          if (data.user) setUserData(data.user);
+          window.dispatchEvent(new Event("tokenChanged"));
+        }
+      } catch (error) {
+        console.error("❌ Error while syncing upgraded role:", error);
+      }
+    };
+
+    const intervalId = setInterval(checkRoleUpgrade, 5000);
+    return () => clearInterval(intervalId);
+  }, [userRole]);
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
   const handleLogout = () => {
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-    
+
     Swal.fire({
       title: 'Are you sure?',
       text: "You will be redirected to the login page.",
@@ -113,17 +227,12 @@ export function Navbar() {
     }).then((result) => {
       if (result.isConfirmed) {
         // Clear all user data including settings
-        localStorage.removeItem("token");
-        localStorage.removeItem("theme");
-        localStorage.removeItem("accentColor");
-        localStorage.removeItem("fontSize");
-        localStorage.removeItem("highContrast");
-        localStorage.removeItem("reduceMotion");
-        localStorage.removeItem("soundEnabled");
-        localStorage.removeItem("avatar");
-        localStorage.removeItem("nickname");
+        sessionStorage.clear();
+        localStorage.clear();
 
-        
+        // Notifier les autres composants du changement de token
+        window.dispatchEvent(new Event('tokenChanged'));
+
         disconnect();
         navigate("/");
 
@@ -140,13 +249,53 @@ export function Navbar() {
     });
   };
 
-  const handleResetLevels = () => {
+  const handleResetLevels = async () => {
     playClick();
-    localStorage.removeItem("levelProgress");
-    for (let i = 1; i <= 4; i += 1) {
-      localStorage.removeItem(`level${i}_challenges`);
+
+    const result = await Swal.fire({
+      title: 'Reset all progress?',
+      text: "This will clear all your completed challenges and stars permanently.",
+      icon: 'warning',
+      showCancelButton: true,
+      background: '#1a1a2e',
+      color: '#fff',
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#2563eb',
+      confirmButtonText: 'Yes, Reset Everything',
+      cancelButtonText: 'Keep Progress'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/stages/reset-progress", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          localStorage.removeItem("levelProgress");
+          for (let i = 1; i <= 4; i += 1) {
+            localStorage.removeItem(`level${i}_challenges`);
+          }
+          window.dispatchEvent(new Event("fortcode:progress-reset"));
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Progress Reset',
+            text: 'Your journey starts fresh, Commander!',
+            background: '#1a1a2e',
+            color: '#fff',
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            navigate("/map");
+          });
+        }
+      } catch (err) {
+        console.error("Reset failed:", err);
+      }
     }
-    window.dispatchEvent(new Event("fortcode:progress-reset"));
   };
 
   const handleVirtualRoomRequest = async () => {
@@ -300,6 +449,7 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
+<<<<<<< HEAD
           {userData?.role === "recruiter" ? (
             // Recruiter Navigation
             <>
@@ -317,10 +467,19 @@ export function Navbar() {
               <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
             </>
           )}
+=======
+          <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
+          <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
+          <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
+          <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
+          <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
+          <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
         </div>
 
         {/* Desktop Right Section */}
         <div className="hidden lg:flex items-center gap-4">
+<<<<<<< HEAD
           {userData?.role !== "recruiter" && (
             <>
               <button
@@ -339,11 +498,24 @@ export function Navbar() {
             </>
           )}
           
+=======
+          <button
+            onClick={handleResetLevels}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-600 text-rose-50 text-xs font-bold uppercase tracking-wide shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
+          >
+            Reset Levels
+          </button>
+          <Link
+            to="/castle"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-slate-950 text-sm font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
+          >
+            <Castle className="w-4 h-4" />
+            Enter Castle
+          </Link>
+
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
           {/* User Profile Badge */}
           <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
-            <div className="w-8 h-8 rounded-full border-2 overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-            </div>
             <span className="text-sm font-semibold text-slate-100">
               {nickname || 'Commander'}
             </span>
@@ -399,6 +571,7 @@ export function Navbar() {
                     <span>Settings</span>
                   </Link>
 
+<<<<<<< HEAD
                   {/* Recruiter virtual room request button */}
                   {userData?.role === "recruiter" && (
                     <button
@@ -428,6 +601,30 @@ export function Navbar() {
                       </span>
                     </button>
                   )}
+=======
+                  {userRole === 'participant' && (
+                    <Link
+                      to="/request-recruiter"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Become Recruiter</span>
+                    </Link>
+                  )}
+
+                  {(userRole === 'recruiter' || userRole === 'admin') && (
+                    <Link
+                      to="/create-room"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg transition-colors border border-transparent hover:border-green-500/20"
+                    >
+                      <Code2 className="w-4 h-4" />
+                      <span>Create Room</span>
+                    </Link>
+                  )}
+
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -469,7 +666,7 @@ export function Navbar() {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
@@ -478,9 +675,6 @@ export function Navbar() {
               {/* User Info Section */}
               <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full border overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
                   <div className="flex flex-col overflow-hidden">
                     <div className="flex items-center gap-2">
                       <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
@@ -497,6 +691,7 @@ export function Navbar() {
 
               {/* Navigation Links */}
               <div className="space-y-2 mb-4">
+<<<<<<< HEAD
                 {userData?.role === "recruiter" ? (
                   // Recruiter Mobile Navigation
                   <>
@@ -560,12 +755,57 @@ export function Navbar() {
                     />
                   </>
                 )}
+=======
+                <MobileNavItem
+                  to="/map"
+                  icon={<Map className="w-5 h-5" />}
+                  label="World Map"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/training"
+                  icon={<Sword className="w-5 h-5" />}
+                  label="Training"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/arena"
+                  icon={<Cpu className="w-5 h-5" />}
+                  label="Arena"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/dashboard"
+                  icon={<User className="w-5 h-5" />}
+                  label="Commander"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/armory"
+                  icon={<Trophy className="w-5 h-5" />}
+                  label="Armory"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/programming-rooms"
+                  icon={<Code2 className="w-5 h-5" />}
+                  label="Programming Rooms"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/settings"
+                  icon={<Settings className="w-5 h-5" />}
+                  label="Settings"
+                  onClick={handleMobileMenuClose}
+                />
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
               </div>
 
               {userData?.role !== "recruiter" && (
                 <>
                   <div className="h-px bg-slate-800 my-4" />
 
+<<<<<<< HEAD
                   {/* Action Buttons - Only for Participants */}
                   <div className="space-y-2 mb-4">
                     <Link
@@ -589,6 +829,52 @@ export function Navbar() {
                   </div>
                 </>
               )}
+=======
+              {/* Action Buttons */}
+              <div className="space-y-2 mb-4">
+                <Link
+                  to="/castle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-amber-500 text-slate-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
+                >
+                  <Castle className="w-5 h-5" />
+                  <span>Enter Castle</span>
+                </Link>
+
+                {userRole === 'participant' && (
+                  <Link
+                    to="/request-recruiter"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Become Recruiter</span>
+                  </Link>
+                )}
+
+                {(userRole === 'recruiter' || userRole === 'admin') && (
+                  <Link
+                    to="/create-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
+                  >
+                    <Code2 className="w-5 h-5" />
+                    <span>Create Room</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={() => {
+                    handleResetLevels();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
+                >
+                  <Shield className="w-5 h-5" />
+                  <span>Reset Levels</span>
+                </button>
+              </div>
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
               <div className="h-px bg-slate-800 my-4" />
 

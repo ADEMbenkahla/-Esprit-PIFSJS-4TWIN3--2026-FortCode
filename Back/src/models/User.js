@@ -15,10 +15,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-  nickname: {
-    type: String,
-    default: "Commander"
-  },
+
   password: {
     type: String,
     required: false
@@ -36,6 +33,15 @@ const userSchema = new mongoose.Schema({
   points: {
     type: Number,
     default: 0
+  },
+  rating: {
+    type: Number,
+    default: 1000 // Elo-like rating
+  },
+  rank: {
+    type: String,
+    enum: ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion"],
+    default: "Bronze"
   },
   badges: [{
     type: String
@@ -55,6 +61,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationCode: String,
+  verificationCodeExpire: Date,
+
 
   // User personalization settings
   settings: {
@@ -117,8 +131,18 @@ const userSchema = new mongoose.Schema({
         default: null
       }
     }
-  }
-
+  },
+  webauthn: [{
+    credentialID: { type: String, required: true },
+    publicKey: { type: String, required: true },
+    counter: { type: Number, required: true },
+    transports: [{ type: String }],
+    fmt: { type: String },
+    created: { type: Date, default: Date.now }
+  }],
+  currentChallenge: { type: String },
+  faceDescriptor: { type: [Number], default: [] },
+  faceRegistered: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

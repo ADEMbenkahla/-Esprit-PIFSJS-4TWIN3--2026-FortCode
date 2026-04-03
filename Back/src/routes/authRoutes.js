@@ -7,6 +7,7 @@ const {
   login,
   login2fa,
   getProfile,
+  refreshToken,
   updateProfile,
   deleteMyAccount,
   setupTwoFactor,
@@ -18,8 +19,23 @@ const {
   createUser,
   updateUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail,
+  deleteAccount
 } = require("../controllers/authController");
+
+const {
+  generateRegistrationOptions,
+  verifyRegistration,
+  generateAuthenticationOptions,
+  verifyAuthentication
+} = require("../controllers/webauthnController");
+
+const {
+  registerFace,
+  loginFace
+} = require("../controllers/faceAuthController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
 const roleMiddleware = require("../middlewares/roleMiddleware");
@@ -34,6 +50,10 @@ router.post("/register", register);
 // Register admin (optionnel)
 router.post("/register-admin", registerAdmin);
 
+// Verify Email
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationEmail);
+
 // Login
 router.post("/login", login);
 
@@ -46,6 +66,10 @@ router.put("/forgot-password", forgotPassword);
 // Reset password
 router.put("/reset-password/:token", resetPassword);
 
+// WebAuthn Login
+router.post("/webauthn/login-options", generateAuthenticationOptions);
+router.post("/webauthn/login-verify", verifyAuthentication);
+
 
 /* =====================================================
    🔐 USER PROTECTED ROUTES
@@ -54,16 +78,32 @@ router.put("/reset-password/:token", resetPassword);
 // Get logged-in user profile
 router.get("/profile", authMiddleware, getProfile);
 
+// Refresh token with updated user info
+router.post("/refresh-token", authMiddleware, refreshToken);
+
 // Update logged-in user profile
 router.put("/profile", authMiddleware, updateProfile);
 
+<<<<<<< HEAD
 // Delete my account (participant only)
 router.delete("/profile", authMiddleware, deleteMyAccount);
+=======
+// Delete logged-in user account
+router.delete("/profile", authMiddleware, deleteAccount);
+>>>>>>> da4a379f517619ed5f2890a9aff73fb6d70d1968
 
 // 2FA setup/verify/disable
 router.post("/2fa/setup", authMiddleware, setupTwoFactor);
 router.post("/2fa/verify", authMiddleware, verifyTwoFactor);
 router.post("/2fa/disable", authMiddleware, disableTwoFactor);
+
+// WebAuthn Registration
+router.get("/webauthn/register-options", authMiddleware, generateRegistrationOptions);
+router.post("/webauthn/register-verify", authMiddleware, verifyRegistration);
+
+// Face ID (face-api.js) Routes
+router.post("/face/register", authMiddleware, registerFace);
+router.post("/face/login", loginFace);
 
 
 /* =====================================================
