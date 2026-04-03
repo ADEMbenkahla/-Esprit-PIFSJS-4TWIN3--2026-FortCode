@@ -44,6 +44,7 @@ app.use("/api/admin/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/role-requests", require("./routes/roleRequestRoutes"));
 app.use("/api/programming-rooms", require("./routes/programmingRoomRoutes"));
 app.use("/api/stages", require("./routes/stageRoutes"));
+app.use("/api/challenges", require("./routes/challengeRoutes"));
 
 module.exports = app;
 

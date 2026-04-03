@@ -11,6 +11,7 @@ import ActivityLogs from "./pages/backOffice/ActivityLogs";
 import ActivityDetail from "./pages/backOffice/ActivityDetail";
 import RoleRequests from "./pages/backOffice/RoleRequests";
 import BackOfficeSettings from "./pages/backOffice/Settings";
+import BackOfficeChallenges from "./pages/backOffice/Challenges";
 import MyActivity from "./pages/MyActivity";
 
 // Front Office Imports
@@ -91,6 +92,7 @@ function AppContent() {
         <Route path="/backoffice/users" element={<UserTracker />} />
         <Route path="/backoffice/role-requests" element={<RoleRequests />} />
         <Route path="/backoffice/settings" element={<BackOfficeSettings />} />
+        <Route path="/backoffice/challenges" element={<BackOfficeChallenges />} />
         <Route path="/admin/activity" element={<ActivityLogs />} />
         <Route path="/admin/activity/:id" element={<ActivityDetail />} />
         <Route path="/my-activity" element={<MyActivity />} />

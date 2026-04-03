@@ -99,7 +99,7 @@ const Sidebar: React.FC = () => {
     { label: 'User Tracker', icon: 'people', active: location.pathname === '/backoffice/users', path: '/backoffice/users' },
     { label: 'Role Requests', icon: 'badge', active: location.pathname === '/backoffice/role-requests', path: '/backoffice/role-requests', adminOnly: true },
     { label: 'Activity Logs', icon: 'history', active: location.pathname.startsWith('/admin/activity'), path: '/admin/activity' },
-    { label: 'Challenges', icon: 'emoji_events', active: false, path: '#' },
+    { label: 'Challenges', icon: 'emoji_events', active: location.pathname === '/backoffice/challenges', path: '/backoffice/challenges' },
     { label: 'Analytics', icon: 'analytics', active: false, path: '#' },
     { label: 'Moderation', icon: 'shield', active: false, path: '#' },
   ];
