@@ -34,6 +34,15 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  rating: {
+    type: Number,
+    default: 1000 // Elo-like rating
+  },
+  rank: {
+    type: String,
+    enum: ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion"],
+    default: "Bronze"
+  },
   badges: [{
     type: String
   }],
