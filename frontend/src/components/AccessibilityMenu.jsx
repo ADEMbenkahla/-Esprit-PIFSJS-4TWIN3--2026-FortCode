@@ -17,7 +17,7 @@ const AccessibilityMenu = () => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [position, setPosition] = useState(() => {
         const saved = localStorage.getItem('accessibility-position');
-        return saved ? JSON.parse(saved) : { x: 24, y: window.innerHeight - 80 };
+        return saved ? JSON.parse(saved) : { x: 20, y: window.innerHeight - 20 };
     });
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0, moved: false });
@@ -146,7 +146,7 @@ const AccessibilityMenu = () => {
         <div
             ref={menuRef}
             className="fixed z-[10000] flex flex-col-reverse items-start gap-4"
-            style={{ left: position.x, top: position.y, transform: 'translateY(-100%)', flexFlow: 'column' }}
+            style={{ left: position.x, top: position.y, transform: 'translateY(-100%)' }}
         >
             {/* Main toggle button */}
             <button

@@ -1,308 +1,41 @@
-/* ============ TRAINING LEVEL PAGE ============ */
+/* Minimal CSS for interactive training levels */
 .training-level-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0b0f1a 0%, #111827 50%, #0d1117 100%);
-  padding: 6.5rem 2rem 2rem;
+  animation: fadeIn 0.5s ease-in-out;
 }
 
-.training-level-container {
-  max-width: 900px;
-  margin: 0 auto;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ============ HEADER ============ */
-.training-level-header {
-  margin-bottom: 2.5rem;
+/* Custom textarea styling to mimic a code editor */
+textarea {
+  caret-color: #60a5fa;
+  tab-size: 2;
+  -moz-tab-size: 2;
 }
 
-.training-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: rgba(var(--accent-color-rgb), 0.15);
-  border: 1px solid rgba(var(--accent-color-rgb), 0.3);
-  border-radius: 8px;
-  color: var(--accent-color);
-  cursor: pointer;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-  transition: all 0.2s ease;
-}
-
-.training-back-btn:hover {
-  background: rgba(var(--accent-color-rgb), 0.25);
-  border-color: rgba(var(--accent-color-rgb), 0.6);
-  transform: translateX(-2px);
-}
-
-.training-level-title {
-  font-family: 'Cinzel', serif;
-  font-size: 2.5rem;
-  color: #e2e8f0;
-  margin: 0 0 0.5rem;
-}
-
-.training-level-subtitle {
-  color: #94a3b8;
-  font-size: 1rem;
-  margin: 0;
-}
-
-/* ============ PROGRESS ============ */
-.training-progress-section {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.training-progress-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-}
-
-.training-progress-label {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.training-progress-percent {
-  color: var(--accent-color);
-  font-weight: 600;
-}
-
-.training-progress-bar {
-  width: 100%;
+/* Scrollbar styling for a dark theme */
+::-webkit-scrollbar {
+  width: 8px;
   height: 8px;
-  background: rgba(148, 163, 184, 0.2);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 0.75rem;
 }
 
-.training-progress-fill {
-  height: 100%;
-  box-shadow: 0 0 12px currentColor;
-  transition: width 0.4s ease;
+::-webkit-scrollbar-track {
+  background: #0f172a;
 }
 
-.training-progress-count {
-  font-size: 0.85rem;
-  color: #94a3b8;
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
 }
 
-/* ============ CHALLENGES ============ */
-.training-challenges {
-  display: grid;
-  gap: 1rem;
-  margin-bottom: 2rem;
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
-.training-challenge {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.training-challenge:hover {
-  background: rgba(15, 23, 42, 0.8);
-  border-color: rgba(var(--accent-color-rgb), 0.4);
-  transform: translateX(4px);
-}
-
-.training-challenge.completed {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.training-challenge-icon {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.training-challenge-content {
-  flex: 1;
-}
-
-.training-challenge-title {
-  margin: 0 0 0.25rem;
-  color: #e2e8f0;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.training-challenge-desc {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.85rem;
-}
-
-/* ============ COMPLETE BANNER ============ */
-.training-complete-banner {
-  background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.18), rgba(232, 192, 125, 0.15));
-  border: 1px solid rgba(var(--accent-color-rgb), 0.4);
-  border-radius: 16px;
-  padding: 2rem;
-  animation: slideUp 0.6s ease-out;
-}
-
-.training-complete-content {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.training-complete-icon {
-  font-size: 3rem;
-  flex-shrink: 0;
-}
-
-.training-complete-title {
-  margin: 0 0 0.25rem;
-  color: var(--accent-color);
-  font-family: 'Cinzel', serif;
-  font-size: 1.5rem;
-}
-
-.training-complete-text {
-  margin: 0 0 1rem;
-  color: #94a3b8;
-}
-
-.training-complete-btn {
-  padding: 0.65rem 1.2rem;
-  background: rgba(var(--accent-color-rgb), 0.18);
-  border: 1px solid rgba(var(--accent-color-rgb), 0.5);
-  border-radius: 8px;
-  color: var(--accent-color);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.training-complete-btn:hover {
-  background: rgba(var(--accent-color-rgb), 0.28);
-  border-color: rgba(var(--accent-color-rgb), 0.8);
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 768px) {
-  .training-level-page {
-    padding: 5.5rem 1rem 2rem;
-  }
-
-  .training-level-title {
-    font-size: 2rem;
-  }
-
-  .training-complete-content {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-/* ============ LIGHT MODE OVERRIDES ============ */
-[data-theme="light"] .training-level-page {
-  background: #f8fafc;
-}
-
-[data-theme="light"] .training-back-btn {
-  background: rgba(var(--accent-color-rgb), 0.12);
-  border-color: rgba(var(--accent-color-rgb), 0.3);
-  color: var(--accent-color);
-}
-
-[data-theme="light"] .training-back-btn:hover {
-  background: rgba(var(--accent-color-rgb), 0.2);
-  border-color: rgba(var(--accent-color-rgb), 0.5);
-}
-
-[data-theme="light"] .training-level-title {
-  color: var(--accent-color);
-}
-
-[data-theme="light"] .training-level-subtitle {
-  color: #475569;
-}
-
-[data-theme="light"] .training-progress-section {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #e2e8f0;
-}
-
-[data-theme="light"] .training-progress-label,
-[data-theme="light"] .training-progress-count {
-  color: #64748b;
-}
-
-[data-theme="light"] .training-progress-percent {
-  color: var(--accent-color);
-}
-
-[data-theme="light"] .training-progress-bar {
-  background: rgba(148, 163, 184, 0.25);
-}
-
-[data-theme="light"] .training-challenge {
-  background: #ffffff;
-  border-color: #e2e8f0;
-}
-
-[data-theme="light"] .training-challenge:hover {
-  background: #f8fafc;
-  border-color: rgba(var(--accent-color-rgb), 0.35);
-}
-
-[data-theme="light"] .training-challenge-title {
-  color: #0f172a;
-}
-
-[data-theme="light"] .training-challenge-desc {
-  color: #64748b;
-}
-
-[data-theme="light"] .training-complete-banner {
-  background: linear-gradient(135deg, rgba(99, 179, 237, 0.18), rgba(232, 192, 125, 0.12));
-  border-color: rgba(var(--accent-color-rgb), 0.35);
-}
-
-[data-theme="light"] .training-complete-title {
-  color: var(--accent-color);
-}
-
-[data-theme="light"] .training-complete-text {
-  color: #475569;
-}
-
-[data-theme="light"] .training-complete-btn {
-  color: var(--accent-color);
-  border-color: rgba(var(--accent-color-rgb), 0.5);
-}
-
-[data-theme="light"] .training-complete-btn:hover {
-  border-color: rgba(var(--accent-color-rgb), 0.8);
+/* Ensure the output terminal text wraps correctly */
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
 }

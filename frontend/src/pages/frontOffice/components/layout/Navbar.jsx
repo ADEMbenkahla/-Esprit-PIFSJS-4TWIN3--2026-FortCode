@@ -185,13 +185,53 @@ export function Navbar() {
     });
   };
 
-  const handleResetLevels = () => {
+  const handleResetLevels = async () => {
     playClick();
-    localStorage.removeItem("levelProgress");
-    for (let i = 1; i <= 4; i += 1) {
-      localStorage.removeItem(`level${i}_challenges`);
+
+    const result = await Swal.fire({
+      title: 'Reset all progress?',
+      text: "This will clear all your completed challenges and stars permanently.",
+      icon: 'warning',
+      showCancelButton: true,
+      background: '#1a1a2e',
+      color: '#fff',
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#2563eb',
+      confirmButtonText: 'Yes, Reset Everything',
+      cancelButtonText: 'Keep Progress'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/stages/reset-progress", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          localStorage.removeItem("levelProgress");
+          for (let i = 1; i <= 4; i += 1) {
+            localStorage.removeItem(`level${i}_challenges`);
+          }
+          window.dispatchEvent(new Event("fortcode:progress-reset"));
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Progress Reset',
+            text: 'Your journey starts fresh, Commander!',
+            background: '#1a1a2e',
+            color: '#fff',
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            navigate("/map");
+          });
+        }
+      } catch (err) {
+        console.error("Reset failed:", err);
+      }
     }
-    window.dispatchEvent(new Event("fortcode:progress-reset"));
   };
 
   const handleMobileMenuClose = () => {

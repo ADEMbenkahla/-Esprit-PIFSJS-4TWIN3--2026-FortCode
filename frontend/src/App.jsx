@@ -46,6 +46,7 @@ function AppContent() {
     location.pathname.startsWith("/backoffice") ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/training/") ||
+    location.pathname.startsWith("/stages/") ||
     location.pathname.startsWith("/my-activity");
 
   return (
@@ -64,6 +65,7 @@ function AppContent() {
         <Route path="/map" element={<WorldMap />} />
         <Route path="/training" element={<TrainingGrounds />} />
         <Route path="/training/:levelId" element={<TrainingLevel />} />
+        <Route path="/stages/:levelId" element={<TrainingLevel />} />
         <Route path="/arena" element={<BattleArena />} />
         <Route path="/dashboard" element={<CommanderDashboard />} />
 
