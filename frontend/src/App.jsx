@@ -21,7 +21,8 @@ import { Home } from "./pages/frontOffice/pages/Home";
 import WorldMap from "./pages/frontOffice/pages/WorldMap";
 import TrainingGrounds from "./pages/frontOffice/pages/TrainingGrounds";
 import { TrainingLevel } from "./pages/frontOffice/pages/TrainingLevel";
-import BattleArena from "./pages/frontOffice/pages/BattleArena";
+import DuelLobby from "./pages/frontOffice/pages/DuelArena/DuelLobby";
+import LiveBattle from "./pages/frontOffice/pages/DuelArena/LiveBattle";
 import CommanderDashboard from "./pages/frontOffice/pages/CommanderDashboard";
 import Armory from "./pages/frontOffice/pages/Armory";
 import Settings from "./pages/frontOffice/pages/Settings";
@@ -46,6 +47,7 @@ function AppContent() {
     location.pathname.startsWith("/backoffice") ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/training/") ||
+    location.pathname.startsWith("/stages/") ||
     location.pathname.startsWith("/my-activity");
 
   return (
@@ -64,7 +66,9 @@ function AppContent() {
         <Route path="/map" element={<WorldMap />} />
         <Route path="/training" element={<TrainingGrounds />} />
         <Route path="/training/:levelId" element={<TrainingLevel />} />
-        <Route path="/arena" element={<BattleArena />} />
+        <Route path="/stages/:levelId" element={<TrainingLevel />} />
+        <Route path="/arena" element={<DuelLobby />} />
+        <Route path="/arena/battle/:matchId" element={<LiveBattle />} />
         <Route path="/dashboard" element={<CommanderDashboard />} />
 
         <Route path="/armory" element={<Armory />} />
