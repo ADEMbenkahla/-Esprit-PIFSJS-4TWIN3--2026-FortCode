@@ -7,7 +7,8 @@ const {
   getAllRoleRequests,
   approveRoleRequest,
   rejectRoleRequest,
-  deleteRoleRequest
+  deleteRoleRequest,
+  aiReviewRequest
 } = require("../controllers/roleRequestController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -35,10 +36,13 @@ router.delete("/:requestId", authMiddleware, deleteRoleRequest);
 // Get all role requests (with optional status filter)
 router.get("/", authMiddleware, roleMiddleware("admin"), getAllRoleRequests);
 
-// Approve a role request
+// 🤖 AI Auto-Review a pending request
+router.post("/:requestId/ai-review", authMiddleware, roleMiddleware("admin"), aiReviewRequest);
+
+// Approve a role request (manual fallback)
 router.put("/:requestId/approve", authMiddleware, roleMiddleware("admin"), approveRoleRequest);
 
-// Reject a role request
+// Reject a role request (manual fallback)
 router.put("/:requestId/reject", authMiddleware, roleMiddleware("admin"), rejectRoleRequest);
 
 
