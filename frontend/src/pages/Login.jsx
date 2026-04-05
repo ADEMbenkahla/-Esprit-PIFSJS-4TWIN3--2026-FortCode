@@ -24,16 +24,19 @@ function Login({ onSwitchToRegister }) {
   // Redirect already logged-in users to the correct area
   useEffect(() => {
     const role = getUserRole();
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect");
+    const safeRedirect = redirect && redirect.startsWith("/") ? redirect : null;
+
     if (role === "admin") {
       navigate("/backoffice/dashboard", { replace: true });
       return;
     }
     if (role === "participant" || role === "recruiter") {
-      navigate("/home", { replace: true });
+      navigate(safeRedirect || "/home", { replace: true });
       return;
     }
-  }, [navigate]);
-
+  }, [navigate, location.search]);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("error") === "deactivated") {
@@ -139,13 +142,16 @@ function Login({ onSwitchToRegister }) {
       window.dispatchEvent(new Event('tokenChanged'));
       connect(data.token);
 
+      const redirectParam = new URLSearchParams(location.search).get("redirect");
+      const safeRedirect = redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
+
       // 🚀 Rediriger IMMÉDIATEMENT selon le rôle
       if (payload.role === "admin") {
         console.log("➡️ Redirection vers /backoffice/dashboard");
         navigate("/backoffice/dashboard");
       } else if (payload.role === "participant" || payload.role === "recruiter") {
-        console.log("➡️ Redirection vers /home");
-        navigate("/home");
+        console.log(`➡️ Redirection vers ${safeRedirect || "/home"}`);
+        navigate(safeRedirect || "/home");
       } else {
         console.log("➡️ Redirection vers /");
         navigate("/");
@@ -278,13 +284,16 @@ function Login({ onSwitchToRegister }) {
       setTwoFactorToken("");
       setTwoFactorCode("");
 
+      const redirectParam = new URLSearchParams(location.search).get("redirect");
+      const safeRedirect = redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
+
       // 🚀 Rediriger IMMÉDIATEMENT selon le rôle
       if (payload.role === "admin") {
         console.log("➡️ Redirection vers /backoffice/dashboard");
         navigate("/backoffice/dashboard");
       } else if (payload.role === "participant" || payload.role === "recruiter") {
-        console.log("➡️ Redirection vers /home");
-        navigate("/home");
+        console.log(`➡️ Redirection vers ${safeRedirect || "/home"}`);
+        navigate(safeRedirect || "/home");
       } else {
         console.log("➡️ Redirection vers /");
         navigate("/");
