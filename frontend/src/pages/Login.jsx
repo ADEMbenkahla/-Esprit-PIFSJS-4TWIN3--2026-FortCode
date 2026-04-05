@@ -8,18 +8,6 @@ import { getUserRole } from "../guards/RouteGuards";
 
 import Swal from "sweetalert2";
 
-const decodeJwtPayload = (token) => {
-  const payload = token?.split(".")?.[1];
-  if (!payload) {
-    throw new Error("Invalid token format");
-  }
-
-  // JWT payload uses base64url, normalize before atob.
-  const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-  return JSON.parse(atob(padded));
-};
-
 function Login({ onSwitchToRegister }) {
   const { connect } = useSocket();
   const [identifier, setIdentifier] = useState("");
@@ -49,7 +37,6 @@ function Login({ onSwitchToRegister }) {
       return;
     }
   }, [navigate, location.search]);
-
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("error") === "deactivated") {
@@ -90,13 +77,7 @@ function Login({ onSwitchToRegister }) {
         body: JSON.stringify({ identifier, password }),
       });
 
-      const rawBody = await response.text();
-      let data = {};
-      try {
-        data = rawBody ? JSON.parse(rawBody) : {};
-      } catch {
-        data = { message: rawBody || "Unexpected server response" };
-      }
+      const data = await response.json();
 
       if (!response.ok) {
         if (data.notVerified) {
@@ -150,7 +131,7 @@ function Login({ onSwitchToRegister }) {
       localStorage.setItem("token", data.token);
 
       // ✅ Décoder le rôle et l'ID (si envoyé)
-      const payload = decodeJwtPayload(data.token);
+      const payload = JSON.parse(atob(data.token.split(".")[1]));
       console.log("🎫 Login Token Payload:", payload);
 
       // ✅ Stocker aussi l'ID et le rôle dans sessionStorage
@@ -188,11 +169,10 @@ function Login({ onSwitchToRegister }) {
       });
 
     } catch (error) {
-      console.error("Login error:", error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error?.message || 'Server error. Please try again later.',
+        text: 'Server error. Please try again later.',
         background: '#1a1a2e',
         color: '#fff'
       });
@@ -215,7 +195,7 @@ function Login({ onSwitchToRegister }) {
       if (data.success) {
         sessionStorage.setItem("token", data.token);
         localStorage.setItem("token", data.token);
-        const payload = decodeJwtPayload(data.token);
+        const payload = JSON.parse(atob(data.token.split(".")[1]));
         sessionStorage.setItem("userId", payload.id);
         sessionStorage.setItem("userRole", payload.role);
         window.dispatchEvent(new Event('tokenChanged'));
@@ -296,7 +276,7 @@ function Login({ onSwitchToRegister }) {
       connect(data.token);
 
       // ✅ Décoder le rôle (si envoyé)
-      const payload = decodeJwtPayload(data.token);
+      const payload = JSON.parse(atob(data.token.split(".")[1]));
       console.log("🎫 2FA Token Payload:", payload);
 
       setTwoFactorRequired(false);
