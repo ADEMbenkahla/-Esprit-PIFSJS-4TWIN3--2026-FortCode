@@ -28,6 +28,16 @@ const battleRoomSchema = new mongoose.Schema(
       description: { type: String, default: "" },
       starterCode: { type: String, default: "" },
       language: { type: String, default: "javascript" },
+      statementFileUrl: { type: String, default: "" },
+      expectedFunctions: [{ type: String, trim: true }],
+      criteria: [{ type: String, trim: true }],
+      testCases: [
+        {
+          name: { type: String, default: "" },
+          assertion: { type: String, required: true },
+          hidden: { type: Boolean, default: false },
+        },
+      ],
     },
     timeLimitMinutes: {
       type: Number,

@@ -57,13 +57,56 @@ export const deleteMyAccount = (data: { email: string; password?: string; confir
 
 // Battle Rooms (User Stories 4.4, 4.5, 4.6)
 export const getParticipants = () => api.get('/recruiter/participants');
+export const generateBattleExercise = (data: {
+    prompt?: string;
+    difficulty?: string;
+    language?: string;
+    expectedFunctions?: string[];
+    expectedFunctionName?: string;
+    criteria?: string[];
+    randomize?: boolean;
+}) => api.post('/recruiter/battle-rooms/generate-exercise', data);
 export const createBattleRoom = (data: {
     title: string;
     description?: string;
     participantIds?: string[];
-    challenge?: { title: string; description?: string; starterCode?: string; language?: string };
+    challenge?: {
+        title: string;
+        description?: string;
+        starterCode?: string;
+        language?: string;
+        expectedFunctions?: string[];
+        expectedFunctionName?: string;
+        criteria?: string[];
+        testCases?: Array<{ name?: string; assertion: string; hidden?: boolean }>;
+    };
     timeLimitMinutes: number;
-}) => api.post('/recruiter/battle-rooms', data);
+    exerciseFile?: File | null;
+}) => {
+    const payload = new FormData();
+    payload.append('title', data.title);
+    payload.append('description', data.description || '');
+    payload.append('timeLimitMinutes', String(data.timeLimitMinutes));
+    payload.append('participantIds', JSON.stringify(data.participantIds || []));
+    payload.append('challenge', JSON.stringify(data.challenge || {}));
+
+    if (data.challenge?.testCases) {
+        payload.append('testCases', JSON.stringify(data.challenge.testCases));
+    }
+    if (data.challenge?.language) {
+        payload.append('language', data.challenge.language);
+    }
+    if (data.challenge?.expectedFunctionName) {
+        payload.append('expectedFunctionName', data.challenge.expectedFunctionName);
+    }
+    if (data.exerciseFile) {
+        payload.append('exerciseFile', data.exerciseFile);
+    }
+
+    return api.post('/recruiter/battle-rooms', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
 export const getMyBattleRooms = (status?: string) =>
     api.get('/recruiter/battle-rooms', status ? { params: { status } } : {});
 export const getBattleRoom = (id: string) => api.get(`/recruiter/battle-rooms/${id}`);
