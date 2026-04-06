@@ -1,14 +1,82 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Award, Shield, Swords, Crown, Medal } from 'lucide-react';
+import { Trophy, Award, Shield, Swords, Crown, Zap } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { ScrollButton } from '../components/ui/ScrollButton';
+import { useSettings } from "../../../context/SettingsContext";
+import { RankBadge } from '../components/Gamification/RankBadge';
+
+const RANK_THRESHOLDS = [
+  { rank: "Radiant", xp: 100000 },
+  { rank: "Immortal", xp: 50000 },
+  { rank: "Ascendant", xp: 35000 },
+  { rank: "Diamond", xp: 20000 },
+  { rank: "Platinum", xp: 10000 },
+  { rank: "Gold", xp: 5000 },
+  { rank: "Silver", xp: 2500 },
+  { rank: "Bronze", xp: 1000 },
+  { rank: "Iron", xp: 0 }
+];
 
 export default function Armory() {
   const accentStyle = { color: 'var(--accent-color)' };
   const accentBgStyle = { backgroundColor: 'rgba(var(--accent-color-rgb), 0.12)' };
   const accentBorderStyle = { borderColor: 'var(--accent-color)' };
   const accentShadowStyle = { boxShadow: '0 0 30px rgba(var(--accent-color-rgb), 0.3)' };
+
+  const { avatar, nickname } = useSettings();
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) return;
+        const response = await fetch("http://localhost:5000/api/auth/profile", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data.user);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const rank = userData?.gamification?.rank || "Iron";
+  const level = userData?.gamification?.level || 1;
+  const points = userData?.gamification?.points || 0;
+
+  const calculateProgress = (pts) => {
+    let currentTierXP = 0;
+    let nextRankXP = null;
+    
+    for (const threshold of RANK_THRESHOLDS) {
+      if (pts >= threshold.xp) {
+        currentTierXP = threshold.xp;
+        break;
+      }
+    }
+
+    for (let i = RANK_THRESHOLDS.length - 1; i >= 0; i--) {
+       if (RANK_THRESHOLDS[i].xp > pts) {
+           nextRankXP = RANK_THRESHOLDS[i].xp;
+           break;
+       }
+    }
+
+    if (!nextRankXP) return { percent: 100, current: pts, needed: pts, totalNext: 'MAX' };
+
+    const xpNeeded = nextRankXP - currentTierXP;
+    const xpGained = pts - currentTierXP;
+    const percent = Math.floor((xpGained / xpNeeded) * 100);
+    return { percent, current: xpGained, needed: xpNeeded, totalNext: nextRankXP };
+  };
+
+  const progress = calculateProgress(points);
 
   const badges = [
     { id: 1, name: 'First Blood', description: 'Win your first battle', icon: <Swords /> },
@@ -25,38 +93,65 @@ export default function Armory() {
   return (
     <div className="min-h-screen pt-24 p-8 bg-slate-950 overflow-hidden relative">
       <div className="max-w-6xl mx-auto space-y-12">
-        {/* Profile Header */}
-        <section className="flex items-center gap-8 mb-12">
+        {/* Profile Header with Gamification */}
+        <section className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12 bg-slate-900/50 p-8 rounded-2xl border border-slate-800">
           <div className="relative group">
             <div
               className="w-32 h-32 rounded-full border-4 overflow-hidden"
               style={{ ...accentBorderStyle, ...accentShadowStyle }}
             >
-              <img src="https://ui-avatars.com/api/?name=Champion&background=0f172a&color=3b82f6&size=128" alt="Champion Avatar" />
+              <img src={avatar || "https://ui-avatars.com/api/?name=Commander&background=0f172a&color=3b82f6&size=128"} alt="Avatar" />
             </div>
             <div
               className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full border-4 border-slate-900 flex items-center justify-center text-slate-900 font-bold"
               style={accentBgStyle}
             >
-              12
+              {level}
             </div>
           </div>
-          <div>
-            <h1 className="text-4xl font-serif font-bold mb-2" style={accentStyle}>Champion "The Coder"</h1>
-            <p className="text-slate-400 font-mono flex items-center gap-2">
-              <Shield className="w-4 h-4" style={accentStyle} />
-              Member of the Royal Guard
-            </p>
-            <div className="flex gap-4 mt-4">
-              <div className="px-4 py-2 bg-slate-900 rounded border border-slate-700">
-                <div className="text-xs text-slate-500 uppercase">Honor</div>
-                <div className="text-xl font-bold" style={accentStyle}>1,250</div>
+          
+          <div className="flex-1 w-full">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
+              <div>
+                <h1 className="text-4xl font-serif font-bold mb-2 text-white">Commander <span style={accentStyle}>{nickname || userData?.username || "Player"}</span></h1>
+                <p className="text-slate-400 font-mono flex items-center gap-2">
+                  <Shield className="w-4 h-4" style={accentStyle} />
+                  Member of the Royal Guard
+                </p>
               </div>
-              <div className="px-4 py-2 bg-slate-900 rounded border border-slate-700">
-                <div className="text-xs text-slate-500 uppercase">Battles</div>
-                <div className="text-xl font-bold" style={accentStyle}>42</div>
+              <div className="hidden md:block">
+                 <RankBadge rank={rank} level={level} size="lg" showLabel={true} />
               </div>
             </div>
+
+            {/* XP Bar */}
+            <div className="mt-8">
+              <div className="flex justify-between text-xs font-mono mb-2">
+                <span className="text-slate-400 font-bold tracking-wider uppercase">EXP Progress</span>
+                <span className="text-slate-300">
+                  <span style={accentStyle}>{progress.current}</span> / {progress.needed} XP to next rank
+                </span>
+              </div>
+              <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative">
+                 <motion.div 
+                   initial={{ width: 0 }}
+                   animate={{ width: `${progress.percent}%` }}
+                   transition={{ duration: 1, delay: 0.5 }}
+                   className="h-full rounded-full relative"
+                   style={{ backgroundColor: 'var(--accent-color)' }}
+                 >
+                   <div className="absolute inset-0 bg-white/20 w-full animate-pulse"></div>
+                 </motion.div>
+              </div>
+              <div className="flex justify-between mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                <span>Total points: {points}</span>
+                {progress.totalNext !== 'MAX' && <span>{progress.totalNext} XP</span>}
+              </div>
+            </div>
+            
+             <div className="md:hidden mt-6 flex justify-center border-t border-slate-800 pt-6">
+                 <RankBadge rank={rank} level={level} size="lg" showLabel={true} />
+             </div>
           </div>
         </section>
 

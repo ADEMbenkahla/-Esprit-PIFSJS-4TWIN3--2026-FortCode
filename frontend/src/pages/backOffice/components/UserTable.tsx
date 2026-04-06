@@ -124,18 +124,18 @@ const UserTable: React.FC<UserTableProps> = ({
                 <td className="p-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-sm font-display text-white">
-                      {(user.xp || 0).toLocaleString()} XP
+                      {(user.gamification?.points || 0).toLocaleString()} XP
                     </span>
                     <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                       <div
                         className="bg-gradient-to-r from-primary to-orange-400 h-full rounded-full"
                         style={{
-                          width: `${((user.xp || 0) / 100000) * 100}%`,
+                          width: `${Math.min(((user.gamification?.points || 0) / 39500) * 100, 100)}%`,
                         }}
                       ></div>
                     </div>
                     <span className="text-[10px] text-gray-500">
-                      Lvl {user.level || 1}
+                      Lvl {user.gamification?.level || 1}
                     </span>
                   </div>
                 </td>

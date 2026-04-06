@@ -15,6 +15,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
     const [email, setEmail] = useState(user?.email || '');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState(user?.role || 'participant');
+    const [rank, setRank] = useState(user?.gamification?.rank || 'Iron');
+    const [level, setLevel] = useState(user?.gamification?.level || 1);
     const [avatar, setAvatar] = useState(user?.avatar || '');
     const [loading, setLoading] = useState(false);
 
@@ -41,7 +43,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
 
         try {
             const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-            const body: any = { username, email, role, avatar };
+            const body: any = { username, email, role, avatar, rank, level };
 
             // Only include password if it's provided
             if (password) {
@@ -165,6 +167,37 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                                     <option value="recruiter">Recruiter</option>
                                     <option value="admin">Admin</option>
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Rank (Gamification)</label>
+                                <select
+                                    value={rank}
+                                    onChange={(e) => setRank(e.target.value)}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white font-bold focus:outline-none focus:border-yellow-400 transition-colors"
+                                >
+                                    <option value="Iron">Iron</option>
+                                    <option value="Bronze">Bronze</option>
+                                    <option value="Silver">Silver</option>
+                                    <option value="Gold">Gold</option>
+                                    <option value="Platinum">Platinum</option>
+                                    <option value="Diamond">Diamond</option>
+                                    <option value="Ascendant">Ascendant</option>
+                                    <option value="Immortal">Immortal</option>
+                                    <option value="Radiant">Radiant</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Level (Max 80)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="80"
+                                    value={level}
+                                    onChange={(e) => setLevel(Number(e.target.value))}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white font-bold focus:outline-none focus:border-blue-400 transition-colors"
+                                />
                             </div>
                         </div>
 
