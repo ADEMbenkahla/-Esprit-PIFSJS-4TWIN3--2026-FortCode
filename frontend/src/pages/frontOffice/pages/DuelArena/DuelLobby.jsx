@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Trophy, Zap, Shield, Loader2, X, Users, Star } from 'lucide-react';
+import { Swords, Trophy, Zap, Shield, Loader2, X, Users, Star, Lock } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { io } from 'socket.io-client';
@@ -14,6 +14,7 @@ export default function DuelLobby() {
     const [onlineCount, setOnlineCount] = useState(0);
     const [socket, setSocket] = useState(null);
     const [user, setUser] = useState(null);
+    const [fullProfile, setFullProfile] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -42,10 +43,23 @@ export default function DuelLobby() {
 
         setSocket(newSocket);
 
-        // Get user info from token
+        // Get user info
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             setUser(payload);
+            
+            // Fetch full profile for level verification
+            fetch('http://localhost:5000/api/auth/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.user) {
+                    setFullProfile(data.user);
+                }
+            })
+            .catch(console.error);
+
         } catch (e) { }
 
         return () => newSocket.disconnect();
@@ -112,7 +126,14 @@ export default function DuelLobby() {
                     </Card>
 
                     {/* Ranked Mode */}
-                    <Card variant="glass" className="p-8 group border-purple-500/20 hover:border-purple-500/50 transition-all cursor-pointer overflow-hidden relative">
+                    <Card 
+                        variant="glass" 
+                        className={`p-8 group border-purple-500/20 transition-all overflow-hidden relative ${
+                            (!fullProfile || (fullProfile?.gamification?.level || 1) < 20) 
+                              ? 'opacity-80 grayscale-[20%]' 
+                              : 'hover:border-purple-500/50 cursor-pointer'
+                        }`}
+                    >
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Trophy className="w-24 h-24 text-purple-400" />
                         </div>
@@ -132,14 +153,23 @@ export default function DuelLobby() {
                                 <li className="flex items-center gap-2"><Zap className="w-3 h-3 text-purple-500" /> Skill-based matchmaking</li>
                                 <li className="flex items-center gap-2"><Zap className="w-3 h-3 text-purple-500" /> Limited AI assistance</li>
                             </ul>
-                            <Button
-                                variant="primary"
-                                className="w-full py-6 text-lg bg-gradient-to-r from-blue-600 to-purple-600 border-none"
-                                onClick={() => handleStartSearch('ranked')}
-                                disabled={searching}
-                            >
-                                Find Ranked Match
-                            </Button>
+                            
+                            {(!fullProfile || (fullProfile?.gamification?.level || 1) < 20) ? (
+                                <div className="w-full py-4 px-4 bg-slate-900/80 border border-red-500/30 rounded-lg text-center flex flex-col items-center justify-center gap-2 text-slate-300">
+                                    <Lock className="w-5 h-5 text-red-400" />
+                                    <span className="text-sm font-bold text-red-300">Locked: Reach Level 20</span>
+                                    <span className="text-xs text-slate-500">Current Level: {fullProfile?.gamification?.level || 1}</span>
+                                </div>
+                            ) : (
+                                <Button
+                                    variant="primary"
+                                    className="w-full py-6 text-lg bg-gradient-to-r from-blue-600 to-purple-600 border-none"
+                                    onClick={() => handleStartSearch('ranked')}
+                                    disabled={searching}
+                                >
+                                    Find Ranked Match
+                                </Button>
+                            )}
                         </div>
                     </Card>
                 </div>

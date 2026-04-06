@@ -30,22 +30,22 @@ const userSchema = new mongoose.Schema({
     enum: ["participant", "admin", "recruiter"],
     default: "participant"
   },
-  points: {
-    type: Number,
-    default: 0
-  },
   rating: {
     type: Number,
     default: 1000 // Elo-like rating
   },
-  rank: {
-    type: String,
-    enum: ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion"],
-    default: "Bronze"
+  gamification: {
+    points: { type: Number, default: 0 },
+    rankedRating: { type: Number, default: 0 },
+    badges: [{ type: String }],
+    level: { type: Number, default: 1 },
+    streak: { type: Number, default: 0 },
+    rank: {
+      type: String,
+      enum: ["Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ascendant", "Immortal", "Radiant"],
+      default: "Iron"
+    }
   },
-  badges: [{
-    type: String
-  }],
   isActive: {
     type: Boolean,
     default: true

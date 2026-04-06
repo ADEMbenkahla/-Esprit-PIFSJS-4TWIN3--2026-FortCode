@@ -75,7 +75,7 @@ const programmingRoomSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Generate a unique room code before saving
-programmingRoomSchema.pre('save', function(next) {
+programmingRoomSchema.pre('save', function (next) {
   if (!this.roomCode) {
     this.roomCode = generateRoomCode();
   }
