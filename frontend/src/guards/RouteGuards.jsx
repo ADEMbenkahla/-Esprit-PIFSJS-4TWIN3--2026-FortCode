@@ -2,15 +2,16 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 /**
- * Get current user role from JWT in localStorage (no API call).
+ * Get current user role from JWT (same token source order as axios: sessionStorage, then localStorage).
  * Returns "admin" | "recruiter" | "participant" | null if no/invalid token.
  */
 export function getUserRole() {
   try {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
     if (!token) return null;
     const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.role || null;
+    const r = payload.role;
+    return r != null ? String(r).toLowerCase().trim() : null;
   } catch {
     return null;
   }

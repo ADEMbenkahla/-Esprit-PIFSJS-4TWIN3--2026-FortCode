@@ -11,18 +11,18 @@ const {
   updateVirtualRoomRequestStatus
 } = require("../controllers/virtualRoomController");
 
-// Recruiter endpoints
+// Recruiter endpoints (admin can use recruiter APIs too)
 router.post(
   "/recruiter/virtual-room/request",
   authMiddleware,
-  roleMiddleware("recruiter"),
+  roleMiddleware("recruiter", "admin"),
   createVirtualRoomRequest
 );
 
 router.get(
   "/recruiter/virtual-room/request",
   authMiddleware,
-  roleMiddleware("recruiter"),
+  roleMiddleware("recruiter", "admin"),
   getMyVirtualRoomRequest
 );
 

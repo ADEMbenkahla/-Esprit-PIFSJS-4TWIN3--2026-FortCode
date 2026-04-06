@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, Users } from "lucide-react";
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, UserPlus, Code2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import { useSoundEffects } from "../../../../hooks/useSoundEffects";
@@ -8,9 +8,11 @@ import { useSettings } from "../../../../context/SettingsContext";
 import Swal from "sweetalert2";
 import { requestVirtualRoom, getMyVirtualRoomRequest } from "../../../../services/api";
 import { ProfileModal } from "./ProfileModal";
+import { RankBadge } from "../Gamification/RankBadge";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,12 +23,33 @@ export function Navbar() {
   const { playClick } = useSoundEffects();
   const { avatar, nickname } = useSettings();
 
+  // Fonction pour extraire le rôle du JWT token
+  const extractRoleFromToken = () => {
+    try {
+      // Try sessionStorage first (current tab), then localStorage (fallback)
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("🎫 Rôle du token JWT:", payload.role);
+        return payload.role;
+      }
+    } catch (error) {
+      console.error("❌ Erreur extraction rôle du token:", error);
+    }
+    return null;
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
+        // Try sessionStorage first (current tab), then localStorage (fallback)
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) {
+          console.log("ℹ️ Pas de token trouvé");
+          return;
+        }
 
+        console.log("🔍 Fetching profile avec token...");
         const response = await fetch("http://localhost:5000/api/auth/profile", {
           headers: {
             "Authorization": `Bearer ${token}`
@@ -35,10 +58,12 @@ export function Navbar() {
 
         if (response.ok) {
           const data = await response.json();
+          console.log("✅ Profile reçu:", data.user);
+          console.log("👤 Rôle utilisateur:", data.user?.role);
           setUserData(data.user);
+          setUserRole(data.user?.role);
 
-          // If recruiter, also fetch latest virtual room request status
-          if (data.user.role === "recruiter") {
+          if (data.user.role === "recruiter" || data.user.role === "admin") {
             try {
               const vrResponse = await getMyVirtualRoomRequest();
               const request = vrResponse.data.request;
@@ -48,38 +73,70 @@ export function Navbar() {
               // If 404, no existing request - ignore
             }
           }
+        } else {
+          console.error("❌ Erreur réponse profile:", response.status);
+          const roleFromToken = extractRoleFromToken();
+          if (roleFromToken) {
+            setUserRole(roleFromToken);
+          }
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
+        console.error("❌ Erreur fetch profile:", error);
+        // Fallback : récupérer le rôle du token directement
+        const roleFromToken = extractRoleFromToken();
+        if (roleFromToken) {
+          setUserRole(roleFromToken);
+        }
       }
     };
 
     fetchProfile();
+
+    // Listener pour détecter les changements de token (login/logout)
+    const handleTokenChange = () => {
+      console.log("🔄 Token change détecté!");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (token) {
+        console.log("🔄 Token trouvé, fetching profile...");
+        // Token a changé → récupérer le profil mis à jour
+        fetchProfile();
+      } else {
+        console.log("🔄 Token supprimé, réinitialisant userData");
+        // Token supprimé → réinitialiser
+        setUserData(null);
+        setUserRole(null);
+      }
+    };
+
+    // Écouter l'événement personnalisé 'tokenChanged'
+    window.addEventListener('tokenChanged', handleTokenChange);
+
+    return () => {
+      window.removeEventListener('tokenChanged', handleTokenChange);
+    };
   }, []);
 
-  // Periodically refresh virtual room status for recruiters
   useEffect(() => {
-    if (userData?.role === "recruiter") {
+    if (userData?.role === "recruiter" || userData?.role === "admin") {
       const refreshStatus = async () => {
         try {
           const vrResponse = await getMyVirtualRoomRequest();
           const newStatus = vrResponse.data.request;
           const previousStatus = previousStatusRef.current;
-          
-          // If status changed to approved, show notification
-          if (newStatus.status === 'approved' && previousStatus !== 'approved') {
+
+          if (newStatus.status === "approved" && previousStatus !== "approved") {
             Swal.fire({
-              icon: 'success',
-              title: 'Virtual Room Approved!',
-              text: 'Your virtual room request has been approved. Click the button in your profile to access it.',
+              icon: "success",
+              title: "Virtual Room Approved!",
+              text: "Your virtual room request has been approved. Click the button in your profile to access it.",
               timer: 5000,
               showConfirmButton: true,
-              background: '#1a1a2e',
-              color: '#fff',
-              confirmButtonColor: '#3b82f6'
+              background: "#1a1a2e",
+              color: "#fff",
+              confirmButtonColor: "#3b82f6"
             });
           }
-          
+
           previousStatusRef.current = newStatus.status;
           setVirtualRoomStatus(newStatus);
         } catch (err) {
@@ -87,18 +144,59 @@ export function Navbar() {
         }
       };
 
-      // Initial refresh
       refreshStatus();
-      
-      // Refresh every 30 seconds
       const interval = setInterval(refreshStatus, 30000);
       return () => clearInterval(interval);
     }
   }, [userData?.role]);
 
+  useEffect(() => {
+    console.log("📊 userData mis à jour:", userData);
+    console.log("📊 userRole mis à jour:", userRole);
+  }, [userData, userRole]);
+
+  useEffect(() => {
+    if (!userRole || userRole === "recruiter" || userRole === "admin") {
+      return;
+    }
+
+    const checkRoleUpgrade = async () => {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data?.token || !data?.role) return;
+
+        const currentRole = extractRoleFromToken();
+        if (currentRole !== data.role) {
+          sessionStorage.setItem("token", data.token);
+          localStorage.setItem("token", data.token);
+          setUserRole(data.role);
+          if (data.user) setUserData(data.user);
+          window.dispatchEvent(new Event("tokenChanged"));
+        }
+      } catch (error) {
+        console.error("❌ Error while syncing upgraded role:", error);
+      }
+    };
+
+    const intervalId = setInterval(checkRoleUpgrade, 5000);
+    return () => clearInterval(intervalId);
+  }, [userRole]);
+
   const handleLogout = () => {
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-    
+
     Swal.fire({
       title: 'Are you sure?',
       text: "You will be redirected to the login page.",
@@ -113,17 +211,12 @@ export function Navbar() {
     }).then((result) => {
       if (result.isConfirmed) {
         // Clear all user data including settings
-        localStorage.removeItem("token");
-        localStorage.removeItem("theme");
-        localStorage.removeItem("accentColor");
-        localStorage.removeItem("fontSize");
-        localStorage.removeItem("highContrast");
-        localStorage.removeItem("reduceMotion");
-        localStorage.removeItem("soundEnabled");
-        localStorage.removeItem("avatar");
-        localStorage.removeItem("nickname");
+        sessionStorage.clear();
+        localStorage.clear();
 
-        
+        // Notifier les autres composants du changement de token
+        window.dispatchEvent(new Event('tokenChanged'));
+
         disconnect();
         navigate("/");
 
@@ -140,13 +233,53 @@ export function Navbar() {
     });
   };
 
-  const handleResetLevels = () => {
+  const handleResetLevels = async () => {
     playClick();
-    localStorage.removeItem("levelProgress");
-    for (let i = 1; i <= 4; i += 1) {
-      localStorage.removeItem(`level${i}_challenges`);
+
+    const result = await Swal.fire({
+      title: 'Reset all progress?',
+      text: "This will clear all your completed challenges and stars permanently.",
+      icon: 'warning',
+      showCancelButton: true,
+      background: '#1a1a2e',
+      color: '#fff',
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#2563eb',
+      confirmButtonText: 'Yes, Reset Everything',
+      cancelButtonText: 'Keep Progress'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+        const response = await fetch("http://localhost:5000/api/stages/reset-progress", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          localStorage.removeItem("levelProgress");
+          for (let i = 1; i <= 4; i += 1) {
+            localStorage.removeItem(`level${i}_challenges`);
+          }
+          window.dispatchEvent(new Event("fortcode:progress-reset"));
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Progress Reset',
+            text: 'Your journey starts fresh, Commander!',
+            background: '#1a1a2e',
+            color: '#fff',
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            navigate("/map");
+          });
+        }
+      } catch (err) {
+        console.error("Reset failed:", err);
+      }
     }
-    window.dispatchEvent(new Event("fortcode:progress-reset"));
   };
 
   const handleVirtualRoomRequest = async () => {
@@ -300,28 +433,24 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-1 bg-slate-900/50 p-1 rounded-full border border-slate-800">
-          {userData?.role === "recruiter" ? (
-            // Recruiter Navigation
+          {(userData?.role === "recruiter" || userData?.role === "admin") && (
+            <NavItem to="/home" icon={<Briefcase className="w-4 h-4" />} label="Dashboard" onClick={playClick} />
+          )}
+          <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
+          <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
+          <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
+          {userData && (
             <>
-              <NavItem to="/home" icon={<Briefcase className="w-4 h-4" />} label="Dashboard" onClick={playClick} />
-              <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
-              <NavItem to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" onClick={playClick} />
-            </>
-          ) : (
-            // Participant Navigation
-            <>
-              <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
-              <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
-              <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
               <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
               <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
             </>
           )}
+          <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
         </div>
 
         {/* Desktop Right Section */}
         <div className="hidden lg:flex items-center gap-4">
-          {userData?.role !== "recruiter" && (
+          {userData ? (
             <>
               <button
                 onClick={handleResetLevels}
@@ -336,22 +465,17 @@ export function Navbar() {
                 <Castle className="w-4 h-4" />
                 Enter Castle
               </Link>
-            </>
-          )}
-          
-          {/* User Profile Badge */}
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
-            <div className="w-8 h-8 rounded-full border-2 overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-            </div>
-            <span className="text-sm font-semibold text-slate-100">
-              {nickname || 'Commander'}
-            </span>
-          </div>
+              {/* User Profile Badge */}
+              <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
+                <RankBadge rank={userData?.gamification?.rank || 'Iron'} level={userData?.gamification?.level || 1} size="sm" />
+                <span className="text-sm font-semibold text-slate-100">
+                  {nickname || 'Commander'}
+                </span>
+              </div>
 
-          {/* Profile Dropdown - Desktop */}
-          <div className="relative">
-            <button
+              {/* Profile Dropdown - Desktop */}
+              <div className="relative">
+                <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
             >
@@ -372,9 +496,18 @@ export function Navbar() {
                           Recruiter
                         </span>
                       )}
+                      {userData?.role === "admin" && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
+                          Admin
+                        </span>
+                      )}
                     </div>
                     <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
+                </div>
+
+                <div className="bg-slate-950/50 rounded-lg p-2 mb-3 flex justify-center border border-slate-800">
+                   <RankBadge rank={userData?.gamification?.rank || 'Iron'} level={userData?.gamification?.level || 1} showLabel={true} size="md" />
                 </div>
 
                 <div className="h-px bg-slate-800 my-2" />
@@ -399,34 +532,55 @@ export function Navbar() {
                     <span>Settings</span>
                   </Link>
 
-                  {/* Recruiter virtual room request button */}
-                  {userData?.role === "recruiter" && (
+                  {(userData?.role === "recruiter" || userData?.role === "admin") && (
                     <button
                       onClick={() => {
                         handleVirtualRoomRequest();
                         setShowDropdown(false);
                       }}
                       className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors border ${
-                        virtualRoomStatus?.status === 'approved'
-                          ? 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? 'text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5'
-                          : 'text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30'
+                        virtualRoomStatus?.status === "approved"
+                          ? "text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5"
+                          : virtualRoomStatus?.status === "pending"
+                          ? "text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5"
+                          : virtualRoomStatus?.status === "rejected"
+                          ? "text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5"
+                          : "text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30"
                       }`}
                     >
                       <Video className="w-4 h-4" />
                       <span className="flex-1 text-left">
-                        {virtualRoomStatus?.status === 'approved'
-                          ? '✅ Virtual Room Approved'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? '⏳ Virtual Room Pending'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? '❌ Request Rejected'
-                          : 'Request Virtual Room'}
+                        {virtualRoomStatus?.status === "approved"
+                          ? "✅ Virtual Room Approved"
+                          : virtualRoomStatus?.status === "pending"
+                          ? "⏳ Virtual Room Pending"
+                          : virtualRoomStatus?.status === "rejected"
+                          ? "❌ Request Rejected"
+                          : "Request Virtual Room"}
                       </span>
                     </button>
+                  )}
+
+                  {userRole === "participant" && (
+                    <Link
+                      to="/request-recruiter"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Become Recruiter</span>
+                    </Link>
+                  )}
+
+                  {(userRole === "recruiter" || userRole === "admin") && (
+                    <Link
+                      to="/create-room"
+                      onClick={() => setShowDropdown(false)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg transition-colors border border-transparent hover:border-green-500/20"
+                    >
+                      <Code2 className="w-4 h-4" />
+                      <span>Create Room</span>
+                    </Link>
                   )}
                   <button
                     onClick={handleLogout}
@@ -439,18 +593,30 @@ export function Navbar() {
               </div>
             )}
           </div>
+            </>
+          ) : (
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-blue-600 text-white text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:bg-blue-500 transition-colors border border-blue-400/50"
+            >
+              <User className="w-4 h-4" />
+              Login
+            </Link>
+          )}
         </div>
 
         {/* Mobile Right Section */}
         <div className="flex lg:hidden items-center gap-2">
           {/* Profile Avatar - Mobile */}
-          <div className="w-8 h-8 rounded-full border-2 border-slate-700 overflow-hidden flex items-center justify-center bg-slate-800">
-            {userData?.avatar ? (
-              <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <User className="w-4 h-4 text-slate-400" />
-            )}
-          </div>
+          {userData && (
+            <div className="w-8 h-8 rounded-full border-2 border-slate-700 overflow-hidden flex items-center justify-center bg-slate-800">
+              {userData?.avatar ? (
+                <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-4 h-4 text-slate-400" />
+              )}
+            </div>
+          )}
 
           {/* Burger Menu Button */}
           <button
@@ -469,181 +635,209 @@ export function Navbar() {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="fixed top-[73px] right-0 w-80 max-w-[85vw] h-[calc(100vh-73px)] bg-slate-950 border-l border-slate-800 z-50 lg:hidden overflow-y-auto shadow-2xl animate-in slide-in-from-right duration-300">
             <div className="p-4">
               {/* User Info Section */}
-              <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full border overflow-hidden" style={{ borderColor: 'var(--accent-color)' }}>
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
-                      {userData?.role === "recruiter" && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
-                          Recruiter
-                        </span>
-                      )}
+              {userData ? (
+                <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
+                        {userData?.role === "recruiter" && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+                            Recruiter
+                          </span>
+                        )}
+                        {userData?.role === "admin" && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                     </div>
-                    <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mb-4">
+                  <Link
+                    to="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)] justify-center transition-colors hover:bg-blue-500"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>Login to FortCode</span>
+                  </Link>
+                </div>
+              )}
 
-              {/* Navigation Links */}
+              {/* Navigation Links — same core journey as participants; recruiters/admins get Dashboard first */}
               <div className="space-y-2 mb-4">
-                {userData?.role === "recruiter" ? (
-                  // Recruiter Mobile Navigation
+                {(userData?.role === "recruiter" || userData?.role === "admin") && (
+                  <MobileNavItem
+                    to="/home"
+                    icon={<Briefcase className="w-5 h-5" />}
+                    label="Dashboard"
+                    onClick={handleMobileMenuClose}
+                  />
+                )}
+                <MobileNavItem
+                  to="/map"
+                  icon={<Map className="w-5 h-5" />}
+                  label="World Map"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/training"
+                  icon={<Sword className="w-5 h-5" />}
+                  label="Training"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/arena"
+                  icon={<Cpu className="w-5 h-5" />}
+                  label="Arena"
+                  onClick={handleMobileMenuClose}
+                />
+                
+                {userData && (
                   <>
-                    <MobileNavItem 
-                      to="/home" 
-                      icon={<Briefcase className="w-5 h-5" />} 
-                      label="Dashboard" 
+                    <MobileNavItem
+                      to="/dashboard"
+                      icon={<User className="w-5 h-5" />}
+                      label="Commander"
                       onClick={handleMobileMenuClose}
                     />
-                    <MobileNavItem 
-                      to="/map" 
-                      icon={<Map className="w-5 h-5" />} 
-                      label="World Map" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/settings" 
-                      icon={<Settings className="w-5 h-5" />} 
-                      label="Settings" 
-                      onClick={handleMobileMenuClose}
-                    />
-                  </>
-                ) : (
-                  // Participant Mobile Navigation
-                  <>
-                    <MobileNavItem 
-                      to="/map" 
-                      icon={<Map className="w-5 h-5" />} 
-                      label="World Map" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/training" 
-                      icon={<Sword className="w-5 h-5" />} 
-                      label="Training" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/arena" 
-                      icon={<Cpu className="w-5 h-5" />} 
-                      label="Arena" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/dashboard" 
-                      icon={<User className="w-5 h-5" />} 
-                      label="Commander" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/armory" 
-                      icon={<Trophy className="w-5 h-5" />} 
-                      label="Armory" 
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem 
-                      to="/settings" 
-                      icon={<Settings className="w-5 h-5" />} 
-                      label="Settings" 
+                    <MobileNavItem
+                      to="/armory"
+                      icon={<Trophy className="w-5 h-5" />}
+                      label="Armory"
                       onClick={handleMobileMenuClose}
                     />
                   </>
                 )}
+                
+                <MobileNavItem
+                  to="/programming-rooms"
+                  icon={<Code2 className="w-5 h-5" />}
+                  label="Programming Rooms"
+                  onClick={handleMobileMenuClose}
+                />
+                <MobileNavItem
+                  to="/settings"
+                  icon={<Settings className="w-5 h-5" />}
+                  label="Settings"
+                  onClick={handleMobileMenuClose}
+                />
               </div>
 
-              {userData?.role !== "recruiter" && (
-                <>
-                  <div className="h-px bg-slate-800 my-4" />
+              <div className="h-px bg-slate-800 my-4" />
+              <div className="space-y-2 mb-4">
+                <Link
+                  to="/castle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-amber-500 text-slate-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
+                >
+                  <Castle className="w-5 h-5" />
+                  <span>Enter Castle</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    handleResetLevels();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
+                >
+                  <Shield className="w-5 h-5" />
+                  <span>Reset Levels</span>
+                </button>
+              </div>
 
-                  {/* Action Buttons - Only for Participants */}
-                  <div className="space-y-2 mb-4">
-                    <Link
-                      to="/castle"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-amber-500 text-slate-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:bg-amber-400 transition-colors"
-                    >
-                      <Castle className="w-5 h-5" />
-                      <span>Enter Castle</span>
-                    </Link>
-                    <button
-                      onClick={() => {
-                        handleResetLevels();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
-                    >
-                      <Shield className="w-5 h-5" />
-                      <span>Reset Levels</span>
-                    </button>
-                  </div>
-                </>
-              )}
+              <div className="space-y-2 mb-4">
+                {userRole === "participant" && (
+                  <Link
+                    to="/request-recruiter"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    <span>Become Recruiter</span>
+                  </Link>
+                )}
+
+                {(userRole === "recruiter" || userRole === "admin") && (
+                  <Link
+                    to="/create-room"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
+                  >
+                    <Code2 className="w-5 h-5" />
+                    <span>Create Room</span>
+                  </Link>
+                )}
+              </div>
 
               <div className="h-px bg-slate-800 my-4" />
 
               {/* Profile Actions */}
-              <div className="space-y-2">
-                {/* Recruiter virtual room request button - Mobile */}
-                {userData?.role === "recruiter" && (
+              {userData && (
+                <div className="space-y-2">
+                  {/* Recruiter virtual room request button - Mobile */}
+                  {(userData?.role === "recruiter" || userData?.role === "admin") && (
+                    <button
+                      onClick={() => {
+                        handleVirtualRoomRequest();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center gap-3 w-full px-4 py-3 text-sm rounded-lg transition-colors border ${
+                        virtualRoomStatus?.status === 'approved'
+                          ? 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5'
+                          : virtualRoomStatus?.status === 'pending'
+                          ? 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5'
+                          : virtualRoomStatus?.status === 'rejected'
+                          ? 'text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5'
+                          : 'text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30'
+                      }`}
+                    >
+                      <Video className="w-5 h-5" />
+                      <span className="flex-1 text-left">
+                        {virtualRoomStatus?.status === 'approved'
+                          ? '✅ Virtual Room Approved'
+                          : virtualRoomStatus?.status === 'pending'
+                          ? '⏳ Virtual Room Pending'
+                          : virtualRoomStatus?.status === 'rejected'
+                          ? '❌ Request Rejected'
+                          : 'Request Virtual Room'}
+                      </span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
-                      handleVirtualRoomRequest();
+                      setProfileModalOpen(true);
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`flex items-center gap-3 w-full px-4 py-3 text-sm rounded-lg transition-colors border ${
-                      virtualRoomStatus?.status === 'approved'
-                        ? 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5'
-                        : virtualRoomStatus?.status === 'pending'
-                        ? 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5'
-                        : virtualRoomStatus?.status === 'rejected'
-                        ? 'text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5'
-                        : 'text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30'
-                    }`}
+                    className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
-                    <Video className="w-5 h-5" />
-                    <span className="flex-1 text-left">
-                      {virtualRoomStatus?.status === 'approved'
-                        ? '✅ Virtual Room Approved'
-                        : virtualRoomStatus?.status === 'pending'
-                        ? '⏳ Virtual Room Pending'
-                        : virtualRoomStatus?.status === 'rejected'
-                        ? '❌ Request Rejected'
-                        : 'Request Virtual Room'}
-                    </span>
+                    <Settings className="w-5 h-5" />
+                    <span>Update Profile</span>
                   </button>
-                )}
-                <button
-                  onClick={() => {
-                    setProfileModalOpen(true);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>Update Profile</span>
-                </button>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>

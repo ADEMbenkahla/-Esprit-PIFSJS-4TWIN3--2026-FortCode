@@ -13,7 +13,7 @@ function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [googleData, setGoogleData] = useState({ googleId: "", avatar: "" });
+  const [avatar, setAvatar] = useState("https://api.dicebear.com/9.x/avataaars/svg?seed=default");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,12 +23,15 @@ function Register() {
       setIsGoogleUser(true);
       setEmail(searchParams.get('email') || "");
       setUsername(searchParams.get('name')?.replace(/\s+/g, '_') || "");
-      setGoogleData({
-        googleId: searchParams.get('googleId') || "",
-        avatar: searchParams.get('avatar') || ""
-      });
+      setAvatar(searchParams.get('avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=${searchParams.get('name') || 'default'}`);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!isGoogleUser && username) {
+      setAvatar(`https://api.dicebear.com/9.x/avataaars/svg?seed=${username}`);
+    }
+  }, [username, isGoogleUser]);
 
   const handleRegister = async () => {
     // Validation
@@ -74,7 +77,8 @@ function Register() {
         username,
         email,
         password,
-        ...(isGoogleUser && { googleId: googleData.googleId, avatar: googleData.avatar })
+        avatar,
+        ...(isGoogleUser && { googleId: googleData.googleId })
       };
 
       const response = await fetch("http://localhost:5000/api/auth/register", {
@@ -96,7 +100,11 @@ function Register() {
           color: '#fff',
           confirmButtonColor: '#7c3aed'
         }).then(() => {
-          navigate("/");
+          if (data.requiresVerification) {
+            navigate(`/verify-email?email=${encodeURIComponent(data.email || email)}`);
+          } else {
+            navigate("/");
+          }
         });
       } else {
         Swal.fire({
@@ -125,6 +133,13 @@ function Register() {
       <div className="card">
         <div className="logo-card register">
           <img src={logoImg} alt="FortCode Logo" />
+        </div>
+
+        <div className="avatar-preview-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+          <div className="avatar-preview" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid #7c3aed', overflow: 'hidden', marginBottom: '10px', background: '#1a1a2e' }}>
+            <img src={avatar} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <p style={{ fontSize: '12px', color: '#94a3b8' }}>This will be your initial avatar</p>
         </div>
 
         <label>Username</label>

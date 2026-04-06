@@ -24,7 +24,7 @@ const UserTracker: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
       const url = new URL("http://localhost:5000/api/auth/admin/users");
       url.searchParams.append("page", currentPage.toString());
       url.searchParams.append("limit", pageSize.toString());
@@ -64,14 +64,15 @@ const UserTracker: React.FC = () => {
   // Debounce search
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (currentPage !== 1) {
+      // Only reset to page 1 if the searchQuery actually changed and we are not on page 1
+      if (searchQuery && currentPage !== 1) {
         setCurrentPage(1);
       } else {
         fetchUsers();
       }
     }, 500);
     return () => clearTimeout(handler);
-  }, [searchQuery, currentPage, fetchUsers]);
+  }, [searchQuery, fetchUsers]); // Removed currentPage from dependencies
 
   useEffect(() => {
     if (socket) {
@@ -200,24 +201,65 @@ const UserTracker: React.FC = () => {
                   <span className="material-icons-outlined text-sm">chevron_left</span>
                 </button>
 
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentPage === page
-                        ? "bg-primary text-white shadow-glow"
-                        : "text-gray-400 hover:text-white hover:bg-purple-900/20"
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                )}
+                {(() => {
+                  const pages = [];
+                  const showMax = 5;
+                  let start = Math.max(1, currentPage - 2);
+                  let end = Math.min(totalPages, start + showMax - 1);
 
-                {totalPages > 5 && (
-                  <span className="text-gray-600 px-1">…</span>
-                )}
+                  if (end - start < showMax - 1) {
+                    start = Math.max(1, end - showMax + 1);
+                  }
+
+                  if (start > 1) {
+                    pages.push(
+                      <button
+                        key={1}
+                        onClick={() => setCurrentPage(1)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentPage === 1
+                          ? "bg-primary text-white shadow-glow"
+                          : "text-gray-400 hover:text-white hover:bg-purple-900/20"
+                          }`}
+                      >
+                        1
+                      </button>
+                    );
+                    if (start > 2) pages.push(<span key="start-dots" className="text-gray-600 px-1">…</span>);
+                  }
+
+                  for (let i = start; i <= end; i++) {
+                    pages.push(
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(i)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentPage === i
+                          ? "bg-primary text-white shadow-glow"
+                          : "text-gray-400 hover:text-white hover:bg-purple-900/20"
+                          }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+
+                  if (end < totalPages) {
+                    if (end < totalPages - 1) pages.push(<span key="end-dots" className="text-gray-600 px-1">…</span>);
+                    pages.push(
+                      <button
+                        key={totalPages}
+                        onClick={() => setCurrentPage(totalPages)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentPage === totalPages
+                          ? "bg-primary text-white shadow-glow"
+                          : "text-gray-400 hover:text-white hover:bg-purple-900/20"
+                          }`}
+                      >
+                        {totalPages}
+                      </button>
+                    );
+                  }
+
+                  return pages;
+                })()}
 
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}

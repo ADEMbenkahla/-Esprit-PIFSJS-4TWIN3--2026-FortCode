@@ -14,11 +14,13 @@ const sendEmail = async (options) => {
         },
     });
 
+    const textFallback = options.message || (options.html ? options.html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim() : '');
+
     const mailOptions = {
         from: `"FortCode Team" <${process.env.EMAIL_USERNAME}>`,
         to: options.email,
         subject: options.subject,
-        text: options.message || "Please see the HTML version of this email.",
+        text: textFallback,
         html: options.html,
         attachments: options.attachments || [],
     };

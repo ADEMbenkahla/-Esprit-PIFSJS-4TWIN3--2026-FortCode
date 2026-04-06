@@ -23,6 +23,7 @@ import { ScrollButton } from "../components/ui/ScrollButton";
 import {
   getMyVirtualRoomRequest,
   getParticipants,
+  generateBattleExercise,
   createBattleRoom as apiCreateBattleRoom,
   getMyBattleRooms,
   getBattleRoom,
@@ -40,12 +41,18 @@ export function RecruiterDashboard() {
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generatingExercise, setGeneratingExercise] = useState(false);
   const [createForm, setCreateForm] = useState({
     title: "",
     description: "",
     participantIds: [],
     challengeTitle: "Coding Challenge",
     challengeDescription: "",
+    expectedFunctionName: "solve",
+    starterCode: "",
+    language: "javascript",
+    testCasesJson: "[]",
+    exerciseFile: null,
     timeLimitMinutes: 60,
   });
 
@@ -73,12 +80,72 @@ export function RecruiterDashboard() {
     if (activeTab === TAB.ROOMS || activeTab === TAB.SUBMISSIONS) fetchRooms();
   }, [activeTab]);
 
+  const handleGenerateExercise = async () => {
+    const prompt = createForm.challengeDescription?.trim() || createForm.title?.trim();
+    if (!prompt) {
+      Swal.fire({ icon: "warning", title: "Prompt required", text: "Enter challenge description (or room title) before generating.", background: "#1a1a2e", color: "#fff" });
+      return;
+    }
+
+    setGeneratingExercise(true);
+    try {
+      const expectedFunctionName = (createForm.expectedFunctionName || "solve").trim();
+      const { data } = await generateBattleExercise({
+        prompt,
+        difficulty: "medium",
+        language: createForm.language || "javascript",
+        expectedFunctionName,
+        randomize: true,
+      });
+
+      const exercise = data?.exercise || {};
+      const generatedTests = Array.isArray(exercise.testCases) ? exercise.testCases : [];
+      setCreateForm((f) => ({
+        ...f,
+        challengeTitle: exercise.title || f.challengeTitle,
+        challengeDescription: exercise.description || f.challengeDescription,
+        starterCode: exercise.starterCode || f.starterCode,
+        language: exercise.language || "javascript",
+        expectedFunctionName: (exercise.expectedFunctions && exercise.expectedFunctions[0]) || expectedFunctionName,
+        testCasesJson: JSON.stringify(generatedTests, null, 2),
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Exercise generated",
+        text: `Generated ${generatedTests.length} test cases.`,
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Generation failed", text: err?.response?.data?.message || "Could not generate exercise.", background: "#1a1a2e", color: "#fff" });
+    } finally {
+      setGeneratingExercise(false);
+    }
+  };
+
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!createForm.title.trim()) {
       Swal.fire({ icon: "warning", title: "Title required", text: "Enter a room title.", background: "#1a1a2e", color: "#fff" });
       return;
     }
+
+    let parsedTestCases = [];
+    try {
+      const parsed = JSON.parse(createForm.testCasesJson || "[]");
+      parsedTestCases = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid tests JSON",
+        text: "Challenge tests must be a valid JSON array.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       await apiCreateBattleRoom({
@@ -88,11 +155,29 @@ export function RecruiterDashboard() {
         challenge: {
           title: createForm.challengeTitle || "Coding Challenge",
           description: createForm.challengeDescription,
+          starterCode: createForm.starterCode,
+          language: createForm.language || "javascript",
+          expectedFunctionName: (createForm.expectedFunctionName || "solve").trim(),
+          expectedFunctions: [(createForm.expectedFunctionName || "solve").trim()].filter(Boolean),
+          testCases: parsedTestCases,
         },
+        exerciseFile: createForm.exerciseFile,
         timeLimitMinutes: createForm.timeLimitMinutes || 60,
       });
       Swal.fire({ icon: "success", title: "Room created", text: "Battle room is ready. You can start it when participants are ready.", background: "#1a1a2e", color: "#fff" });
-      setCreateForm({ title: "", description: "", participantIds: [], challengeTitle: "Coding Challenge", challengeDescription: "", timeLimitMinutes: 60 });
+      setCreateForm({
+        title: "",
+        description: "",
+        participantIds: [],
+        challengeTitle: "Coding Challenge",
+        challengeDescription: "",
+        expectedFunctionName: "solve",
+        starterCode: "",
+        language: "javascript",
+        testCasesJson: "[]",
+        exerciseFile: null,
+        timeLimitMinutes: 60,
+      });
       fetchRooms();
       setActiveTab(TAB.ROOMS);
     } catch (err) {
@@ -349,6 +434,68 @@ export function RecruiterDashboard() {
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Challenge description (optional)</label>
                 <textarea value={createForm.challengeDescription} onChange={(e) => setCreateForm((f) => ({ ...f, challengeDescription: e.target.value }))} rows={3} placeholder="Describe the exercise or problem" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Programming language *</label>
+                <select
+                  value={createForm.language}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, language: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Expected function name</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={createForm.expectedFunctionName}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, expectedFunctionName: e.target.value }))}
+                    placeholder="e.g. calculPair"
+                    className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGenerateExercise}
+                    disabled={generatingExercise}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {generatingExercise ? "Generating..." : "Generate template"}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Challenge tests (JSON)</label>
+                <textarea
+                  value={createForm.testCasesJson}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, testCasesJson: e.target.value }))}
+                  rows={8}
+                  placeholder='[{"name":"sum basic","assertion":"sum(2,3) === 5","hidden":false}]'
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                />
+                <p className="text-xs text-slate-500 mt-2">Assertions run on server at submit time. Example assertion: return solve(2, 3) === 5;</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Starter code (auto-filled)</label>
+                <textarea
+                  value={createForm.starterCode}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, starterCode: e.target.value }))}
+                  rows={8}
+                  placeholder="Generated starter code will appear here"
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Exercise file (PDF or statement document)</label>
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md,.doc,.docx,.zip"
+                  onChange={(e) => setCreateForm((f) => ({ ...f, exerciseFile: e.target.files?.[0] || null }))}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-slate-700 file:text-slate-200"
+                />
+                <p className="text-xs text-slate-500 mt-2">Allowed: PDF, TXT, MD, DOC, DOCX, ZIP (max 10 MB).</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Time limit (minutes) *</label>

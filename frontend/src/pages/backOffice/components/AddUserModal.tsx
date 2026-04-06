@@ -34,7 +34,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem("token") || localStorage.getItem("token");
             const body = { username, email, password, role, avatar };
             const response = await fetch('http://localhost:5000/api/auth/admin/users', {
                 method: 'POST',
