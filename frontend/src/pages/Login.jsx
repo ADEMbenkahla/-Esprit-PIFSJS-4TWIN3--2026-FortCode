@@ -37,6 +37,7 @@ function Login({ onSwitchToRegister }) {
       return;
     }
   }, [navigate, location.search]);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("error") === "deactivated") {

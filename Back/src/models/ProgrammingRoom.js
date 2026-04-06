@@ -43,6 +43,98 @@ const programmingRoomSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  invitations: [{
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      required: true
+    },
+    inviteCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ["pending", "sent", "opened", "accepted", "expired"],
+      default: "pending"
+    },
+    sentAt: {
+      type: Date,
+      default: Date.now
+    },
+    openedAt: {
+      type: Date
+    },
+    acceptedAt: {
+      type: Date
+    }
+  }],
+  challengeTitle: {
+    type: String,
+    trim: true,
+    maxlength: 120,
+    default: ""
+  },
+  challengeDescription: {
+    type: String,
+    trim: true,
+    maxlength: 2000,
+    default: ""
+  },
+  gradingRubric: {
+    totalPoints: {
+      type: Number,
+      default: 100,
+      min: 1,
+      max: 1000
+    },
+    criteria: [{
+      label: {
+        type: String,
+        trim: true,
+        maxlength: 80,
+        default: ""
+      },
+      points: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 1000
+      },
+      description: {
+        type: String,
+        trim: true,
+        maxlength: 500,
+        default: ""
+      }
+    }]
+  },
+  exerciseFile: {
+    url: {
+      type: String,
+      default: ""
+    },
+    originalName: {
+      type: String,
+      default: ""
+    },
+    mimeType: {
+      type: String,
+      default: ""
+    },
+    uploadedAt: {
+      type: Date
+    }
+  },
+  timeLimit: {
+    type: Number,
+    default: 60,
+    min: 15,
+    max: 240
+  },
   duration: {
     type: Number, // in minutes
     default: 60,
@@ -67,6 +159,143 @@ const programmingRoomSchema = new mongoose.Schema({
   completedAt: {
     type: Date
   },
+  executionLogs: [{
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      required: true
+    },
+    action: {
+      type: String,
+      enum: ["run", "submit"],
+      default: "run"
+    },
+    status: {
+      type: String,
+      enum: ["success", "error"],
+      default: "success"
+    },
+    runtimeMs: {
+      type: Number,
+      default: 0
+    },
+    errorMessage: {
+      type: String,
+      default: ""
+    },
+    suspicious: {
+      type: Boolean,
+      default: false
+    },
+    suspicionReason: {
+      type: String,
+      default: ""
+    },
+    codeSnippet: {
+      type: String,
+      default: ""
+    },
+    outputSnippet: {
+      type: String,
+      default: ""
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  resultSubmissions: [{
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      required: true
+    },
+    codeSnapshot: {
+      type: String,
+      default: ""
+    },
+    outputSnapshot: {
+      type: String,
+      default: ""
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now
+    },
+    confirmedByRecruiter: {
+      type: Boolean,
+      default: false
+    },
+    confirmedAt: {
+      type: Date
+    },
+    confirmedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+    awardedScore: {
+      type: Number,
+      min: 0,
+      max: 1000,
+      default: 0
+    },
+    awardedCriteria: [{
+      label: {
+        type: String,
+        trim: true,
+        maxlength: 80,
+        default: ""
+      },
+      points: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 1000
+      }
+    }],
+    recruiterFeedback: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: ""
+    },
+    sonarQube: {
+      projectKey: {
+        type: String,
+        trim: true,
+        default: ""
+      },
+      qualityGateStatus: {
+        type: String,
+        default: ""
+      },
+      scanStatus: {
+        type: String,
+        default: ""
+      },
+      metrics: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
+      },
+      issuesCount: {
+        type: Number,
+        default: 0
+      },
+      lastSyncAt: {
+        type: Date
+      },
+      dashboardUrl: {
+        type: String,
+        default: ""
+      },
+      errorMessage: {
+        type: String,
+        default: ""
+      }
+    }
+  }],
   roomCode: {
     type: String,
     unique: true,
@@ -95,5 +324,6 @@ function generateRoomCode() {
 // Indexes for performance
 programmingRoomSchema.index({ creatorId: 1, status: 1 });
 programmingRoomSchema.index({ status: 1, scheduledAt: 1 });
+programmingRoomSchema.index({ roomCode: 1 });
 
 module.exports = mongoose.model("ProgrammingRoom", programmingRoomSchema);

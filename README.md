@@ -74,6 +74,63 @@ The platform aims to:
 
 ---
 
+## Local AI Scoring Setup (Ollama)
+
+FortCode now supports local AI score suggestions through Ollama (no paid API required).
+
+### 1. Install Ollama
+
+- Download and install from `https://ollama.com/download`.
+
+### 2. Pull the model
+
+Run:
+
+```powershell
+ollama pull llama3.1:8b
+```
+
+### 3. Add backend environment config
+
+- Edit `Back/.env` directly.
+- Ensure these values exist:
+
+```env
+AI_SCORE_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+
+If you need even smaller storage, you can try:
+
+- `llama3.2:1b`
+- `qwen2.5:1.5b`
+- `phi3:mini`
+```
+
+### 4. Start services
+
+In one terminal:
+
+```powershell
+ollama serve
+```
+
+In another terminal:
+
+```powershell
+cd Back
+npm run dev
+```
+
+### 5. What was added in project
+
+- AI scoring service: `Back/src/services/aiScoreAgent.js`
+- Provider-aware controller integration: `Back/src/controllers/programmingRoomController.js`
+
+If you want cloud inference later, set `AI_SCORE_PROVIDER=openai` and add `OPENAI_API_KEY` in `Back/.env`.
+
+---
+
 ## Academic Context
 
 Developed at **Esprit School of Engineering – Tunisia**  

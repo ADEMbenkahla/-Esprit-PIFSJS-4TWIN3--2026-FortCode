@@ -16,8 +16,30 @@ const AccessibilityMenu = () => {
 
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [position, setPosition] = useState(() => {
-        const saved = localStorage.getItem('accessibility-position');
-        return saved ? JSON.parse(saved) : { x: 20, y: window.innerHeight - 20 };
+        const fallback = {
+            x: 20,
+            y: typeof window !== 'undefined' ? window.innerHeight - 20 : 20
+        };
+
+        try {
+            const saved = localStorage.getItem('accessibility-position');
+            if (!saved) {
+                return fallback;
+            }
+
+            const parsed = JSON.parse(saved);
+            if (
+                parsed &&
+                typeof parsed.x === 'number' &&
+                typeof parsed.y === 'number'
+            ) {
+                return parsed;
+            }
+        } catch {
+            localStorage.removeItem('accessibility-position');
+        }
+
+        return fallback;
     });
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0, moved: false });

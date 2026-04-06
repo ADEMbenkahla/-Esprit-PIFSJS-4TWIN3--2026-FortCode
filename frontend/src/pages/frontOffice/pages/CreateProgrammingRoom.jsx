@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Users, Plus, Calendar, Clock, Code, Globe, Lock, Loader2, CheckCircle } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Users, Plus, Calendar, Clock, Code, Lock, Loader2, CheckCircle, Upload } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import api from '../../../services/api';
 
@@ -7,17 +7,24 @@ export default function CreateProgrammingRoom() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    challengeTitle: '',
+    challengeDescription: '',
     language: 'javascript',
     difficulty: 'intermediate',
     maxParticipants: 10,
     duration: 60,
-    isPublic: true,
+    isPublic: false,
+    invitedEmails: '',
     scheduledDate: '',
     scheduledTime: ''
   });
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [createdRoomId, setCreatedRoomId] = useState('');
+  const [createdInvitations, setCreatedInvitations] = useState([]);
+  const [exerciseFile, setExerciseFile] = useState(null);
+  const exerciseFileInputRef = useRef(null);
 
   const languages = [
     { value: 'javascript', label: 'JavaScript' },
@@ -55,16 +62,35 @@ export default function CreateProgrammingRoom() {
 
     setLoading(true);
     setMessage({ type: '', text: '' });
+    setCreatedRoomId('');
+    setCreatedInvitations([]);
 
     try {
       // Here you would wire the model and controller for programming rooms
       // For now, we submit the room creation request directly
-      await api.post('/programming-rooms', {
-        ...formData,
-        scheduledAt: formData.scheduledDate && formData.scheduledTime 
-          ? new Date(`${formData.scheduledDate}T${formData.scheduledTime}`)
-          : null
-      });
+      const payload = new FormData();
+      payload.append('name', formData.name || '');
+      payload.append('description', formData.description || '');
+      payload.append('challengeTitle', formData.challengeTitle || '');
+      payload.append('challengeDescription', formData.challengeDescription || '');
+      payload.append('language', formData.language || 'javascript');
+      payload.append('difficulty', formData.difficulty || 'intermediate');
+      payload.append('maxParticipants', String(formData.maxParticipants || 10));
+      payload.append('duration', String(formData.duration || 60));
+      payload.append('invitedEmails', formData.invitedEmails || '');
+
+      if (formData.scheduledDate && formData.scheduledTime) {
+        payload.append('scheduledAt', new Date(`${formData.scheduledDate}T${formData.scheduledTime}`).toISOString());
+      }
+
+      if (exerciseFile) {
+        payload.append('exerciseFile', exerciseFile);
+      }
+
+      const response = await api.post('/programming-rooms', payload);
+
+      setCreatedRoomId(response.data?.room?._id || '');
+      setCreatedInvitations(Array.isArray(response.data?.invitations) ? response.data.invitations : []);
 
       setMessage({ type: 'success', text: 'Programming room created successfully!' });
       
@@ -72,22 +98,61 @@ export default function CreateProgrammingRoom() {
       setFormData({
         name: '',
         description: '',
+        challengeTitle: '',
+        challengeDescription: '',
         language: 'javascript',
         difficulty: 'intermediate',
         maxParticipants: 10,
         duration: 60,
-        isPublic: true,
+        isPublic: false,
+        invitedEmails: '',
         scheduledDate: '',
         scheduledTime: ''
       });
+      setExerciseFile(null);
+      if (exerciseFileInputRef.current) {
+        exerciseFileInputRef.current.value = '';
+      }
 
     } catch (error) {
+      setCreatedRoomId('');
+      setCreatedInvitations([]);
       setMessage({ 
         type: 'error', 
         text: error.response?.data?.message || 'Error creating room' 
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExerciseFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setExerciseFile(null);
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setMessage({ type: 'error', text: 'Exercise file must be 10MB or less.' });
+      if (exerciseFileInputRef.current) {
+        exerciseFileInputRef.current.value = '';
+      }
+      setExerciseFile(null);
+      return;
+    }
+
+    setExerciseFile(file);
+  };
+
+  const copyText = async (value) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage({ type: 'success', text: 'Copied to clipboard.' });
+    } catch {
+      setMessage({ type: 'error', text: 'Unable to copy automatically.' });
     }
   };
 
@@ -118,6 +183,45 @@ export default function CreateProgrammingRoom() {
             )}
             <p>{message.text}</p>
           </div>
+        )}
+
+        {createdInvitations.length > 0 && createdRoomId && (
+          <Card className="mb-6 p-5 bg-emerald-500/10 border-emerald-500/30">
+            <h3 className="text-emerald-300 text-lg font-semibold mb-2">Invitation links generated</h3>
+            <p className="text-sm text-slate-300 mb-4">
+              Share one link per participant. Each participant must use their own invitation code.
+            </p>
+            <div className="space-y-3">
+              {createdInvitations.map((invite) => {
+                const email = invite?.email || '';
+                const inviteCode = invite?.inviteCode || '';
+                const invitationLink = `${window.location.origin}/room-invitation?roomId=${encodeURIComponent(createdRoomId)}&email=${encodeURIComponent(email)}`;
+                return (
+                  <div key={`${email}-${inviteCode}`} className="p-3 rounded-lg bg-slate-900/70 border border-slate-700">
+                    <p className="text-slate-200 text-sm"><span className="text-slate-400">Email:</span> {email}</p>
+                    <p className="text-slate-200 text-sm"><span className="text-slate-400">Code:</span> {inviteCode}</p>
+                    <p className="text-slate-300 text-xs mt-1 break-all">{invitationLink}</p>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => copyText(invitationLink)}
+                        className="px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Copy link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyText(inviteCode)}
+                        className="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-100"
+                      >
+                        Copy code
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
         )}
 
         <Card className="p-6">
@@ -155,6 +259,74 @@ export default function CreateProgrammingRoom() {
               <div className="text-xs text-slate-500 mt-1 text-right">
                 {formData.description.length}/500
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Challenge Title
+                </label>
+                <input
+                  type="text"
+                  name="challengeTitle"
+                  value={formData.challengeTitle}
+                  onChange={handleChange}
+                  placeholder="Ex: Build a todo API"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  maxLength={120}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Invite emails
+                </label>
+                <input
+                  type="text"
+                  name="invitedEmails"
+                  value={formData.invitedEmails}
+                  onChange={handleChange}
+                  placeholder="alice@mail.com, bob@mail.com"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">Separate multiple emails with commas or spaces.</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Challenge Description
+              </label>
+              <textarea
+                name="challengeDescription"
+                value={formData.challengeDescription}
+                onChange={handleChange}
+                placeholder="Describe the programming task that the invited participant will solve..."
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-[120px] resize-y"
+                maxLength={2000}
+              />
+              <div className="text-xs text-slate-500 mt-1 text-right">
+                {formData.challengeDescription.length}/2000
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                <Upload className="w-4 h-4 inline mr-1" />
+                Exercise File (optional)
+              </label>
+              <input
+                ref={exerciseFileInputRef}
+                type="file"
+                name="exerciseFile"
+                accept=".pdf,.txt,.md,.doc,.docx,.zip,.7z,.json"
+                onChange={handleExerciseFileChange}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white file:mr-4 file:py-2 file:px-3 file:rounded file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+              />
+              <p className="text-xs text-slate-500 mt-1">Allowed: PDF, TXT, MD, DOC, DOCX, ZIP, 7Z, JSON (max 10MB).</p>
+              {exerciseFile && (
+                <p className="text-xs text-emerald-400 mt-1">Selected: {exerciseFile.name}</p>
+              )}
             </div>
 
             {/* Language and difficulty */}
@@ -265,32 +437,13 @@ export default function CreateProgrammingRoom() {
               </div>
             </div>
 
-            {/* Visibility */}
+            {/* Visibility is fixed by business rule */}
             <div className="flex items-center gap-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-              <input
-                type="checkbox"
-                name="isPublic"
-                id="isPublic"
-                checked={formData.isPublic}
-                onChange={handleChange}
-                className="w-5 h-5 rounded bg-slate-700 border-slate-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
-              />
-              <label htmlFor="isPublic" className="flex-1 cursor-pointer">
-                <div className="flex items-center gap-2 text-white font-medium">
-                  {formData.isPublic ? (
-                    <Globe className="w-5 h-5 text-green-400" />
-                  ) : (
-                    <Lock className="w-5 h-5 text-amber-400" />
-                  )}
-                  {formData.isPublic ? 'Public' : 'Private'} Room
-                </div>
-                <p className="text-sm text-slate-400 mt-1">
-                  {formData.isPublic 
-                    ? 'All participants can join this room'
-                    : 'Only invited participants can join'
-                  }
-                </p>
-              </label>
+              <Lock className="w-5 h-5 text-amber-400" />
+              <div className="flex-1">
+                <div className="text-white font-medium">Private Room</div>
+                <p className="text-sm text-slate-400 mt-1">Only invited participants can join this room.</p>
+              </div>
             </div>
 
             {/* Submit button */}

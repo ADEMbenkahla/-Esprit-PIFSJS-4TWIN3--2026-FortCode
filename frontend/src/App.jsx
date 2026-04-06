@@ -6,6 +6,8 @@ import { AdminOnlyRoute, FrontOfficeOnlyRoute } from "./guards/RouteGuards";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import OAuthCallback from "./pages/OAuthCallback";
+import BattleInvite from "./pages/BattleInvite";
+import BattleProgrammer from "./pages/frontOffice/pages/BattleProgrammer";
 import UserTracker from "./pages/backOffice/UserTracker";
 import Dashboard from "./pages/backOffice/Dashboard";
 import ActivityLogs from "./pages/backOffice/ActivityLogs";
@@ -60,7 +62,11 @@ function AppContent() {
     location.pathname.startsWith("/training/") ||
     location.pathname.startsWith("/stages/") ||
     location.pathname.startsWith("/my-activity") ||
-    location.pathname.startsWith("/virtual-room");
+    location.pathname.startsWith("/virtual-room") ||
+    location.pathname.startsWith("/battle-invite") ||
+    location.pathname.startsWith("/visitor/battle-invite") ||
+    location.pathname.startsWith("/room-invitation") ||
+    location.pathname.startsWith("/programmer/");
 
   return (
     <>
@@ -72,6 +78,17 @@ function AppContent() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<OAuthCallback />} />
+        <Route path="/battle-invite" element={<BattleInvite />} />
+        <Route path="/visitor/battle-invite" element={<BattleInvite />} />
+        <Route path="/room-invitation" element={<BattleInvite />} />
+        <Route
+          path="/programmer/:roomId"
+          element={
+            <ProtectedRoute requiredRole={["participant"]}>
+              <BattleProgrammer />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Front Office Routes — only participants & recruiters; admin is redirected to back office */}
         <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />

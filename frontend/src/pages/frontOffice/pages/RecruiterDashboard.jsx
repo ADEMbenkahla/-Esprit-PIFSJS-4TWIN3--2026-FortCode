@@ -32,7 +32,94 @@ import {
 } from "../../../services/api";
 import Swal from "sweetalert2";
 
+const getRemainingMs = (startedAt, timeLimitMinutes, now = Date.now()) => {
+  if (!startedAt || !timeLimitMinutes) return null;
+  const end = new Date(startedAt).getTime() + timeLimitMinutes * 60 * 1000;
+  return Math.max(0, end - now);
+};
+
+const formatRemaining = (remainingMs) => {
+  if (remainingMs == null) return "—";
+  const mins = Math.floor(remainingMs / 60000);
+  const secs = Math.floor((remainingMs % 60000) / 1000);
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+};
+
+const sonarLetter = (rawRating) => {
+  if (rawRating == null || rawRating === "") return "-";
+  const value = Number(rawRating);
+  if (!Number.isFinite(value)) return String(rawRating);
+  const map = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
+  return map[value] || String(rawRating);
+};
+
 const TAB = { OVERVIEW: "overview", ROOMS: "rooms", CREATE: "create", SUBMISSIONS: "submissions", SUPERVISE: "supervise" };
+const EXERCISE_CRITERIA_OPTIONS = [
+  "loops",
+  "iterations",
+  "arrays",
+  "strings",
+  "graphs",
+  "dynamic-programming",
+  "data-structures",
+  "performance",
+];
+
+const buildTemplateForFunction = (language, functionName) => {
+  const fn = String(functionName || "solve").trim() || "solve";
+  if (fn.toLowerCase() === "shortestpath") {
+    return [
+      {
+        name: "Basic shortest path",
+        assertion: `const g = { A: { B: 4, C: 2 }, B: { C: 1, D: 5 }, C: { B: 1, D: 8, E: 10 }, D: { E: 2, F: 6 }, E: { F: 2 }, F: {} }; const r = ${fn}(g, "A", "F"); return r.distance === 10 && Array.isArray(r.path) && r.path.join("->") === "A->C->B->D->E->F";`,
+        hidden: false,
+      },
+      {
+        name: "Start equals target",
+        assertion: `const g = { A: { B: 1 }, B: {} }; const r = ${fn}(g, "A", "A"); return r.distance === 0 && r.path.join("->") === "A";`,
+        hidden: false,
+      },
+      {
+        name: "Unreachable target",
+        assertion: `const g = { A: { B: 1 }, B: {}, C: {} }; const r = ${fn}(g, "A", "C"); return r.distance === Infinity && Array.isArray(r.path) && r.path.length === 0;`,
+        hidden: true,
+      },
+      {
+        name: "Ignore negative edges",
+        assertion: `const g = { A: { B: -2, C: 3 }, B: { D: 1 }, C: { D: 2 }, D: {} }; const r = ${fn}(g, "A", "D"); return r.distance === 5 && r.path.join("->") === "A->C->D";`,
+        hidden: true,
+      },
+    ];
+  }
+
+  const jsLike = [
+    { name: "Basic", assertion: `return ${fn}(2, 3) === 5;`, hidden: false },
+    { name: "Zero", assertion: `return ${fn}(0, 0) === 0;`, hidden: false },
+    { name: "Negative", assertion: `return ${fn}(-1, 1) === 0;`, hidden: true },
+  ];
+  const python = [
+    { name: "Basic", assertion: `${fn}(2, 3) == 5`, hidden: false },
+    { name: "Zero", assertion: `${fn}(0, 0) == 0`, hidden: false },
+    { name: "Negative", assertion: `${fn}(-1, 1) == 0`, hidden: true },
+  ];
+
+  return language === "python" ? python : jsLike;
+};
+
+const buildChallengeTestTemplate = (language, functionNames) => {
+  const names = (Array.isArray(functionNames) ? functionNames : [functionNames])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const uniqueNames = [...new Set(names.length ? names : ["solve"])];
+  return uniqueNames.flatMap((fnName, index) => {
+    const tests = buildTemplateForFunction(language, fnName);
+    return tests.map((test) => ({
+      ...test,
+      name: uniqueNames.length > 1 ? `${fnName} - ${test.name || `Test ${index + 1}`}` : test.name,
+    }));
+  });
+};
 
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
@@ -41,19 +128,24 @@ export function RecruiterDashboard() {
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [generatingExercise, setGeneratingExercise] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [createForm, setCreateForm] = useState({
     title: "",
     description: "",
+    exercisePrompt: "",
+    exerciseDifficulty: "medium",
+    exerciseCriteria: ["loops", "iterations"],
+    randomExercise: true,
     participantIds: [],
+    inviteEmailsText: "",
     challengeTitle: "Coding Challenge",
     challengeDescription: "",
-    expectedFunctionName: "solve",
-    starterCode: "",
-    language: "javascript",
-    testCasesJson: "[]",
-    exerciseFile: null,
+    challengeLanguage: "javascript",
+    expectedFunctions: ["solve"],
+    challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
     timeLimitMinutes: 60,
+    exerciseFile: null,
   });
 
   const fetchVirtualRoom = () => {
@@ -76,53 +168,13 @@ export function RecruiterDashboard() {
     fetchVirtualRoom();
   }, []);
   useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
     if (activeTab === TAB.CREATE) fetchParticipants();
     if (activeTab === TAB.ROOMS || activeTab === TAB.SUBMISSIONS) fetchRooms();
   }, [activeTab]);
-
-  const handleGenerateExercise = async () => {
-    const prompt = createForm.challengeDescription?.trim() || createForm.title?.trim();
-    if (!prompt) {
-      Swal.fire({ icon: "warning", title: "Prompt required", text: "Enter challenge description (or room title) before generating.", background: "#1a1a2e", color: "#fff" });
-      return;
-    }
-
-    setGeneratingExercise(true);
-    try {
-      const expectedFunctionName = (createForm.expectedFunctionName || "solve").trim();
-      const { data } = await generateBattleExercise({
-        prompt,
-        difficulty: "medium",
-        language: createForm.language || "javascript",
-        expectedFunctionName,
-        randomize: true,
-      });
-
-      const exercise = data?.exercise || {};
-      const generatedTests = Array.isArray(exercise.testCases) ? exercise.testCases : [];
-      setCreateForm((f) => ({
-        ...f,
-        challengeTitle: exercise.title || f.challengeTitle,
-        challengeDescription: exercise.description || f.challengeDescription,
-        starterCode: exercise.starterCode || f.starterCode,
-        language: exercise.language || "javascript",
-        expectedFunctionName: (exercise.expectedFunctions && exercise.expectedFunctions[0]) || expectedFunctionName,
-        testCasesJson: JSON.stringify(generatedTests, null, 2),
-      }));
-
-      Swal.fire({
-        icon: "success",
-        title: "Exercise generated",
-        text: `Generated ${generatedTests.length} test cases.`,
-        background: "#1a1a2e",
-        color: "#fff",
-      });
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "Generation failed", text: err?.response?.data?.message || "Could not generate exercise.", background: "#1a1a2e", color: "#fff" });
-    } finally {
-      setGeneratingExercise(false);
-    }
-  };
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
@@ -131,15 +183,40 @@ export function RecruiterDashboard() {
       return;
     }
 
-    let parsedTestCases = [];
-    try {
-      const parsed = JSON.parse(createForm.testCasesJson || "[]");
-      parsedTestCases = Array.isArray(parsed) ? parsed : [];
-    } catch {
+    const inviteEmails = createForm.inviteEmailsText
+      .split(/[\n,;\s]+/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    let parsedTests = [];
+    if (createForm.challengeTestsJson.trim()) {
+      try {
+        const raw = JSON.parse(createForm.challengeTestsJson);
+        if (!Array.isArray(raw)) throw new Error("Tests must be an array");
+        parsedTests = raw
+          .map((t, idx) => ({
+            name: String(t?.name || `Test ${idx + 1}`),
+            assertion: String(t?.assertion || "").trim(),
+            hidden: t?.hidden !== false,
+          }))
+          .filter((t) => t.assertion.length > 0);
+      } catch (_error) {
+        Swal.fire({
+          icon: "error",
+          title: "Invalid challenge tests JSON",
+          text: "Use a valid JSON array like [{\"name\":\"T1\",\"assertion\":\"return solve(1)===2;\"}].",
+          background: "#1a1a2e",
+          color: "#fff",
+        });
+        return;
+      }
+    }
+
+    if (createForm.participantIds.length === 0 && inviteEmails.length === 0) {
       Swal.fire({
         icon: "warning",
-        title: "Invalid tests JSON",
-        text: "Challenge tests must be a valid JSON array.",
+        title: "Participants required",
+        text: "Select at least one participant or add invitation emails.",
         background: "#1a1a2e",
         color: "#fff",
       });
@@ -148,35 +225,45 @@ export function RecruiterDashboard() {
 
     setLoading(true);
     try {
-      await apiCreateBattleRoom({
+      const { data } = await apiCreateBattleRoom({
         title: createForm.title.trim(),
         description: createForm.description.trim(),
         participantIds: createForm.participantIds,
+        inviteEmails,
         challenge: {
           title: createForm.challengeTitle || "Coding Challenge",
           description: createForm.challengeDescription,
-          starterCode: createForm.starterCode,
-          language: createForm.language || "javascript",
-          expectedFunctionName: (createForm.expectedFunctionName || "solve").trim(),
-          expectedFunctions: [(createForm.expectedFunctionName || "solve").trim()].filter(Boolean),
-          testCases: parsedTestCases,
+          language: createForm.challengeLanguage || "javascript",
+          testCases: parsedTests,
         },
-        exerciseFile: createForm.exerciseFile,
         timeLimitMinutes: createForm.timeLimitMinutes || 60,
+        exerciseFile: createForm.exerciseFile,
       });
-      Swal.fire({ icon: "success", title: "Room created", text: "Battle room is ready. You can start it when participants are ready.", background: "#1a1a2e", color: "#fff" });
+      const sent = data?.invitations?.sent || 0;
+      const failed = data?.invitations?.failed || 0;
+      Swal.fire({
+        icon: "success",
+        title: "Room created",
+        text: `Battle room is ready. Invitations sent: ${sent}${failed ? `, failed: ${failed}` : ""}.`,
+        background: "#1a1a2e",
+        color: "#fff",
+      });
       setCreateForm({
         title: "",
         description: "",
+        exercisePrompt: "",
+        exerciseDifficulty: "medium",
+        exerciseCriteria: ["loops", "iterations"],
+        randomExercise: true,
         participantIds: [],
+        inviteEmailsText: "",
         challengeTitle: "Coding Challenge",
         challengeDescription: "",
-        expectedFunctionName: "solve",
-        starterCode: "",
-        language: "javascript",
-        testCasesJson: "[]",
-        exerciseFile: null,
+        challengeLanguage: "javascript",
+        expectedFunctions: ["solve"],
+        challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
         timeLimitMinutes: 60,
+        exerciseFile: null,
       });
       fetchRooms();
       setActiveTab(TAB.ROOMS);
@@ -184,6 +271,58 @@ export function RecruiterDashboard() {
       Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || "Could not create room.", background: "#1a1a2e", color: "#fff" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateExercise = async () => {
+    setAiGenerating(true);
+    try {
+      const expectedFns = (createForm.expectedFunctions || [])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+      const { data } = await generateBattleExercise({
+        prompt: createForm.exercisePrompt,
+        difficulty: createForm.exerciseDifficulty,
+        language: createForm.challengeLanguage,
+        expectedFunctions: expectedFns,
+        criteria: createForm.exerciseCriteria,
+        randomize: createForm.randomExercise,
+      });
+
+      const exercise = data?.exercise || {};
+      setCreateForm((f) => ({
+        ...f,
+        challengeTitle: exercise.title || f.challengeTitle,
+        challengeDescription: exercise.description || f.challengeDescription,
+        challengeLanguage: exercise.language || f.challengeLanguage,
+        expectedFunctions: Array.isArray(exercise.expectedFunctions) && exercise.expectedFunctions.length
+          ? exercise.expectedFunctions
+          : f.expectedFunctions,
+        challengeTestsJson: Array.isArray(exercise.testCases)
+          ? JSON.stringify(exercise.testCases, null, 2)
+          : f.challengeTestsJson,
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Exercise generated",
+        text: data?.source === "ai"
+          ? "Exercise and tests were generated by AI."
+          : "AI unavailable. A fallback exercise draft was generated.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Generation failed",
+        text: error?.response?.data?.message || "Could not generate exercise draft.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } finally {
+      setAiGenerating(false);
     }
   };
 
@@ -207,6 +346,17 @@ export function RecruiterDashboard() {
       setSelectedRoom(r.data.room);
     } catch (err) {
       Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || "Save failed.", background: "#1a1a2e", color: "#fff" });
+    }
+  };
+
+  const handleConfirmSubmission = async (roomId, subId, recruiterComment, recruiterRating, recruiterConfirmed) => {
+    try {
+      await updateSubmissionEvaluation(roomId, subId, { recruiterComment, recruiterRating, recruiterConfirmed });
+      const r = await getBattleRoom(roomId);
+      setSelectedRoom(r.data.room);
+      fetchRooms();
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || "Confirmation failed.", background: "#1a1a2e", color: "#fff" });
     }
   };
 
@@ -365,8 +515,11 @@ export function RecruiterDashboard() {
                     <tr className="border-b border-slate-700 text-slate-400 text-left">
                       <th className="pb-3 pr-4">Title</th>
                       <th className="pb-3 pr-4">Challenge</th>
+                      <th className="pb-3 pr-4">Language</th>
                       <th className="pb-3 pr-4">Time</th>
                       <th className="pb-3 pr-4">Participants</th>
+                      <th className="pb-3 pr-4">Visitors</th>
+                      <th className="pb-3 pr-4">Countdown</th>
                       <th className="pb-3 pr-4">Status</th>
                       <th className="pb-3 pr-4 text-right">Actions</th>
                     </tr>
@@ -376,8 +529,17 @@ export function RecruiterDashboard() {
                       <tr key={room._id} className="border-b border-slate-800 hover:bg-slate-800/30">
                         <td className="py-3 pr-4 font-medium text-slate-100">{room.title}</td>
                         <td className="py-3 pr-4 text-slate-400">{room.challenge?.title || "—"}</td>
+                        <td className="py-3 pr-4 text-slate-400">{room.challenge?.language || "javascript"}</td>
                         <td className="py-3 pr-4 text-slate-400">{room.timeLimitMinutes} min</td>
                         <td className="py-3 pr-4 text-slate-400">{room.participants?.length || 0}</td>
+                        <td className="py-3 pr-4 text-slate-400">{room.visitorAccessCount || 0}</td>
+                        <td className={`py-3 pr-4 text-sm ${room.status === "live" && getRemainingMs(room.startedAt, room.timeLimitMinutes, now) != null && getRemainingMs(room.startedAt, room.timeLimitMinutes, now) <= 5 * 60 * 1000 ? "text-red-300 font-semibold" : "text-slate-400"}`}>
+                          {room.status === "live"
+                            ? formatRemaining(getRemainingMs(room.startedAt, room.timeLimitMinutes, now))
+                            : room.status === "ended"
+                              ? "Ended"
+                              : "Not started"}
+                        </td>
                         <td className="py-3 pr-4">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             room.status === "live" ? "bg-emerald-500/20 text-emerald-300" :
@@ -426,66 +588,163 @@ export function RecruiterDashboard() {
                     </label>
                   ))}
                 </div>
+                <p className="text-xs text-slate-500 mt-2">Selected users with accounts will be added directly to the room.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Invite by email (non-registered users allowed)</label>
+                <textarea
+                  value={createForm.inviteEmailsText}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, inviteEmailsText: e.target.value }))}
+                  rows={3}
+                  placeholder="candidate1@email.com, candidate2@email.com"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-2">Each invitee receives a secure link and an invitation code by email.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Challenge title *</label>
                 <input type="text" value={createForm.challengeTitle} onChange={(e) => setCreateForm((f) => ({ ...f, challengeTitle: e.target.value }))} placeholder="e.g. Two Sum" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
+                <p className="text-sm font-medium text-slate-200">AI Exercise Generator</p>
+                <textarea
+                  value={createForm.exercisePrompt}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, exercisePrompt: e.target.value }))}
+                  rows={3}
+                  placeholder="Describe the exercise you want to generate."
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Generation criteria</p>
+                  <div className="flex flex-wrap gap-2">
+                    {EXERCISE_CRITERIA_OPTIONS.map((criterion) => {
+                      const selected = createForm.exerciseCriteria.includes(criterion);
+                      return (
+                        <button
+                          key={criterion}
+                          type="button"
+                          onClick={() => setCreateForm((f) => ({
+                            ...f,
+                            exerciseCriteria: selected
+                              ? f.exerciseCriteria.filter((item) => item !== criterion)
+                              : [...f.exerciseCriteria, criterion],
+                          }))}
+                          className={`px-2.5 py-1 rounded-full text-xs border ${selected ? "bg-indigo-600/30 border-indigo-500 text-indigo-200" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"}`}
+                        >
+                          {criterion}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    value={createForm.exerciseDifficulty}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, exerciseDifficulty: e.target.value }))}
+                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={createForm.randomExercise}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, randomExercise: e.target.checked }))}
+                    />
+                    Random by criteria
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateExercise}
+                    disabled={aiGenerating}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    {aiGenerating ? "Generating..." : "Generate with AI"}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Challenge description (optional)</label>
                 <textarea value={createForm.challengeDescription} onChange={(e) => setCreateForm((f) => ({ ...f, challengeDescription: e.target.value }))} rows={3} placeholder="Describe the exercise or problem" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Programming language *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Programming language</label>
                 <select
-                  value={createForm.language}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, language: e.target.value }))}
+                  value={createForm.challengeLanguage}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, challengeLanguage: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
                 >
                   <option value="javascript">JavaScript</option>
                   <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="csharp">C#</option>
+                  <option value="php">PHP</option>
+                  <option value="go">Go</option>
+                  <option value="ruby">Ruby</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Expected function name</label>
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-300">Expected function names</label>
+                {createForm.expectedFunctions.map((fn, idx) => (
+                  <div key={`fn-${idx}`} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={fn}
+                      onChange={(e) => {
+                        const next = [...createForm.expectedFunctions];
+                        next[idx] = e.target.value;
+                        setCreateForm((f) => ({ ...f, expectedFunctions: next }));
+                      }}
+                      placeholder={idx === 0 ? "solve" : "anotherFunction"}
+                      className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = createForm.expectedFunctions.filter((_, i) => i !== idx);
+                        setCreateForm((f) => ({ ...f, expectedFunctions: next.length ? next : ["solve"] }));
+                      }}
+                      className="px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                      title="Remove function"
+                    >
+                      -
+                    </button>
+                  </div>
+                ))}
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={createForm.expectedFunctionName}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, expectedFunctionName: e.target.value }))}
-                    placeholder="e.g. calculPair"
-                    className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
                   <button
                     type="button"
-                    onClick={handleGenerateExercise}
-                    disabled={generatingExercise}
-                    className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 whitespace-nowrap"
+                    onClick={() => setCreateForm((f) => ({ ...f, expectedFunctions: [...f.expectedFunctions, ""] }))}
+                    className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700"
                   >
-                    {generatingExercise ? "Generating..." : "Generate template"}
+                    + Add function
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const template = buildChallengeTestTemplate(createForm.challengeLanguage, createForm.expectedFunctions);
+                      setCreateForm((f) => ({ ...f, challengeTestsJson: JSON.stringify(template, null, 2) }));
+                    }}
+                    className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 hover:bg-slate-600"
+                  >
+                    Generate template
                   </button>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Challenge tests (JSON)</label>
                 <textarea
-                  value={createForm.testCasesJson}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, testCasesJson: e.target.value }))}
-                  rows={8}
-                  placeholder='[{"name":"sum basic","assertion":"sum(2,3) === 5","hidden":false}]'
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
+                  value={createForm.challengeTestsJson}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, challengeTestsJson: e.target.value }))}
+                  rows={7}
+                  className="w-full px-4 py-2.5 font-mono text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
-                <p className="text-xs text-slate-500 mt-2">Assertions run on server at submit time. Example assertion: return solve(2, 3) === 5;</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Starter code (auto-filled)</label>
-                <textarea
-                  value={createForm.starterCode}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, starterCode: e.target.value }))}
-                  rows={8}
-                  placeholder="Generated starter code will appear here"
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
-                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Assertions run on server at submit time. Example assertion: <code>return solve(2, 3) === 5;</code>
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Exercise file (PDF or statement document)</label>
@@ -493,7 +752,7 @@ export function RecruiterDashboard() {
                   type="file"
                   accept=".pdf,.txt,.md,.doc,.docx,.zip"
                   onChange={(e) => setCreateForm((f) => ({ ...f, exerciseFile: e.target.files?.[0] || null }))}
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-slate-700 file:text-slate-200"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 file:mr-3 file:px-3 file:py-1.5 file:rounded file:border-0 file:bg-slate-700 file:text-slate-100"
                 />
                 <p className="text-xs text-slate-500 mt-2">Allowed: PDF, TXT, MD, DOC, DOCX, ZIP (max 10 MB).</p>
               </div>
@@ -534,7 +793,7 @@ export function RecruiterDashboard() {
                 </div>
               </>
             ) : (
-              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
+              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onConfirmSubmission={handleConfirmSubmission} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
             )}
           </div>
         )}
@@ -570,11 +829,18 @@ export function RecruiterDashboard() {
   );
 }
 
-function SubmissionView({ room, onBack, onSaveEvaluation, onRefresh }) {
+function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onRefresh }) {
   const submissions = room.submissions || [];
+  const visitors = room.visitorDetails || [];
   const [editingSub, setEditingSub] = useState(null);
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(null);
+
+  useEffect(() => {
+    if (room?.status !== "live") return undefined;
+    const timer = setInterval(() => onRefresh(), 4000);
+    return () => clearInterval(timer);
+  }, [room?.status, onRefresh]);
 
   const openEdit = (sub) => {
     setEditingSub(sub._id);
@@ -597,6 +863,81 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onRefresh }) {
         <button onClick={onRefresh} className="text-slate-400 hover:text-slate-200 text-sm">Refresh</button>
       </div>
       <h2 className="text-xl font-semibold text-slate-100">{room.title} — Submissions</h2>
+
+      <Card className="p-5 bg-slate-900/90 border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <p className="text-slate-300 font-medium">Live supervision</p>
+            <p className="text-slate-500 text-xs">Auto-refreshes every 4 seconds while the battle is live.</p>
+          </div>
+          <span className={`text-xs px-2 py-1 rounded ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
+            {room.status}
+          </span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3 text-sm">
+          <div className="p-3 rounded bg-slate-950 border border-slate-800">
+            <p className="text-slate-500 text-xs">Visitors</p>
+            <p className="text-slate-100 text-lg font-semibold">{visitors.length}</p>
+          </div>
+          <div className="p-3 rounded bg-slate-950 border border-slate-800">
+            <p className="text-slate-500 text-xs">Confirmed</p>
+            <p className="text-slate-100 text-lg font-semibold">{submissions.filter((s) => s.recruiterConfirmed).length}</p>
+          </div>
+          <div className="p-3 rounded bg-slate-950 border border-slate-800">
+            <p className="text-slate-500 text-xs">Alerts</p>
+            <p className="text-slate-100 text-lg font-semibold">{submissions.reduce((acc, s) => acc + (s.securityAlerts?.length || 0), 0)}</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-5 bg-slate-900/90 border-slate-800">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-slate-300 font-medium">Visitor access list</p>
+            <p className="text-slate-500 text-xs">Accepted invitations with email and access time.</p>
+          </div>
+          <span className="text-xs text-slate-400">{visitors.length} visitor(s)</span>
+        </div>
+        {visitors.length === 0 ? (
+          <p className="text-slate-500 text-sm">No visitor has accessed this room yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-left text-slate-400">
+                  <th className="pb-2 pr-4">Email</th>
+                  <th className="pb-2 pr-4">Accepted at</th>
+                  <th className="pb-2 pr-4">Quality</th>
+                  <th className="pb-2 pr-4">Alerts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visitors.map((visitor, index) => (
+                  <tr key={`${visitor.email}-${index}`} className="border-b border-slate-800/70">
+                    <td className="py-2 pr-4 text-slate-200">{visitor.email}</td>
+                    <td className="py-2 pr-4 text-slate-400">
+                      {visitor.acceptedAt ? new Date(visitor.acceptedAt).toLocaleString() : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-300">
+                      {visitor.qualityGrade || "—"}
+                      {visitor.qualityScore != null ? ` (${visitor.qualityScore}/100)` : ""}
+                      {visitor.correctnessScore != null ? ` · C:${visitor.correctnessScore}/100` : ""}
+                      {visitor.finalScore != null ? ` · F:${visitor.finalScore}/100` : ""}
+                      {visitor.offTopic ? " · Off-topic" : ""}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-400">
+                      {visitor.fraudDetected
+                        ? `Fraud: ${visitor.fraudReason || "focus-lost"}`
+                        : (visitor.securityAlerts?.length ? visitor.securityAlerts.join("; ") : "No alerts")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       {submissions.length === 0 ? (
         <Card className="p-8 text-center text-slate-500">No submissions yet.</Card>
       ) : (
@@ -611,6 +952,9 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onRefresh }) {
                   <div>
                     <p className="font-medium text-slate-100">{sub.participant?.username || sub.participant?.nickname || "Participant"}</p>
                     <p className="text-slate-500 text-xs">{sub.participant?.email}</p>
+                    {sub.fraudDetected && (
+                      <p className="text-red-300 text-xs mt-1">Fraud flagged: {sub.fraudReason || "focus-lost"}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -626,10 +970,41 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onRefresh }) {
                   <p className="text-slate-400 mb-1">Performance</p>
                   <p className="text-slate-200">Score: {sub.score} · Time: {sub.executionTimeMs != null ? `${sub.executionTimeMs} ms` : "—"}</p>
                   {sub.metrics?.passedTests != null && <p className="text-slate-400">Tests: {sub.metrics.passedTests}/{sub.metrics.totalTests}</p>}
+                  {sub.correctnessScore != null && <p className="text-slate-400">Correctness: {sub.correctnessScore}/100</p>}
+                  {sub.finalScore != null && <p className="text-slate-300 font-semibold">Final score: {sub.finalScore}/100</p>}
+                  {sub.offTopic && <p className="text-amber-300 text-xs mt-1">Off-topic probable: low functional correctness</p>}
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-1">Analysis (placeholder)</p>
-                  <p className="text-slate-500 text-xs">SonarQube & AI feedback integration coming soon.</p>
+                  <p className="text-slate-400 mb-1">SonarQube results</p>
+                  <p className="text-slate-100">Grade: <span className="font-semibold">{sub.qualityGrade || "—"}</span>{sub.qualityScore != null ? ` · Score: ${sub.qualityScore}/100` : ""}</p>
+                  <p className="text-slate-400 text-xs mt-1">Source: {sub.sonarSource || "heuristic"}{sub.qualityGateStatus ? ` · Quality Gate: ${sub.qualityGateStatus}` : ""}</p>
+                  {sub.sonarProjectKey && <p className="text-slate-500 text-xs mt-1">Project Key: {sub.sonarProjectKey}</p>}
+                  <p className="text-slate-500 text-xs mt-1">{sub.sonarSummary || "No quality summary yet."}</p>
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    <div className="p-2 rounded bg-slate-950 border border-slate-800">
+                      <p className="text-slate-500">Security</p>
+                      <p className="text-slate-200 font-semibold">{sonarLetter(sub.sonarMetrics?.securityRating)}{sub.sonarMetrics?.vulnerabilities != null ? ` · ${sub.sonarMetrics.vulnerabilities}` : ""}</p>
+                    </div>
+                    <div className="p-2 rounded bg-slate-950 border border-slate-800">
+                      <p className="text-slate-500">Reliability</p>
+                      <p className="text-slate-200 font-semibold">{sonarLetter(sub.sonarMetrics?.reliabilityRating)}{sub.sonarMetrics?.bugs != null ? ` · ${sub.sonarMetrics.bugs}` : ""}</p>
+                    </div>
+                    <div className="p-2 rounded bg-slate-950 border border-slate-800">
+                      <p className="text-slate-500">Maintainability</p>
+                      <p className="text-slate-200 font-semibold">{sonarLetter(sub.sonarMetrics?.maintainabilityRating)}{sub.sonarMetrics?.codeSmells != null ? ` · ${sub.sonarMetrics.codeSmells}` : ""}</p>
+                    </div>
+                    <div className="p-2 rounded bg-slate-950 border border-slate-800">
+                      <p className="text-slate-500">Hotspots Reviewed</p>
+                      <p className="text-slate-200 font-semibold">{sub.sonarMetrics?.securityHotspotsReviewed != null ? `${sub.sonarMetrics.securityHotspotsReviewed}%` : "-"}</p>
+                    </div>
+                    <div className="p-2 rounded bg-slate-950 border border-slate-800">
+                      <p className="text-slate-500">Duplications</p>
+                      <p className="text-slate-200 font-semibold">{sub.sonarMetrics?.duplications != null ? `${sub.sonarMetrics.duplications}%` : "-"}</p>
+                    </div>
+                  </div>
+                  {sub.securityAlerts?.length > 0 && (
+                    <p className="text-red-300 text-xs mt-2">Alerts: {sub.securityAlerts.join(" · ")}</p>
+                  )}
                 </div>
               </div>
               {sub.code && (
@@ -648,9 +1023,15 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onRefresh }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {sub.recruiterComment ? <p className="text-slate-400 text-sm flex-1"><MessageSquare className="w-4 h-4 inline mr-1" />{sub.recruiterComment}</p> : <span className="text-slate-500 text-sm">No comment yet.</span>}
                     <button onClick={() => openEdit(sub)} className="text-xs px-3 py-1.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600">Add / Edit comment</button>
+                    <button
+                      onClick={() => onConfirmSubmission(room._id, sub._id, sub.recruiterComment || comment, sub.recruiterRating ?? rating ?? undefined, true)}
+                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500"
+                    >
+                      {sub.recruiterConfirmed ? "Confirmed" : "Confirm result"}
+                    </button>
                   </div>
                 )}
               </div>

@@ -24,6 +24,12 @@ function Register() {
       setEmail(searchParams.get('email') || "");
       setUsername(searchParams.get('name')?.replace(/\s+/g, '_') || "");
       setAvatar(searchParams.get('avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=${searchParams.get('name') || 'default'}`);
+      return;
+    }
+
+    const inviteEmail = searchParams.get('inviteEmail');
+    if (inviteEmail) {
+      setEmail(inviteEmail);
     }
   }, [searchParams]);
 
