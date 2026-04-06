@@ -34,6 +34,14 @@ export interface User {
   // Optional extended fields
   lastLogin?: string;
   rank?: number;
+  gamification?: {
+    points: number;
+    rankedRating: number;
+    level: number;
+    rank: string;
+    streak: number;
+    badges: string[];
+  };
   submissions?: number;
   languages?: string[];
   activities?: Activity[];

@@ -1138,7 +1138,7 @@ exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
     console.log("DEBUG: updateUser Body:", req.body);
-    const { username, email, password, role, avatar } = req.body;
+    const { username, email, password, role, avatar, rank, level } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -1185,6 +1185,39 @@ exports.updateUser = async (req, res) => {
     if (avatar) {
       console.log("DEBUG: Avatar detected in request:", avatar);
       updateData.avatar = avatar;
+    }
+
+    // Update rank if provided
+    if (rank) {
+      if (!user.gamification) {
+        user.gamification = { points: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+      }
+      user.gamification.rank = rank;
+      
+      const gamificationService = require("../services/gamificationService");
+      const threshold = gamificationService.RANK_THRESHOLDS.find(t => t.rank === rank);
+      // Synchronize ranked rating if we manually boost their rank (Leave points/level untouched!)
+      if (threshold) {
+         user.gamification.rankedRating = threshold.xp;
+      }
+      
+      updateData.gamification = user.gamification;
+    }
+
+    // Update level if provided
+    if (level !== undefined) {
+      if (!user.gamification) {
+        user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+      }
+      let newLevel = parseInt(level, 10);
+      if (isNaN(newLevel) || newLevel < 1) newLevel = 1;
+      if (newLevel > 80) newLevel = 80;
+      
+      user.gamification.level = newLevel;
+      // Sync XP so that progress bar aligns with level
+      user.gamification.points = (newLevel - 1) * 500; 
+
+      updateData.gamification = user.gamification;
     }
 
     console.log("DEBUG: Applying Update to DB:", updateData);

@@ -97,8 +97,8 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
           {[
-            { label: 'Rank', value: user.rank != null ? `#${user.rank.toLocaleString()}` : '—', color: 'text-secondary' },
-            { label: 'Submissions', value: submissions.toString(), color: 'text-white' },
+            { label: 'Rank', value: user.gamification?.rank || 'Iron', color: 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] font-serif' },
+            { label: 'Level / XP', value: `Lvl ${user.gamification?.level || 1} (${user.gamification?.points || 0} XP)`, color: 'text-blue-400' },
             { label: 'Languages', value: languages.join(', '), color: 'text-white', isTags: true },
             { label: 'Reports', value: reports.toString(), color: reports > 0 ? 'text-red-500' : 'text-green-500' },
           ].map((stat) => (
