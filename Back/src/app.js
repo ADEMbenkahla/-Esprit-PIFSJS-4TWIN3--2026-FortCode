@@ -41,13 +41,32 @@ app.use("/api/auth", require("./routes/googleAuthRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/admin/activity", require("./routes/activityRoutes"));
 app.use("/api/admin/dashboard", require("./routes/dashboardRoutes"));
-// Application routes — mount specific /api/... paths before generic app.use("/api", ...) routers
 app.use("/api/stages", require("./routes/stageRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
 app.use("/api", require("./routes/virtualRoomRoutes"));
-app.use("/api", require("./routes/battleRoomRoutes"));
+app.use("/api/battle-rooms", require("./routes/battleRoomRoutes"));
 app.use("/api/role-requests", require("./routes/roleRequestRoutes"));
 app.use("/api/programming-rooms", require("./routes/programmingRoomRoutes"));
+
+// Keep API error responses JSON-friendly (including multer upload errors).
+app.use((err, req, res, next) => {
+    if (!err) return next();
+
+    if (err.name === "MulterError") {
+        return res.status(400).json({
+            message: err.code === "LIMIT_FILE_SIZE"
+                ? "Uploaded file is too large"
+                : "Upload failed",
+            error: err.message
+        });
+    }
+
+    if (err.message && err.message.toLowerCase().includes("invalid") && err.message.toLowerCase().includes("file")) {
+        return res.status(400).json({ message: err.message });
+    }
+
+    return res.status(500).json({ message: "Server error", error: err.message || "Unknown error" });
+});
 
 module.exports = app;
 

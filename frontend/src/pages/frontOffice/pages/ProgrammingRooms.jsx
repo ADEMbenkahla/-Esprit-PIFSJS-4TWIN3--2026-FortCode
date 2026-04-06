@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Code, Clock, Zap, Loader2, Plus, Play, Lock, Globe } from 'lucide-react';
+import { Users, Code, Clock, Zap, Loader2, Plus, Play, Lock, Globe, Trash2, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
 
@@ -8,7 +8,9 @@ export default function ProgrammingRooms() {
   const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [joiningRoom, setJoiningRoom] = useState(false);
+  const [deletingRoom, setDeletingRoom] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [userId, setUserId] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,7 @@ export default function ProgrammingRooms() {
         if (token) {
           const payload = JSON.parse(atob(token.split('.')[1]));
           setUserRole(payload.role);
+          setUserId(payload.id || payload.userId || payload._id || payload.sub || '');
         }
       } catch (error) {
         console.error('Error extracting role:', error);
@@ -58,6 +61,40 @@ export default function ProgrammingRooms() {
       setJoiningRoom(false);
     }
   };
+
+  const handleDeleteRoom = async (room) => {
+    if (!room?._id) return;
+    const confirmed = window.confirm(`Delete room "${room.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingRoom(true);
+      await api.delete(`/programming-rooms/${room._id}`);
+      alert('Room deleted successfully.');
+      setSelectedRoom(null);
+      fetchRooms();
+    } catch (error) {
+      console.error('Error deleting room:', error);
+      alert(error.response?.data?.message || 'Unable to delete room.');
+    } finally {
+      setDeletingRoom(false);
+    }
+  };
+
+  const canManageRoom = Boolean(
+    selectedRoom && (
+      userRole === 'admin' ||
+      String(selectedRoom?.creatorId?._id || selectedRoom?.creatorId || '') === String(userId)
+    )
+  );
+
+  const canJoinSelectedRoom = Boolean(
+    selectedRoom && (
+      selectedRoom.isPublic ||
+      userRole === 'admin' ||
+      String(selectedRoom?.creatorId?._id || selectedRoom?.creatorId || '') === String(userId)
+    )
+  );
 
   const getDifficultyColor = (difficulty) => {
     const colors = {
@@ -211,6 +248,18 @@ export default function ProgrammingRooms() {
                         {selectedRoom.isPublic ? 'Public' : 'Private'}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Status</span>
+                      <span className="text-white font-semibold capitalize">{selectedRoom.status || 'waiting'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Challenge</span>
+                      <span className="text-white font-semibold text-right ml-4">{selectedRoom.challengeTitle || 'Coding challenge'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-400">Invitations</span>
+                      <span className="text-white font-semibold">{selectedRoom.invitations?.length || 0}</span>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
@@ -237,10 +286,11 @@ export default function ProgrammingRooms() {
                       onClick={() => handleJoinRoom(selectedRoom._id)}
                       disabled={
                         joiningRoom || 
-                        (selectedRoom.currentParticipants?.length || 0) >= selectedRoom.maxParticipants
+                        (selectedRoom.currentParticipants?.length || 0) >= selectedRoom.maxParticipants ||
+                        !canJoinSelectedRoom
                       }
                       className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
-                        (selectedRoom.currentParticipants?.length || 0) >= selectedRoom.maxParticipants
+                        (selectedRoom.currentParticipants?.length || 0) >= selectedRoom.maxParticipants || !canJoinSelectedRoom
                           ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700 text-white'
                       }`}
@@ -255,6 +305,11 @@ export default function ProgrammingRooms() {
                           <Lock className="w-5 h-5" />
                           Room Full
                         </>
+                      ) : !canJoinSelectedRoom ? (
+                        <>
+                          <Lock className="w-5 h-5" />
+                          Invitation Only
+                        </>
                       ) : (
                         <>
                           <Play className="w-5 h-5" />
@@ -268,6 +323,36 @@ export default function ProgrammingRooms() {
                         <Zap className="w-4 h-4 animate-pulse" />
                         Live Now
                       </div>
+                    )}
+
+                    {canManageRoom && (
+                      <button
+                        onClick={() => navigate(`/programming-rooms/${selectedRoom._id}/monitoring`)}
+                        className="w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-all"
+                      >
+                        <ShieldCheck className="w-5 h-5" />
+                        Recruiter Monitoring
+                      </button>
+                    )}
+
+                    {canManageRoom && selectedRoom.status !== 'active' && (
+                      <button
+                        onClick={() => handleDeleteRoom(selectedRoom)}
+                        disabled={deletingRoom}
+                        className="w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-700 disabled:text-slate-500 text-white transition-all"
+                      >
+                        {deletingRoom ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-5 h-5" />
+                            Delete Room
+                          </>
+                        )}
+                      </button>
                     )}
                   </div>
 

@@ -1,11 +1,11 @@
 import axios from 'axios';
 
+type ApiPayload = Record<string, unknown>;
+type ApiParams = Record<string, string | number | boolean | undefined>;
+
 // Create axios instance with base URL
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Request interceptor for API calls
@@ -31,119 +31,128 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Only 401 = not authenticated — clear session and go to login.
-        // 403 = forbidden (wrong role, etc.) — keep the user logged in so they are not kicked out of the app.
-        if (error.response?.status === 401) {
+        // Handle 401 Unauthorized
+        const hasToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+        if (hasToken && error.response && (error.response.status === 401 || error.response.status === 403)) {
             sessionStorage.removeItem('token');
             localStorage.removeItem('token');
-            window.location.href = '/';
+            window.location.href = '/'; // Redirect to login
         }
 
         return Promise.reject(error);
     }
 );
 
-export const requestVirtualRoom = () => {
-    return api.post('/recruiter/virtual-room/request');
+export const getBattleInvitationPreview = (token: string) => {
+    return api.get('/battle-rooms/battle-invitations/preview', {
+        params: { token }
+    });
+};
+
+export const acceptBattleInvitation = (payload: ApiPayload) => {
+    return api.post('/battle-rooms/battle-invitations/accept', payload);
+};
+
+export const requestVirtualRoom = (payload: ApiPayload) => {
+    return api.post('/virtual-room/recruiter/virtual-room/request', payload);
 };
 
 export const getMyVirtualRoomRequest = () => {
-    return api.get('/recruiter/virtual-room/request');
+    return api.get('/virtual-room/recruiter/virtual-room/request');
 };
 
-/** Delete current user account (participant only). Requires email + password or confirmation phrase. */
-export const deleteMyAccount = (data: { email: string; password?: string; confirmationPhrase?: string }) =>
-    api.delete('/auth/profile', { data });
-
-// Battle Rooms (User Stories 4.4, 4.5, 4.6)
-export const getParticipants = () => api.get('/recruiter/participants');
-export const generateBattleExercise = (data: {
-    prompt?: string;
-    difficulty?: string;
-    language?: string;
-    expectedFunctions?: string[];
-    expectedFunctionName?: string;
-    criteria?: string[];
-    randomize?: boolean;
-}) => api.post('/recruiter/battle-rooms/generate-exercise', data);
-export const createBattleRoom = (data: {
-    title: string;
-    description?: string;
-    participantIds?: string[];
-    challenge?: {
-        title: string;
-        description?: string;
-        starterCode?: string;
-        language?: string;
-        expectedFunctions?: string[];
-        expectedFunctionName?: string;
-        criteria?: string[];
-        testCases?: Array<{ name?: string; assertion: string; hidden?: boolean }>;
-    };
-    timeLimitMinutes: number;
-    exerciseFile?: File | null;
-}) => {
-    const payload = new FormData();
-    payload.append('title', data.title);
-    payload.append('description', data.description || '');
-    payload.append('timeLimitMinutes', String(data.timeLimitMinutes));
-    payload.append('participantIds', JSON.stringify(data.participantIds || []));
-    payload.append('challenge', JSON.stringify(data.challenge || {}));
-
-    if (data.challenge?.testCases) {
-        payload.append('testCases', JSON.stringify(data.challenge.testCases));
-    }
-    if (data.challenge?.language) {
-        payload.append('language', data.challenge.language);
-    }
-    if (data.challenge?.expectedFunctionName) {
-        payload.append('expectedFunctionName', data.challenge.expectedFunctionName);
-    }
-    if (data.exerciseFile) {
-        payload.append('exerciseFile', data.exerciseFile);
-    }
-
-    return api.post('/recruiter/battle-rooms', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
+export const deleteMyAccount = (payload: ApiPayload) => {
+    return api.delete('/auth/profile', { data: payload });
 };
-export const getMyBattleRooms = (status?: string) =>
-    api.get('/recruiter/battle-rooms', status ? { params: { status } } : {});
-export const getBattleRoom = (id: string) => api.get(`/recruiter/battle-rooms/${id}`);
-export const updateBattleRoomStatus = (id: string, status: string) =>
-    api.patch(`/recruiter/battle-rooms/${id}`, { status });
-export const getBattleRoomSubmissions = (id: string) => api.get(`/recruiter/battle-rooms/${id}/submissions`);
-export const updateSubmissionEvaluation = (
-    roomId: string,
-    subId: string,
-    data: { recruiterComment?: string; recruiterRating?: number }
-) => api.patch(`/recruiter/battle-rooms/${roomId}/submissions/${subId}`, data);
+
+export const getParticipants = () => {
+    return api.get('/battle-rooms/recruiter/participants');
+};
+
+export const generateBattleExercise = (payload: ApiPayload) => {
+    return api.post('/battle-rooms/recruiter/battle-rooms/generate-exercise', payload);
+};
+
+export const createBattleRoom = (payload: ApiPayload) => {
+    const form = new FormData();
+
+    const title = String(payload.title || '').trim();
+    const description = String(payload.description || '');
+    const timeLimitMinutes = Number(payload.timeLimitMinutes || 60);
+    const participantIds = Array.isArray(payload.participantIds) ? payload.participantIds : [];
+    const inviteEmails = Array.isArray(payload.inviteEmails) ? payload.inviteEmails : [];
+    const challenge = payload.challenge && typeof payload.challenge === 'object' ? payload.challenge : {};
+    const exerciseFile = payload.exerciseFile instanceof File ? payload.exerciseFile : null;
+
+    form.append('title', title);
+    form.append('description', description);
+    form.append('timeLimitMinutes', String(timeLimitMinutes));
+    form.append('participantIds', JSON.stringify(participantIds));
+    form.append('inviteEmails', JSON.stringify(inviteEmails));
+    form.append('challenge', JSON.stringify(challenge));
+
+    if (exerciseFile) {
+        form.append('exerciseFile', exerciseFile);
+    }
+
+    return api.post('/battle-rooms/recruiter/battle-rooms', form);
+};
+
+export const getMyBattleRooms = () => {
+    return api.get('/battle-rooms/recruiter/battle-rooms');
+};
+
+export const getBattleRoom = (id: string) => {
+    return api.get(`/battle-rooms/recruiter/battle-rooms/${id}`);
+};
+
+export const updateBattleRoomStatus = (id: string, payload: ApiPayload | string) => {
+    const body = typeof payload === 'string' ? { status: payload } : payload;
+    return api.patch(`/battle-rooms/recruiter/battle-rooms/${id}`, body);
+};
+
+export const updateSubmissionEvaluation = (roomId: string, submissionId: string, payload: ApiPayload) => {
+    return api.patch(`/battle-rooms/recruiter/battle-rooms/${roomId}/submissions/${submissionId}`, payload);
+};
+
+export const getParticipantBattleRoomAccess = (roomId: string) => {
+    return api.get(`/battle-rooms/participant/battle-rooms/${roomId}/access`);
+};
+
+export const getParticipantBattleRooms = () => {
+    return api.get('/battle-rooms/participant/battle-rooms');
+};
+
+export const reportParticipantBattleFraud = (roomId: string, reason: string) => {
+    return api.post(`/battle-rooms/participant/battle-rooms/${roomId}/fraud`, { reason });
+};
+
+export const submitParticipantBattleCode = (roomId: string, code: string) => {
+    return api.post(`/battle-rooms/participant/battle-rooms/${roomId}/submit`, { code });
+};
 
 export const stagesApi = {
-    me: (params?: { category?: string }) => api.get('/stages/me', { params }),
+    me: (params: ApiParams = {}) => api.get('/stages/me', { params }),
     get: (id: string) => api.get(`/stages/${id}`),
-    run: (stageId: string, challengeId: string, code: string) =>
-        api.post(`/stages/${stageId}/challenges/${challengeId}/run`, { code }),
-    submit: (stageId: string, challengeId: string, code: string) =>
-        api.post(`/stages/${stageId}/challenges/${challengeId}/submit`, { code }),
-    resetStage: (stageId: string, challengeId?: string) =>
-        api.post(`/stages/${stageId}/reset`, challengeId ? { challengeId } : {}),
+    run: (stageId: string, challengeId: string, code: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/run`, { code }),
+    submit: (stageId: string, challengeId: string, code: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/submit`, { code }),
+    complete: (stageId: string, challengeId: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/complete`),
+    reset: (stageId: string) => api.post(`/stages/${stageId}/reset`),
 };
 
 export const adminStagesApi = {
     list: () => api.get('/stages'),
-    get: (id: string) => api.get(`/stages/${id}`),
-    create: (body: Record<string, unknown>) => api.post('/stages', body),
-    update: (id: string, body: Record<string, unknown>) => api.put(`/stages/${id}`, body),
+    create: (payload: ApiPayload) => api.post('/stages', payload),
+    update: (id: string, payload: ApiPayload) => api.put(`/stages/${id}`, payload),
     remove: (id: string) => api.delete(`/stages/${id}`),
-    assignChallenges: (id: string, challengeIds: string[]) =>
-        api.post(`/stages/${id}/challenges`, { challengeIds }),
-    removeChallenge: (stageId: string, challengeId: string) =>
-        api.delete(`/stages/${stageId}/challenges/${challengeId}`),
+    assignChallenges: (id: string, challengeIds: string[]) => api.post(`/stages/${id}/challenges`, { challengeIds }),
 };
 
 export const adminChallengesApi = {
     list: () => api.get('/challenges'),
+    create: (payload: ApiPayload) => api.post('/challenges', payload),
+    update: (id: string, payload: ApiPayload) => api.put(`/challenges/${id}`, payload),
+    remove: (id: string) => api.delete(`/challenges/${id}`),
 };
 
 export default api;
