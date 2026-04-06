@@ -22,7 +22,6 @@ import { Card } from "../components/ui/Card";
 import { ScrollButton } from "../components/ui/ScrollButton";
 import {
   getMyVirtualRoomRequest,
-  getParticipants,
   generateBattleExercise,
   createBattleRoom as apiCreateBattleRoom,
   getMyBattleRooms,
@@ -51,6 +50,38 @@ const sonarLetter = (rawRating) => {
   if (!Number.isFinite(value)) return String(rawRating);
   const map = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
   return map[value] || String(rawRating);
+};
+
+const hasLikelyCodeShape = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+
+  const codeKeywordHits = (
+    text.match(/\b(function|return|const|let|var|if|else|for|while|class|import|export|def|print|public|private|static|new|try|catch|switch|case)\b/gi) || []
+  ).length;
+  const structureHits = (text.match(/(?:[{}();=<>]|\[|\])/g) || []).length;
+  const operatorHits = (text.match(/(=>|==|===|!=|!==|\+|-|\*|\/|%)/g) || []).length;
+  const lineCount = text.split(/\r?\n/).length;
+
+  // Require at least a small amount of coding structure to avoid treating plain prose as source code.
+  return codeKeywordHits >= 1 || structureHits >= 6 || operatorHits >= 3 || (lineCount >= 3 && structureHits >= 3);
+};
+
+const invalidateNonCodeSubmission = (submission) => {
+  if (!submission?.code || hasLikelyCodeShape(submission.code)) return submission;
+
+  return {
+    ...submission,
+    _invalidNonCodeInput: true,
+    qualityGrade: "Invalid",
+    qualityScore: 0,
+    correctnessScore: 0,
+    finalScore: 0,
+    offTopic: true,
+    sonarSource: "invalid-input",
+    qualityGateStatus: "FAILED",
+    sonarSummary: "Submission does not look like source code. Sonar result ignored and score forced to 0.",
+  };
 };
 
 const TAB = { OVERVIEW: "overview", ROOMS: "rooms", CREATE: "create", SUBMISSIONS: "submissions", SUPERVISE: "supervise" };
@@ -124,7 +155,6 @@ const buildChallengeTestTemplate = (language, functionNames) => {
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
   const [virtualRoomStatus, setVirtualRoomStatus] = useState(null);
-  const [participants, setParticipants] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -137,7 +167,6 @@ export function RecruiterDashboard() {
     exerciseDifficulty: "medium",
     exerciseCriteria: ["loops", "iterations"],
     randomExercise: true,
-    participantIds: [],
     inviteEmailsText: "",
     challengeTitle: "Coding Challenge",
     challengeDescription: "",
@@ -153,11 +182,6 @@ export function RecruiterDashboard() {
       .then((r) => setVirtualRoomStatus(r.data.request))
       .catch(() => setVirtualRoomStatus(null));
   };
-  const fetchParticipants = () => {
-    getParticipants()
-      .then((r) => setParticipants(r.data.participants || []))
-      .catch(() => setParticipants([]));
-  };
   const fetchRooms = () => {
     getMyBattleRooms()
       .then((r) => setRooms(r.data.rooms || []))
@@ -172,7 +196,6 @@ export function RecruiterDashboard() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (activeTab === TAB.CREATE) fetchParticipants();
     if (activeTab === TAB.ROOMS || activeTab === TAB.SUBMISSIONS) fetchRooms();
   }, [activeTab]);
 
@@ -188,6 +211,17 @@ export function RecruiterDashboard() {
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean);
 
+    if (inviteEmails.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Email invitations required",
+        text: "Add at least one email address for invitations.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
     let parsedTests = [];
     if (createForm.challengeTestsJson.trim()) {
       try {
@@ -200,7 +234,7 @@ export function RecruiterDashboard() {
             hidden: t?.hidden !== false,
           }))
           .filter((t) => t.assertion.length > 0);
-      } catch (_error) {
+      } catch {
         Swal.fire({
           icon: "error",
           title: "Invalid challenge tests JSON",
@@ -212,23 +246,11 @@ export function RecruiterDashboard() {
       }
     }
 
-    if (createForm.participantIds.length === 0 && inviteEmails.length === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Participants required",
-        text: "Select at least one participant or add invitation emails.",
-        background: "#1a1a2e",
-        color: "#fff",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const { data } = await apiCreateBattleRoom({
         title: createForm.title.trim(),
         description: createForm.description.trim(),
-        participantIds: createForm.participantIds,
         inviteEmails,
         challenge: {
           title: createForm.challengeTitle || "Coding Challenge",
@@ -255,7 +277,6 @@ export function RecruiterDashboard() {
         exerciseDifficulty: "medium",
         exerciseCriteria: ["loops", "iterations"],
         randomExercise: true,
-        participantIds: [],
         inviteEmailsText: "",
         challengeTitle: "Coding Challenge",
         challengeDescription: "",
@@ -411,18 +432,18 @@ export function RecruiterDashboard() {
 
         {/* Tabs */}
         <nav className="flex flex-wrap gap-2 mb-8 border-b border-slate-800 pb-4">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {tabs.map((tab) => (
             <button
-              key={id}
-              onClick={() => { setActiveTab(id); setSelectedRoom(null); }}
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setSelectedRoom(null); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === id
+                activeTab === tab.id
                   ? "bg-slate-800 text-white border border-slate-600"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent"
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              {React.createElement(tab.icon, { className: "w-4 h-4" })}
+              {tab.label}
             </button>
           ))}
         </nav>
@@ -481,7 +502,7 @@ export function RecruiterDashboard() {
                 <div>
                   <h3 className="text-slate-100 font-semibold mb-2">Workflow</h3>
                   <ul className="text-slate-400 text-sm space-y-1 list-disc list-inside">
-                    <li><strong className="text-slate-300">Create Battle Room</strong> — Select participants, set challenge and time limit.</li>
+                    <li><strong className="text-slate-300">Create Battle Room</strong> — Add participant emails and set the challenge and time limit.</li>
                     <li><strong className="text-slate-300">Start battle</strong> — Room becomes visible to selected participants; they can submit code.</li>
                     <li><strong className="text-slate-300">Submissions</strong> — Review code, metrics, add comments and ratings.</li>
                     <li><strong className="text-slate-300">Supervise</strong> — Monitor in real time and confirm results before final scoring.</li>
@@ -567,7 +588,7 @@ export function RecruiterDashboard() {
         {activeTab === TAB.CREATE && (
           <Card className="p-6 max-w-2xl">
             <h2 className="text-xl font-semibold text-slate-100 mb-6">Create battle room</h2>
-            <p className="text-slate-400 text-sm mb-6">Select participants, set the challenge and time limit. The room will be visible only to selected participants.</p>
+            <p className="text-slate-400 text-sm mb-6">Set the challenge details and add participant emails. Invitees will receive a secure link and invitation code by email.</p>
             <form onSubmit={handleCreateRoom} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Room title *</label>
@@ -576,19 +597,6 @@ export function RecruiterDashboard() {
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Description (optional)</label>
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of the battle" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Participants</label>
-                <div className="max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3 bg-slate-800/50 space-y-2">
-                  {participants.length === 0 ? <p className="text-slate-500 text-sm">No participants in the system yet.</p> : participants.map((p) => (
-                    <label key={p._id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={createForm.participantIds.includes(p._id)} onChange={(e) => setCreateForm((f) => ({ ...f, participantIds: e.target.checked ? [...f.participantIds, p._id] : f.participantIds.filter((id) => id !== p._id) }))} className="rounded border-slate-600 text-blue-500" />
-                      <span className="text-slate-200">{p.username || p.nickname}</span>
-                      <span className="text-slate-500 text-xs">{p.email}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Selected users with accounts will be added directly to the room.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Invite by email (non-registered users allowed)</label>
@@ -830,8 +838,25 @@ export function RecruiterDashboard() {
 }
 
 function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onRefresh }) {
-  const submissions = room.submissions || [];
-  const visitors = room.visitorDetails || [];
+  const submissions = (room.submissions || []).map(invalidateNonCodeSubmission);
+  const nonCodeByEmail = submissions.reduce((acc, sub) => {
+    const email = String(sub?.participant?.email || "").toLowerCase();
+    if (sub?._invalidNonCodeInput && email) acc[email] = true;
+    return acc;
+  }, {});
+  const visitors = (room.visitorDetails || []).map((visitor) => {
+    const email = String(visitor?.email || "").toLowerCase();
+    if (!email || !nonCodeByEmail[email]) return visitor;
+    return {
+      ...visitor,
+      qualityGrade: "Invalid",
+      qualityScore: 0,
+      correctnessScore: 0,
+      finalScore: 0,
+      offTopic: true,
+      sonarSummary: "Submission is not valid source code. Sonar result ignored.",
+    };
+  });
   const [editingSub, setEditingSub] = useState(null);
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(null);
@@ -980,6 +1005,9 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
                   <p className="text-slate-400 text-xs mt-1">Source: {sub.sonarSource || "heuristic"}{sub.qualityGateStatus ? ` · Quality Gate: ${sub.qualityGateStatus}` : ""}</p>
                   {sub.sonarProjectKey && <p className="text-slate-500 text-xs mt-1">Project Key: {sub.sonarProjectKey}</p>}
                   <p className="text-slate-500 text-xs mt-1">{sub.sonarSummary || "No quality summary yet."}</p>
+                  {sub._invalidNonCodeInput && (
+                    <p className="text-red-300 text-xs mt-2">Invalid submission content: Sonar ignored, score forced to 0.</p>
+                  )}
                   <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                     <div className="p-2 rounded bg-slate-950 border border-slate-800">
                       <p className="text-slate-500">Security</p>

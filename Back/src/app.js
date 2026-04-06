@@ -46,7 +46,6 @@ app.use("/api/challenges", require("./routes/challengeRoutes"));
 app.use("/api", require("./routes/virtualRoomRoutes"));
 app.use("/api/battle-rooms", require("./routes/battleRoomRoutes"));
 app.use("/api/role-requests", require("./routes/roleRequestRoutes"));
-app.use("/api/programming-rooms", require("./routes/programmingRoomRoutes"));
 
 // Keep API error responses JSON-friendly (including multer upload errors).
 app.use((err, req, res, next) => {
