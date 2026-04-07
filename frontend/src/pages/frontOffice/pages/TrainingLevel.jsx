@@ -1,8 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Circle, Loader2, Play, Save, Zap, Star, RotateCcw } from 'lucide-react';
+import { stagesApi } from '../../../services/api';
 import './TrainingLevel.css';
 import Swal from 'sweetalert2';
+
+const SonarBadge = ({ label, rating, value, metric }) => {
+  const letters = { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E' };
+  const letter = letters[rating] || rating || 'A';
+  
+  const colors = {
+    A: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)]',
+    B: 'text-lime-400 bg-lime-500/10 border-lime-500/20 shadow-[0_0_15px_rgba(163,230,53,0.1)]',
+    C: 'text-amber-400 bg-amber-500/10 border-amber-500/20 shadow-[0_0_15px_rgba(251,191,36,0.1)]',
+    D: 'text-orange-400 bg-orange-500/10 border-orange-500/20 shadow-[0_0_15px_rgba(251,146,60,0.1)]',
+    E: 'text-rose-400 bg-rose-500/10 border-rose-500/20 shadow-[0_0_15px_rgba(248,113,113,0.1)]',
+  };
+  
+  const colorClass = colors[letter] || colors.A;
+
+  return (
+    <div className={`flex flex-col items-center justify-center p-4 rounded-2xl border ${colorClass} transition-all duration-300 hover:scale-105 group`}>
+      <span className="text-[9px] font-bold uppercase tracking-[0.2em] mb-2 opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">{label}</span>
+      <div className="text-3xl font-black mb-1 font-mono">{letter}</div>
+      <div className="h-px w-8 bg-current opacity-20 mb-2" />
+      <span className="text-[10px] font-mono font-bold opacity-80">{value ?? "0"}</span>
+    </div>
+  );
+};
 
 export const TrainingLevel = () => {
   const { levelId } = useParams();
@@ -17,6 +42,8 @@ export const TrainingLevel = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [attempts, setAttempts] = useState(1);
+  const [submissionResult, setSubmissionResult] = useState(null);
+  const [showReport, setShowReport] = useState(false);
 
   const fetchStageData = async () => {
     try {
@@ -70,89 +97,78 @@ export const TrainingLevel = () => {
   };
 
   const runCode = async () => {
+    if (isRunning) return;
     setIsRunning(true);
-    setOutput(`Running ${selectedChallenge.language} tests...`);
+    setOutput(`Running tests on server...`);
 
-    setTimeout(() => {
-      try {
-        let passed = false;
-        if (selectedChallenge.language === "javascript") {
-          const userFunction = new Function(code + "\n" + (selectedChallenge.tests || ""));
-          passed = userFunction() === true;
-        } else if (selectedChallenge.language === "python") {
-          passed = selectedChallenge.title.includes("Hello Python") ? /return ["']Python is cool["']/.test(code) :
-            selectedChallenge.title.includes("Square Number") ? /return.*n\s*(\*|\*\*)\s*(n|2)/.test(code) :
-              selectedChallenge.title.includes("List Length") ? /return.*len\(.*\)/.test(code) :
-                selectedChallenge.title.includes("Multiply") ? /return.*a\s*\*|multiply.*b/.test(code) :
-                  selectedChallenge.title.includes("First Element") ? /return.*arr\[0\]/.test(code) : false;
-        }
-
-        if (passed) {
-          setOutput(`✅ ${selectedChallenge.language === 'javascript' ? 'JS' : 'Python'} tests passed! Est. Stars: ${calculateStars()}`);
-        } else {
-          setOutput("❌ Tests failed. Attempt recorded.");
-          setAttempts(prev => prev + 1);
-        }
-      } catch (err) {
-        setOutput(`⚠️ Error: ${err.message}`);
+    try {
+      const { data } = await stagesApi.run(levelId, selectedChallenge._id, code);
+      
+      if (data.passed) {
+        setOutput(`✅ Tests passed!\n\n${data.output || ""}`);
+      } else {
+        const errors = (data.testResults || [])
+          .filter(r => !r.passed)
+          .map(r => `❌ ${r.name}: ${r.error}`)
+          .join("\n");
+        setOutput(`${errors || "❌ Tests failed."}\n\n${data.output || ""}`);
         setAttempts(prev => prev + 1);
-      } finally {
-        setIsRunning(false);
       }
-    }, 1200);
+    } catch (err) {
+      console.error("Run error:", err);
+      setOutput(`⚠️ System Error: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const submitSolution = async () => {
     if (isUpdating) return;
-
-    const finalStars = calculateStars();
     setIsUpdating(true);
+    setOutput("Initiating tactical scan...");
+
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/stages/${levelId}/progress`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          challengeId: selectedChallenge.id,
-          stars: finalStars,
-          code
-        })
-      });
-
-      if (!response.ok) throw new Error("Failed to update progress");
-
-      const data = await response.json();
+      const { data } = await stagesApi.submit(levelId, selectedChallenge._id, code);
+      
       setCompleted(data.progress.completedChallenges);
+      setSubmissionResult(data);
+      setShowReport(true);
+
+      const logLines = [
+        "✅ Mission target verified.",
+        data.sonar ? `📊 Quality Score: ${data.sonar.qualityScore}/100` : "",
+        data.aiFeedback?.summary ? `💡 AI Insight: ${data.aiFeedback.summary}` : "",
+        "\n--- Execution Output ---",
+        data.output || "No console output recorded."
+      ].filter(Boolean).join("\n");
+
+      setOutput(logLines);
 
       Swal.fire({
         icon: 'success',
-        title: finalStars === 3 ? 'Perfect Performance!' : finalStars === 2 ? 'Mission Success' : 'Challenge Cleared',
-        text: `You earned ${finalStars} stars for this component.`,
+        title: data.stageCompleted ? 'Stage Conquered!' : 'Objective Cleared',
+        text: `Results analyzed. Quality Score: ${data.sonar?.qualityScore || 0}/100`,
         background: '#1a1a2e',
         color: '#fff',
-        timer: 2000,
+        timer: 3000,
         showConfirmButton: false
       });
-
-      if (data.progress.isCompleted) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Stage Conquered!',
-          text: `You have mastered the ${stage.title} trials!`,
-          background: '#1a1a2e',
-          color: '#fff',
-          confirmButtonColor: '#2563eb'
-        });
-      }
     } catch (err) {
-      console.error("Error updating progress:", err);
+      console.error("Submit error:", err);
+      
+      // NEW: Show the report even if tests failed, if data is available
+      if (err.response && err.response.data) {
+        setSubmissionResult(err.response.data);
+        setShowReport(true);
+      }
+
+      const msg = err.response?.data?.message || "Failed to submit.";
+      setOutput(`❌ Error: ${msg}\n\n${err.response?.data?.output || ""}`);
+      
       Swal.fire({
         icon: 'error',
-        title: 'Sync Error',
-        text: 'Failed to save solution to cloud.',
+        title: 'Mission Failed',
+        text: msg,
         background: '#1a1a2e',
         color: '#fff'
       });
@@ -385,6 +401,118 @@ export const TrainingLevel = () => {
           </div>
         </div>
       </div>
+      {showReport && submissionResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm">
+          <div className="max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row max-h-[90vh]">
+            {/* Left: Sonar & Summary */}
+            <div className="w-full md:w-2/5 p-8 border-r border-slate-800 bg-slate-900/50 flex flex-col">
+              <div className="mb-8">
+                <p className="text-[10px] font-bold tracking-[0.3em] text-blue-500 uppercase mb-2">Tactical Analysis</p>
+                <h2 className="text-3xl font-serif font-bold text-white uppercase italic">Mission Report</h2>
+                <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${submissionResult.passed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${submissionResult.passed ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400 animate-pulse'}`} />
+                  {submissionResult.passed ? 'Objective Secured' : 'Mission Failed'}
+                </div>
+              </div>
+
+              <div className="mb-10 text-center">
+                <div className="relative inline-block">
+                  <svg className="w-32 h-32 transform -rotate-90">
+                    <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                    <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent"
+                      strokeDasharray={Math.PI * 120}
+                      strokeDashoffset={Math.PI * 120 * (1 - (submissionResult.sonar?.qualityScore || 0) / 100)}
+                      className="text-blue-500 transition-all duration-1000 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-black text-white">{submissionResult.sonar?.qualityScore || 0}</span>
+                    <span className="text-[8px] font-bold text-slate-500 uppercase">Score</span>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs font-mono text-slate-400 italic">"Code efficiency at target level."</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-8">
+                <SonarBadge label="Reliability" rating={submissionResult.sonar?.metrics?.reliability_rating} value={`${submissionResult.sonar?.metrics?.bugs ?? 0} Bugs`} />
+                <SonarBadge label="Security" rating={submissionResult.sonar?.metrics?.security_rating} value={`${submissionResult.sonar?.metrics?.vulnerabilities ?? 0} Vuln.`} />
+                <SonarBadge label="Maintainability" rating={submissionResult.sonar?.metrics?.sqale_rating} value={`${submissionResult.sonar?.metrics?.code_smells ?? 0} Smells`} />
+                <SonarBadge label="Complexity" rating="A" value="Optimized" />
+              </div>
+
+              <div className="flex-1 flex flex-col justify-end">
+                <button
+                  onClick={() => setShowReport(false)}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold uppercase tracking-widest text-xs transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                >
+                  Confirm & Dismiss
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Feedback & Logs */}
+            <div className="flex-1 p-8 overflow-y-auto bg-slate-950/30 flex flex-col">
+              <div className="mb-6">
+                <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-4">AI Tactical Feedback</h3>
+                <div className="space-y-3">
+                  {submissionResult.aiFeedback?.bugs?.length > 0 && (
+                    <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20 text-rose-200 text-xs">
+                      <p className="font-bold mb-1 uppercase tracking-wider text-rose-500">Detected Anomalies</p>
+                      {submissionResult.aiFeedback.bugs.map((b, i) => <p key={i} className="mb-1">• {b}</p>)}
+                    </div>
+                  )}
+                  <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-slate-300 text-xs">
+                    <p className="font-bold mb-1 uppercase tracking-wider text-blue-500">Optimization Paths</p>
+                    {submissionResult.aiFeedback?.suggestions?.map((s, i) => <p key={i} className="mb-1">• {s}</p>)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Binary Execution Log</h3>
+                  {!submissionResult.passed && (
+                    <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{submissionResult.testResults?.filter(r => !r.passed).length} Failures Detected</span>
+                  )}
+                </div>
+                <div className="flex-1 p-5 rounded-2xl bg-black/40 border border-slate-800 font-mono text-[11px] text-slate-300 whitespace-pre-wrap max-h-60 overflow-y-auto shadow-inner">
+                  <span className="text-slate-700 mr-2">$ cat execution_dump.log</span>
+                  <br />
+                  <div className="mt-2">
+                    {submissionResult.output || "No terminal output captured."}
+                  </div>
+                  {!submissionResult.passed && submissionResult.testResults && (
+                    <div className="mt-4 pt-4 border-t border-slate-800">
+                      <p className="text-rose-500 font-bold mb-2">--- FAILED TARGETS ---</p>
+                      {submissionResult.testResults.filter(r => !r.passed).map((r, i) => (
+                        <p key={i} className="mb-1 text-rose-300">❌ {r.name}: {r.error}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-slate-600 uppercase">Coverage</p>
+                    <p className="text-sm font-mono text-white">{submissionResult.sonar?.metrics?.coverage || "0"}%</p>
+                  </div>
+                  <div className="w-px h-6 bg-slate-800" />
+                  <div className="text-center">
+                    <p className="text-[10px] font-bold text-slate-600 uppercase">Gained XP</p>
+                    <p className="text-sm font-mono text-emerald-400">+{submissionResult.xpGained || 0}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-600 uppercase">Execution Time</p>
+                  <p className="text-sm font-mono text-blue-400">{submissionResult.executionTimeMs} ms</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

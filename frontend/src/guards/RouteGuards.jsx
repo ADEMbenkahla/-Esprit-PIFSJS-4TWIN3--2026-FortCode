@@ -9,7 +9,17 @@ export function getUserRole() {
   try {
     const token = sessionStorage.getItem("token") || localStorage.getItem("token");
     if (!token) return null;
+
     const payload = JSON.parse(atob(token.split(".")[1]));
+
+    // 🔐 Check JWT Expiration
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      console.warn("🔐 Session Expired (Detected in RouteGuard). Cleaning up...");
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
+      return null;
+    }
+
     const r = payload.role;
     return r != null ? String(r).toLowerCase().trim() : null;
   } catch {

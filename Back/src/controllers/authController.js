@@ -1138,7 +1138,7 @@ exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
     console.log("DEBUG: updateUser Body:", req.body);
-    const { username, email, password, role, avatar, rank, level } = req.body;
+    const { username, email, password, role, avatar, rank, level, points } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -1187,11 +1187,13 @@ exports.updateUser = async (req, res) => {
       updateData.avatar = avatar;
     }
 
+    // Initialize gamification if missing
+    if (!user.gamification) {
+      user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+    }
+
     // Update rank if provided
     if (rank) {
-      if (!user.gamification) {
-        user.gamification = { points: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
-      }
       user.gamification.rank = rank;
       
       const gamificationService = require("../services/gamificationService");
@@ -1200,23 +1202,27 @@ exports.updateUser = async (req, res) => {
       if (threshold) {
          user.gamification.rankedRating = threshold.xp;
       }
-      
       updateData.gamification = user.gamification;
     }
 
-    // Update level if provided
-    if (level !== undefined) {
-      if (!user.gamification) {
-        user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+    // Handle XP (points) and Level updates
+    if (points !== undefined || level !== undefined) {
+      if (points !== undefined) {
+        // Manual XP edit takes precedence
+        let newXP = parseInt(points, 10);
+        if (isNaN(newXP) || newXP < 0) newXP = 0;
+        user.gamification.points = newXP;
+        // Sync Level: 1 level every 500 XP
+        user.gamification.level = Math.min(Math.floor(newXP / 500) + 1, 80);
+      } else if (level !== undefined) {
+        // Legacy Level-only edit
+        let newLevel = parseInt(level, 10);
+        if (isNaN(newLevel) || newLevel < 1) newLevel = 1;
+        if (newLevel > 80) newLevel = 80;
+        user.gamification.level = newLevel;
+        // Sync XP: sets to start of level
+        user.gamification.points = (newLevel - 1) * 500; 
       }
-      let newLevel = parseInt(level, 10);
-      if (isNaN(newLevel) || newLevel < 1) newLevel = 1;
-      if (newLevel > 80) newLevel = 80;
-      
-      user.gamification.level = newLevel;
-      // Sync XP so that progress bar aligns with level
-      user.gamification.points = (newLevel - 1) * 500; 
-
       updateData.gamification = user.gamification;
     }
 

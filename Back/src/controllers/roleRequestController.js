@@ -25,14 +25,29 @@ const analyzeRequestWithAI = async (justification, proofDocumentPath) => {
       }
     }
 
-    const response = await axios.post("http://localhost:8000/analyze", formData, {
+    const aiUrl = process.env.AI_ANALYSIS_URL || "http://127.0.0.1:8000/analyze";
+    const response = await axios.post(aiUrl, formData, {
       headers: {
         ...formData.getHeaders()
       },
-      timeout: 30000 // 30s timeout for AI
+      timeout: 30000,
+      validateStatus: () => true // Allow handling statuses like 429/503 manually
     });
 
-    return response.data;
+    if (response.status === 429) {
+      console.warn("⚠️ AI Analysis rate-limited (429)");
+      return { 
+        isRateLimited: true, 
+        message: "AI provider is currently rate-limited. Using intelligent fallback if available." 
+      };
+    }
+
+    if (response.status >= 200 && response.status < 300) {
+      return response.data;
+    }
+
+    console.error(`AI Analysis Error: Status ${response.status}`, response.data);
+    return null;
   } catch (error) {
     console.error("AI Analysis Error:", error.response?.data || error.message);
     return null;
@@ -66,8 +81,13 @@ exports.aiReviewRequest = async (req, res) => {
     if (!aiAnalysis) {
       return res.status(503).json({ 
         message: "AI service error. The system could not reach the analysis agent.",
-        debug: "Make sure you have a valid API Key (OpenAI or Gemini) in ai_service/.env and restarted the service."
+        debug: "Check connection to ai_service and verify GEMINI_API_KEY."
       });
+    }
+
+    // Handle rate limiting gracefully by checking if the AI service returned a mock or if we should indicate the limit
+    if (aiAnalysis.isRateLimited) {
+       console.log("💡 AI was rate limited but we can't do more without a manual review.");
     }
 
     // Apply AI-specific fields

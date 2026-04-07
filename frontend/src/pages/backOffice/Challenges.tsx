@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import Sidebar from './components/Sidebar';
+import { generateBattleExercise } from '../../services/api';
 
 // Un simple composant Modal maison si pas de librairie UI dédiée
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -38,6 +39,13 @@ export default function Challenges() {
     starterCode: '',
     testCasesJson: '[]',
   });
+
+  // AI Generation State
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [exercisePrompt, setExercisePrompt] = useState("");
+  const [exerciseDifficulty, setExerciseDifficulty] = useState("medium");
+  const [exerciseCriteria, setExerciseCriteria] = useState(["loops", "iterations"]);
+  const [randomExercise, setRandomExercise] = useState(true);
 
   const apiUrl = 'http://localhost:5000/api/challenges';
 
@@ -87,12 +95,13 @@ export default function Challenges() {
       title: '',
       description: '',
       difficulty: 'medium',
-      category: '',
+      category: 'general',
       type: 'Stage',
       constraints: '',
       language: 'javascript',
       starterCode: '',
       testCasesJson: '[]',
+      xpReward: 100,
     });
     setIsModalOpen(true);
   };
@@ -109,6 +118,7 @@ export default function Challenges() {
       language: challenge.language || 'javascript',
       starterCode: challenge.starterCode || '',
       testCasesJson: JSON.stringify(challenge.testCases?.length ? challenge.testCases : [], null, 2),
+      xpReward: challenge.xpReward || 100,
     });
     setIsModalOpen(true);
   };
@@ -142,6 +152,7 @@ export default function Challenges() {
       language: formData.language || 'javascript',
       starterCode: formData.starterCode ?? '',
       testCases,
+      xpReward: Number(formData.xpReward) || 100,
     };
 
     try {
@@ -183,6 +194,55 @@ export default function Challenges() {
     } catch (error) {
       console.error(error);
       Swal.fire('Erreur', 'Impossible d\'enregistrer le challenge (réseau ou serveur).', 'error');
+    }
+  };
+
+  const handleGenerateExercise = async () => {
+    if (!exercisePrompt.trim()) return;
+
+    setAiGenerating(true);
+    try {
+      const { data } = await generateBattleExercise({
+        prompt: exercisePrompt,
+        difficulty: exerciseDifficulty,
+        language: formData.language || "javascript",
+        expectedFunctions: ["solve"], // Default for challenges
+        criteria: exerciseCriteria,
+        randomize: randomExercise,
+      });
+
+      const exercise = data?.exercise || {};
+      
+      setFormData((prev) => ({
+        ...prev,
+        title: exercise.title || prev.title,
+        description: exercise.description || prev.description,
+        language: exercise.language || prev.language,
+        xpReward: exercise.xpReward || prev.xpReward,
+        testCasesJson: Array.isArray(exercise.testCases) && exercise.testCases.length
+          ? JSON.stringify(exercise.testCases, null, 2)
+          : prev.testCasesJson,
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Exercice généré",
+        text: `L'exercice et les tests ont été générés par l'IA (${String(data?.provider || "Gemini").toUpperCase()}).`,
+        background: "#1a1a2e",
+        color: "#fff",
+        confirmButtonColor: "#7c3aed"
+      });
+    } catch (error: any) {
+      console.error("AI Generation failed:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Échec de la génération",
+        text: error?.response?.data?.message || "Impossible de générer le brouillon de l'exercice.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } finally {
+      setAiGenerating(false);
     }
   };
 
@@ -311,8 +371,64 @@ export default function Challenges() {
 
       {/* Add / Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingChallenge ? "Modifier le Challenge" : "Nouveau Challenge"}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          {/* AI Generator Section */}
+          <div className="bg-purple-900/10 border border-purple-900/20 rounded-lg p-4 mb-4 space-y-3">
+            <div className="flex items-center gap-2 text-primary font-bold text-sm">
+              <span className="material-icons-outlined">psychology</span>
+              Générateur d'exercice par IA
+            </div>
+            <textarea
+              value={exercisePrompt}
+              onChange={(e) => setExercisePrompt(e.target.value)}
+              placeholder="Décrivez l'exercice que vous voulez générer (ex: Inverser une chaîne de caractères)..."
+              className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors resize-none"
+              rows={2}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <select
+                  value={exerciseDifficulty}
+                  onChange={(e) => setExerciseDifficulty(e.target.value)}
+                  className="bg-background-dark border border-purple-900/30 text-white rounded-lg px-2 py-1 text-xs focus:outline-none"
+                >
+                  <option value="easy">Facile</option>
+                  <option value="medium">Moyen</option>
+                  <option value="hard">Difficile</option>
+                </select>
+                <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={randomExercise}
+                    onChange={(e) => setRandomExercise(e.target.checked)}
+                    className="rounded border-purple-900/30 bg-background-dark"
+                  />
+                  Aléatoire par critères
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateExercise}
+                disabled={aiGenerating || !exercisePrompt.trim()}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              >
+                {aiGenerating ? (
+                  <>
+                    <span className="material-icons-outlined animate-spin text-xs">autorenew</span>
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-icons-outlined text-xs">auto_awesome</span>
+                    Générer avec l'IA
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium text-gray-300">Titre</label>
               <input 
@@ -349,6 +465,18 @@ export default function Challenges() {
                 required
                 className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary transition-colors"
                 placeholder="Ex: Array, String, Algo..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">XP Reward</label>
+              <input 
+                type="number" 
+                name="xpReward" 
+                value={formData.xpReward} 
+                onChange={handleInputChange} 
+                required
+                className="w-full bg-background-dark border border-purple-900/30 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary transition-colors"
               />
             </div>
 
@@ -437,7 +565,7 @@ export default function Challenges() {
                 placeholder="Ex: 1 <= nums.length <= 10^4"
               ></textarea>
             </div>
-          </div>
+            </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-purple-900/20">
             <button 
@@ -455,7 +583,8 @@ export default function Challenges() {
             </button>
           </div>
         </form>
-      </Modal>
+      </div>
+    </Modal>
     </div>
   );
 }
