@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import {
   getParticipantBattleRoomAccess,
   reportParticipantBattleFraud,
+  runParticipantBattleCode,
   submitParticipantBattleCode,
 } from "../../../services/api";
 
@@ -52,6 +53,8 @@ export default function BattleProgrammer() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [runningShell, setRunningShell] = useState(false);
+  const [shellRun, setShellRun] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [fraudBlocked, setFraudBlocked] = useState(false);
   const [finalSubmitted, setFinalSubmitted] = useState(false);
@@ -66,6 +69,7 @@ export default function BattleProgrammer() {
   const blockedByFinalSubmit = finalSubmitted || ["submitted", "evaluated"].includes(String(room?.mySubmission?.status || ""));
   const canEdit = isLive && !timeExpired && !blockedByFraud && !blockedByFinalSubmit;
   const monacoLanguage = normalizeMonacoLanguage(room?.challenge?.language);
+  const shellLanguageSupported = monacoLanguage === "javascript" || monacoLanguage === "python";
 
   const triggerFraudBlock = async (reason = "focus-lost") => {
     if (!roomId || fraudReportedRef.current) return;
@@ -209,6 +213,76 @@ export default function BattleProgrammer() {
     }
   };
 
+  const handleRunShell = async () => {
+    if (!canEdit && !isEnded) {
+      Swal.fire({
+        icon: "info",
+        title: "Execution unavailable",
+        text: "Code execution is only available while the challenge is active and editable.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    if (!code.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Code required",
+        text: "Write your code before running the shell.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    if (!shellLanguageSupported) {
+      setShellRun({
+        total: 0,
+        passed: 0,
+        failed: 0,
+        executionTimeMs: null,
+        results: [],
+        error: "Shell currently accepts only JavaScript or Python.",
+      });
+      return;
+    }
+
+    setRunningShell(true);
+    try {
+      const { data } = await runParticipantBattleCode(roomId, code);
+      const tests = data?.analysis?.tests || {};
+      const rawResults = Array.isArray(tests.results) ? tests.results : [];
+      const normalizedResults = rawResults.map((item, index) => ({
+        name: String(item?.name || `Test ${index + 1}`),
+        expected: true,
+        actual: Boolean(item?.passed),
+        passed: Boolean(item?.passed),
+        error: item?.error || null,
+      }));
+
+      setShellRun({
+        total: Number(tests.total ?? normalizedResults.length),
+        passed: Number(tests.passed ?? normalizedResults.filter((r) => r.passed).length),
+        failed: Number(tests.failed ?? normalizedResults.filter((r) => !r.passed).length),
+        executionTimeMs: tests.executionTimeMs != null ? Number(tests.executionTimeMs) : null,
+        results: normalizedResults,
+        error: null,
+      });
+    } catch (error) {
+      setShellRun({
+        total: 0,
+        passed: 0,
+        failed: 0,
+        executionTimeMs: null,
+        results: [],
+        error: error?.response?.data?.message || "Code execution failed.",
+      });
+    } finally {
+      setRunningShell(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">Loading programmer platform...</div>;
   }
@@ -347,6 +421,13 @@ export default function BattleProgrammer() {
                 </div>
                 <div className="mt-4 flex gap-3">
                   <button
+                    onClick={handleRunShell}
+                    disabled={runningShell || (!canEdit && !isEnded) || !shellLanguageSupported}
+                    className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+                  >
+                    {runningShell ? "Running..." : "Run code (JS/Python)"}
+                  </button>
+                  <button
                     onClick={handleSubmit}
                     disabled={!canEdit || saving}
                     className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
@@ -360,6 +441,37 @@ export default function BattleProgrammer() {
                     Refresh status
                   </button>
                 </div>
+
+                {shellRun && (
+                  <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Shell Result (comparison with backend exercise tests)</p>
+                    {shellRun.error ? (
+                      <p className="text-red-300 text-sm mt-2">{shellRun.error}</p>
+                    ) : (
+                      <>
+                        <p className="text-slate-200 text-sm mt-2">
+                          Passed {shellRun.passed}/{shellRun.total} tests
+                          {typeof shellRun.executionTimeMs === "number" ? ` in ${shellRun.executionTimeMs} ms` : ""}
+                        </p>
+                        <div className="mt-2 space-y-2 max-h-44 overflow-y-auto pr-1">
+                          {shellRun.results.map((item, index) => (
+                            <div key={`${item.name}-${index}`} className="rounded border border-slate-700 bg-slate-950/50 p-2 text-xs">
+                              <p className="text-slate-200 font-medium">{item.name}</p>
+                              <p className="text-slate-400 mt-1">
+                                Expected: <span className="text-slate-200">{String(item.expected)}</span>
+                                {" · "}
+                                Actual: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.actual == null ? "error" : String(item.actual)}</span>
+                                {" · "}
+                                Status: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.passed ? "PASS" : "FAIL"}</span>
+                              </p>
+                              {item.error && <p className="text-red-300 mt-1">{item.error}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
