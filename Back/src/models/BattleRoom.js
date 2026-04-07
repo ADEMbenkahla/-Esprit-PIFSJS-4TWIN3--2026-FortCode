@@ -44,6 +44,7 @@ const battleRoomSchema = new mongoose.Schema(
       description: { type: String, default: "" },
       starterCode: { type: String, default: "" },
       language: { type: String, default: "javascript" },
+      generatedExerciseSnapshot: { type: mongoose.Schema.Types.Mixed, default: null },
       testCases: {
         type: [
           {

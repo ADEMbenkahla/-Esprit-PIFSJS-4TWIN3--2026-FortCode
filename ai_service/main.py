@@ -50,6 +50,7 @@ class ExerciseDraft(BaseModel):
     language: str
     expectedFunctions: List[str]
     testCases: List[ExerciseTestCase]
+    expectedOutput: str = ""
 
 
 class ExerciseRequest(BaseModel):
@@ -59,6 +60,11 @@ class ExerciseRequest(BaseModel):
     expectedFunctions: List[str] = ["solve"]
     criteria: List[str] = []
     randomize: bool = True
+
+
+class CodeFeedbackRequest(BaseModel):
+    code: str = ""
+    challengeTitle: str = "Coding Challenge"
 
 def perform_ocr(file_bytes: bytes) -> str:
     """Extract text from image using Tesseract."""
@@ -232,12 +238,17 @@ def _normalize_exercise_payload(data: dict, payload: ExerciseRequest) -> dict:
     if not test_cases:
         raise HTTPException(status_code=502, detail="AI response missing valid test cases")
 
+    expected_output = str(data.get("expectedOutput") or "").strip()
+    if not expected_output:
+        expected_output = "Reference output not provided by AI."
+
     return {
         "title": title,
         "description": description,
         "language": language,
         "expectedFunctions": expected_functions,
         "testCases": test_cases,
+        "expectedOutput": expected_output,
     }
 
 
@@ -259,13 +270,15 @@ Return ONLY valid JSON with this exact shape:
   "expectedFunctions": ["functionName"],
   "testCases": [
     {{ "name": "string", "assertion": "string", "hidden": true }}
-  ]
+    ],
+    "expectedOutput": "string"
 }}
 
 Rules:
 - language must match requested language.
 - expectedFunctions must contain valid function identifiers.
 - testCases must have at least 3 items.
+- expectedOutput must summarize the expected result or output pattern for a correct solution.
 - For JavaScript assertions: boolean expressions or code returning boolean.
 - For Python assertions: expression style compatible with python checks.
 - No markdown, no commentary, no code fences.
@@ -306,6 +319,91 @@ Input:
         print(f"❌ Gemini Exercise Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+async def generate_code_feedback_with_gemini(payload: CodeFeedbackRequest) -> dict:
+    code = str(payload.code or "")
+    title = str(payload.challengeTitle or "Coding Challenge")
+
+    if not code.strip():
+        return {
+            "bugs": [],
+            "suggestions": ["Write some code before requesting AI feedback."],
+            "improvements": ["Add at least one test case for the function behavior."],
+            "summary": "No code provided.",
+        }
+
+    # Keep service resilient when Gemini is unavailable.
+    if not GEMINI_API_KEY or "your_gemini_api_key" in GEMINI_API_KEY:
+        return {
+            "bugs": [],
+            "suggestions": ["Add edge-case tests.", "Consider naming clarity for maintainability."],
+            "improvements": ["Extract reusable helpers if logic grows."],
+            "summary": "AI feedback service unavailable; showing default tips.",
+        }
+
+    model_name = _pick_model_name()
+    model = genai.GenerativeModel(model_name)
+
+    prompt = f"""
+You are a senior code reviewer.
+Analyze the submitted code for challenge: {title}
+
+Return ONLY valid JSON with this exact shape:
+{{
+  "bugs": ["string"],
+  "suggestions": ["string"],
+  "improvements": ["string"],
+  "summary": "string"
+}}
+
+Constraints:
+- Keep each list concise (max 5 items).
+- No markdown, no code fences, no extra text.
+
+Code:
+{code[:12000]}
+"""
+
+    try:
+        response = model.generate_content(prompt)
+
+        raw_text = ""
+        try:
+            raw_text = getattr(response, "text", "") or ""
+        except Exception:
+            raw_text = ""
+
+        if not raw_text and getattr(response, "candidates", None):
+            try:
+                parts = response.candidates[0].content.parts or []
+                raw_text = "".join(str(getattr(part, "text", "") or "") for part in parts)
+            except Exception:
+                raw_text = ""
+
+        parsed = _parse_json_payload(raw_text)
+        if not isinstance(parsed, dict):
+            raise ValueError("Gemini did not return a JSON object")
+
+        def to_list(value):
+            if not isinstance(value, list):
+                return []
+            return [str(item).strip() for item in value if str(item).strip()][:5]
+
+        return {
+            "bugs": to_list(parsed.get("bugs")),
+            "suggestions": to_list(parsed.get("suggestions")),
+            "improvements": to_list(parsed.get("improvements")),
+            "summary": str(parsed.get("summary") or "AI code feedback generated.").strip(),
+        }
+    except Exception as e:
+        print(f"❌ Gemini Code Feedback Error: {e}")
+        return {
+            "bugs": [],
+            "suggestions": ["Add edge-case tests.", "Consider naming clarity for maintainability."],
+            "improvements": ["Extract reusable helpers if logic grows."],
+            "summary": "AI feedback service unavailable; showing default tips.",
+        }
+
 @app.post("/analyze", response_model=AnalysisResult)
 async def analyze_request(
     justification: str = Form(...),
@@ -333,6 +431,12 @@ async def generate_exercise(req: ExerciseRequest):
         "source": "ai",
         "provider": "gemini",
     }
+
+
+@app.post("/code-feedback")
+async def code_feedback(req: CodeFeedbackRequest):
+    feedback = await generate_code_feedback_with_gemini(req)
+    return feedback
 
 if __name__ == "__main__":
     import uvicorn

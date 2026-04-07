@@ -328,6 +328,7 @@ exports.createBattleRoom = async (req, res) => {
         description: challenge?.description || "",
         starterCode: challenge?.starterCode || "",
         language: challenge?.language || "javascript",
+        generatedExerciseSnapshot: challenge?.generatedExerciseSnapshot || null,
         testCases: challengeTests,
         statementAttachment,
       },
@@ -856,6 +857,24 @@ exports.runParticipantBattleCode = async (req, res) => {
     const testRun = runChallengeCode(room.challenge?.language, code, room.challenge?.testCases || []);
     const correctness = computeCorrectnessFromRun(testRun);
 
+    await BattleSubmission.findOneAndUpdate(
+      { battleRoom: room._id, participant: participantId },
+      {
+        $set: {
+          code,
+          status: existingSubmission?.status || "pending",
+          executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
+          correctnessScore: correctness.correctnessScore,
+          metrics: {
+            passedTests: correctness.passedTests,
+            totalTests: correctness.totalTests,
+          },
+        },
+      },
+      { upsert: true }
+    );
+
     return res.json({
       message: "Code executed",
       analysis: {
@@ -865,6 +884,7 @@ exports.runParticipantBattleCode = async (req, res) => {
           failed: Math.max(0, correctness.totalTests - correctness.passedTests),
           results: correctness.testResults,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
         },
         correctnessScore: correctness.correctnessScore,
       },
@@ -928,6 +948,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           submittedAt: new Date(),
           score: finalScore != null ? finalScore : 0,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
           sonarSummary: analysis.sonar?.summary || "",
           sonarSource: analysis.sonar?.source || "",
           sonarProjectKey: analysis.sonar?.projectKey || "",
@@ -975,6 +996,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           passed: correctness.passedTests,
           results: correctness.testResults,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
         },
         correctnessScore: correctness.correctnessScore,
         finalScore,

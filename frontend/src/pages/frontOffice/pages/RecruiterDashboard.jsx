@@ -152,6 +152,17 @@ const buildChallengeTestTemplate = (language, functionNames) => {
   });
 };
 
+const normalizeChallengeTestCases = (value) => {
+  const tests = Array.isArray(value) ? value : [];
+  return tests
+    .map((test, index) => ({
+      name: String(test?.name || `Test ${index + 1}`).trim(),
+      assertion: String(test?.assertion || "").trim(),
+      hidden: test?.hidden !== false,
+    }))
+    .filter((test) => test.assertion.length > 0);
+};
+
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
   const [virtualRoomStatus, setVirtualRoomStatus] = useState(null);
@@ -172,7 +183,11 @@ export function RecruiterDashboard() {
     challengeDescription: "",
     challengeLanguage: "javascript",
     expectedFunctions: ["solve"],
-    challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
+    generatedExerciseSnapshot: null,
+    challengeTestCases: [
+      { name: "Basic", assertion: "return solve(2, 3) === 5;", hidden: false },
+      { name: "Edge", assertion: "return solve(-1, 1) === 0;", hidden: true },
+    ],
     timeLimitMinutes: 60,
     exerciseFile: null,
   });
@@ -222,28 +237,17 @@ export function RecruiterDashboard() {
       return;
     }
 
-    let parsedTests = [];
-    if (createForm.challengeTestsJson.trim()) {
-      try {
-        const raw = JSON.parse(createForm.challengeTestsJson);
-        if (!Array.isArray(raw)) throw new Error("Tests must be an array");
-        parsedTests = raw
-          .map((t, idx) => ({
-            name: String(t?.name || `Test ${idx + 1}`),
-            assertion: String(t?.assertion || "").trim(),
-            hidden: t?.hidden !== false,
-          }))
-          .filter((t) => t.assertion.length > 0);
-      } catch {
-        Swal.fire({
-          icon: "error",
-          title: "Invalid challenge tests JSON",
-          text: "Use a valid JSON array like [{\"name\":\"T1\",\"assertion\":\"return solve(1)===2;\"}].",
-          background: "#1a1a2e",
-          color: "#fff",
-        });
-        return;
-      }
+    const parsedTests = normalizeChallengeTestCases(createForm.challengeTestCases);
+
+    if (!parsedTests.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Tests required",
+        text: "Add at least one test case before creating the room.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
     }
 
     setLoading(true);
@@ -257,6 +261,7 @@ export function RecruiterDashboard() {
           description: createForm.challengeDescription,
           language: createForm.challengeLanguage || "javascript",
           testCases: parsedTests,
+          generatedExerciseSnapshot: createForm.generatedExerciseSnapshot,
         },
         timeLimitMinutes: createForm.timeLimitMinutes || 60,
         exerciseFile: createForm.exerciseFile,
@@ -282,7 +287,11 @@ export function RecruiterDashboard() {
         challengeDescription: "",
         challengeLanguage: "javascript",
         expectedFunctions: ["solve"],
-        challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
+        generatedExerciseSnapshot: null,
+        challengeTestCases: [
+          { name: "Basic", assertion: "return solve(2, 3) === 5;", hidden: false },
+          { name: "Edge", assertion: "return solve(-1, 1) === 0;", hidden: true },
+        ],
         timeLimitMinutes: 60,
         exerciseFile: null,
       });
@@ -314,15 +323,25 @@ export function RecruiterDashboard() {
       const exercise = data?.exercise || {};
       setCreateForm((f) => ({
         ...f,
+        generatedExerciseSnapshot: {
+          source: data?.source || "ai",
+          provider: data?.provider || "gemini",
+          prompt: f.exercisePrompt,
+          difficulty: f.exerciseDifficulty,
+          criteria: f.exerciseCriteria,
+          randomize: f.randomExercise,
+          generatedAt: new Date().toISOString(),
+          exercise,
+        },
         challengeTitle: exercise.title || f.challengeTitle,
         challengeDescription: exercise.description || f.challengeDescription,
         challengeLanguage: exercise.language || f.challengeLanguage,
         expectedFunctions: Array.isArray(exercise.expectedFunctions) && exercise.expectedFunctions.length
           ? exercise.expectedFunctions
           : f.expectedFunctions,
-        challengeTestsJson: Array.isArray(exercise.testCases)
-          ? JSON.stringify(exercise.testCases, null, 2)
-          : f.challengeTestsJson,
+        challengeTestCases: Array.isArray(exercise.testCases) && exercise.testCases.length
+          ? normalizeChallengeTestCases(exercise.testCases)
+          : f.challengeTestCases,
       }));
 
       Swal.fire({
@@ -732,7 +751,7 @@ export function RecruiterDashboard() {
                     type="button"
                     onClick={() => {
                       const template = buildChallengeTestTemplate(createForm.challengeLanguage, createForm.expectedFunctions);
-                      setCreateForm((f) => ({ ...f, challengeTestsJson: JSON.stringify(template, null, 2) }));
+                      setCreateForm((f) => ({ ...f, challengeTestCases: normalizeChallengeTestCases(template) }));
                     }}
                     className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 hover:bg-slate-600"
                   >
@@ -740,16 +759,85 @@ export function RecruiterDashboard() {
                   </button>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Challenge tests (JSON)</label>
-                <textarea
-                  value={createForm.challengeTestsJson}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, challengeTestsJson: e.target.value }))}
-                  rows={7}
-                  className="w-full px-4 py-2.5 font-mono text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  Assertions run on server at submit time. Example assertion: <code>return solve(2, 3) === 5;</code>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="block text-sm font-medium text-slate-300">Challenge tests</label>
+                  <button
+                    type="button"
+                    onClick={() => setCreateForm((f) => ({
+                      ...f,
+                      challengeTestCases: [...(f.challengeTestCases || []), { name: `Test ${((f.challengeTestCases || []).length || 0) + 1}`, assertion: "", hidden: true }],
+                    }))}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-sm"
+                  >
+                    + Add test
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {createForm.challengeTestCases.map((test, idx) => (
+                    <div key={`challenge-test-${idx}`} className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Name</label>
+                          <input
+                            type="text"
+                            value={test.name}
+                            onChange={(e) => setCreateForm((f) => ({
+                              ...f,
+                              challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                                itemIndex === idx ? { ...item, name: e.target.value } : item
+                              )),
+                            }))}
+                            placeholder="Basic"
+                            className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-300 mb-2">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(test.hidden)}
+                              onChange={(e) => setCreateForm((f) => ({
+                                ...f,
+                                challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                                  itemIndex === idx ? { ...item, hidden: e.target.checked } : item
+                                )),
+                              }))}
+                            />
+                            Hidden
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setCreateForm((f) => ({
+                              ...f,
+                              challengeTestCases: f.challengeTestCases.filter((_, itemIndex) => itemIndex !== idx),
+                            }))}
+                            className="px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Assertion</label>
+                        <textarea
+                          value={test.assertion}
+                          onChange={(e) => setCreateForm((f) => ({
+                            ...f,
+                            challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                              itemIndex === idx ? { ...item, assertion: e.target.value } : item
+                            )),
+                          }))}
+                          rows={3}
+                          placeholder="return solve(2, 3) === 5;"
+                          className="w-full px-4 py-2.5 font-mono text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Assertions run on server at submit time.
                 </p>
               </div>
               <div>
@@ -837,6 +925,11 @@ export function RecruiterDashboard() {
 
 function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onRefresh }) {
   const submissions = (room.submissions || []).map(invalidateNonCodeSubmission);
+  const generatedExercise = room?.challenge?.generatedExerciseSnapshot?.exercise || null;
+  const expectedOutputText = generatedExercise?.expectedOutput
+    || (generatedExercise?.testCases?.length
+      ? `Derived from tests:\n${generatedExercise.testCases.slice(0, 3).map((test, index) => `- ${test.name || `Test ${index + 1}`}: ${test.assertion || ""}`).join("\n")}`
+      : "No expected output stored.");
   const nonCodeByEmail = submissions.reduce((acc, sub) => {
     const email = String(sub?.participant?.email || "").toLowerCase();
     if (sub?._invalidNonCodeInput && email) acc[email] = true;
@@ -1037,6 +1130,47 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
                 <div className="mt-4">
                   <p className="text-slate-400 text-sm mb-2">Submitted code</p>
                   <pre className="p-4 bg-slate-950 rounded-lg border border-slate-700 text-slate-300 text-xs overflow-x-auto max-h-48">{sub.code}</pre>
+                </div>
+              )}
+              <div className="mt-4 grid gap-4 md:grid-cols-2 text-sm">
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-slate-400 mb-2">Generated exercise snapshot</p>
+                  {generatedExercise ? (
+                    <div className="space-y-2 text-slate-300">
+                      <p><span className="text-slate-500">Title:</span> {generatedExercise.title || "—"}</p>
+                      <p><span className="text-slate-500">Language:</span> {generatedExercise.language || "—"}</p>
+                      <p><span className="text-slate-500">Function(s):</span> {(generatedExercise.expectedFunctions || []).join(", ") || "—"}</p>
+                      <p className="text-slate-500 text-xs whitespace-pre-wrap">{generatedExercise.description || "No description stored."}</p>
+                      <div className="rounded border border-slate-800 bg-slate-900/60 p-2 mt-2">
+                        <p className="text-slate-500 text-xs uppercase tracking-wide">Expected output</p>
+                        <pre className="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap break-words mt-1">{expectedOutputText}</pre>
+                      </div>
+                      <div className="space-y-2 pt-2">
+                        {(generatedExercise.testCases || []).slice(0, 3).map((test, index) => (
+                          <div key={`${test.name || "test"}-${index}`} className="rounded border border-slate-800 bg-slate-900/60 p-2">
+                            <p className="text-slate-200 text-xs font-medium">{test.name || `Test ${index + 1}`}</p>
+                            <p className="text-slate-500 text-[11px] mt-1 whitespace-pre-wrap">{test.assertion || "No assertion"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-xs">No generated exercise snapshot stored for this room.</p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-slate-400 mb-2">Visitor output snapshot</p>
+                  <pre className="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap break-words bg-slate-900/60 border border-slate-800 rounded p-3 max-h-64 overflow-auto">
+                    {sub.outputSnapshot || "No output captured yet. Run or submit once after this update to store execution output."}
+                  </pre>
+                </div>
+              </div>
+              {generatedExercise?.testCases?.length > 0 && (
+                <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm">
+                  <p className="text-slate-400 mb-2">Expected comparison</p>
+                  <p className="text-slate-300 text-xs whitespace-pre-wrap">
+                    {expectedOutputText}
+                  </p>
                 </div>
               )}
               <div className="mt-4 pt-4 border-t border-slate-800">
