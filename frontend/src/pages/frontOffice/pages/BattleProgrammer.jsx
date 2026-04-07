@@ -58,6 +58,9 @@ export default function BattleProgrammer() {
   const [now, setNow] = useState(Date.now());
   const [fraudBlocked, setFraudBlocked] = useState(false);
   const [finalSubmitted, setFinalSubmitted] = useState(false);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [resultsShared, setResultsShared] = useState(false);
+  const [sharedRanking, setSharedRanking] = useState([]);
   const fraudReportedRef = useRef(false);
 
   const isLive = room?.status === "live";
@@ -65,8 +68,9 @@ export default function BattleProgrammer() {
   const waitingStart = room?.status === "draft" || room?.status === "scheduled";
   const remainingMs = useMemo(() => getRemainingMs(room?.startedAt, room?.timeLimitMinutes, now), [room?.startedAt, room?.timeLimitMinutes, now]);
   const timeExpired = isLive && remainingMs === 0;
-  const blockedByFraud = fraudBlocked || room?.mySubmission?.fraudDetected;
-  const blockedByFinalSubmit = finalSubmitted || ["submitted", "evaluated"].includes(String(room?.mySubmission?.status || ""));
+  const hasSubmission = rankingLoading || finalSubmitted || ["submitted", "evaluated"].includes(String(room?.mySubmission?.status || ""));
+  const blockedByFraud = !hasSubmission && (fraudBlocked || room?.mySubmission?.fraudDetected);
+  const blockedByFinalSubmit = hasSubmission;
   const canEdit = isLive && !timeExpired && !blockedByFraud && !blockedByFinalSubmit;
   const monacoLanguage = normalizeMonacoLanguage(room?.challenge?.language);
   const shellLanguageSupported = monacoLanguage === "javascript" || monacoLanguage === "python";
@@ -91,13 +95,16 @@ export default function BattleProgrammer() {
     });
   };
 
-  const refreshAccess = async (silent = false) => {
+  const refreshAccess = async (silent = false, options = {}) => {
+    const { suppressFraud = false } = options;
     if (!roomId) return;
     if (!silent) setLoading(true);
     try {
       const { data } = await getParticipantBattleRoomAccess(roomId);
       setRoom(data?.room || null);
-      if (data?.room?.mySubmission?.fraudDetected) {
+      setResultsShared(Boolean(data?.room?.resultsShared));
+      setSharedRanking(Array.isArray(data?.room?.sharedRanking) ? data.room.sharedRanking : []);
+      if (data?.room?.mySubmission?.fraudDetected && !suppressFraud) {
         setFraudBlocked(true);
         fraudReportedRef.current = true;
       }
@@ -140,7 +147,16 @@ export default function BattleProgrammer() {
   }, [roomId, waitingStart]);
 
   useEffect(() => {
-    if (!isLive || isEnded || timeExpired || blockedByFraud) return undefined;
+    if (!rankingLoading) return undefined;
+    const timer = setInterval(() => {
+      refreshAccess(true, { suppressFraud: true });
+    }, 3000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankingLoading, roomId]);
+
+  useEffect(() => {
+    if (!isLive || isEnded || timeExpired || hasSubmission || blockedByFraud) return undefined;
 
     const onVisibilityChange = () => {
       if (document.hidden) {
@@ -159,7 +175,7 @@ export default function BattleProgrammer() {
       window.removeEventListener("blur", onWindowBlur);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLive, isEnded, timeExpired, blockedByFraud, roomId]);
+  }, [isLive, isEnded, timeExpired, blockedByFraud, hasSubmission, roomId]);
 
   const remainingText = formatRemaining(remainingMs);
 
@@ -188,6 +204,7 @@ export default function BattleProgrammer() {
     setSaving(true);
     try {
       const { data } = await submitParticipantBattleCode(roomId, code);
+      setRankingLoading(true);
       setFinalSubmitted(true);
       setRoom((prev) => ({
         ...(prev || {}),
@@ -200,7 +217,9 @@ export default function BattleProgrammer() {
         background: "#1a1a2e",
         color: "#fff",
       });
+      await refreshAccess(true, { suppressFraud: true });
     } catch (error) {
+      setRankingLoading(false);
       Swal.fire({
         icon: "error",
         title: "Submission failed",
@@ -289,6 +308,81 @@ export default function BattleProgrammer() {
 
   if (!room) {
     return <div className="min-h-screen bg-slate-950 text-red-300 flex items-center justify-center">Battle room not found.</div>;
+  }
+
+  if (rankingLoading && !resultsShared) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6">
+        <div className="max-w-xl text-center space-y-3">
+          <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Ranking loading</p>
+          <h1 className="text-4xl md:text-5xl font-bold mt-2">Submission received</h1>
+          <p className="text-slate-300/90 mt-2 text-lg">
+            Your code has been submitted successfully. The ranking is being updated right now.
+          </p>
+          <p className="text-slate-400 text-sm">
+            Please wait while the recruiter decides whether to share the result.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (rankingLoading && resultsShared) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="rounded-xl border border-emerald-700/30 bg-emerald-900/10 p-5 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Results shared</p>
+            <h1 className="text-3xl md:text-4xl font-bold mt-2">Ranking published</h1>
+            <p className="text-slate-300/90 mt-2 text-base md:text-lg">
+              The recruiter shared the ranking list.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-slate-200 font-semibold">Shared visitor ranking</p>
+              <span className="text-xs text-slate-400">{sharedRanking.length} ranked visitor(s)</span>
+            </div>
+
+            {sharedRanking.length === 0 ? (
+              <p className="text-slate-400 text-sm">No ranked submissions yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-left text-slate-400">
+                      <th className="pb-2 pr-4">Rank</th>
+                      <th className="pb-2 pr-4">Visitor</th>
+                      <th className="pb-2 pr-4">Final score</th>
+                      <th className="pb-2 pr-4">Correctness</th>
+                      <th className="pb-2 pr-4">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sharedRanking.map((item, index) => (
+                      <tr
+                        key={`${item.participantId || item.email || item.name || "visitor"}-${index}`}
+                        className={`border-b border-slate-800/70 ${item.isCurrentUser ? "bg-emerald-900/20" : ""}`}
+                      >
+                        <td className="py-2 pr-4 text-slate-200 font-semibold">#{item.rank}</td>
+                        <td className="py-2 pr-4 text-slate-200">
+                          {item.name}
+                          {item.isCurrentUser ? <span className="ml-2 text-[11px] text-emerald-300">(You)</span> : null}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-300">{item.score}/100</td>
+                        <td className="py-2 pr-4 text-slate-300">{item.correctnessScore}/100</td>
+                        <td className="py-2 pr-4 text-slate-400">{item.executionTimeMs != null ? `${item.executionTimeMs} ms` : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (blockedByFraud) {

@@ -163,6 +163,37 @@ const normalizeChallengeTestCases = (value) => {
     .filter((test) => test.assertion.length > 0);
 };
 
+const buildVisitorRanking = (submissions) => {
+  return [...(Array.isArray(submissions) ? submissions : [])]
+    .filter((sub) => sub?.status === "submitted" || sub?.status === "evaluated" || sub?.finalScore != null)
+    .sort((a, b) => {
+      const scoreA = Number(a?.finalScore ?? a?.score ?? 0);
+      const scoreB = Number(b?.finalScore ?? b?.score ?? 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const corrA = Number(a?.correctnessScore ?? 0);
+      const corrB = Number(b?.correctnessScore ?? 0);
+      if (corrB !== corrA) return corrB - corrA;
+
+      const timeA = Number(a?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+      const timeB = Number(b?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+      if (timeA !== timeB) return timeA - timeB;
+
+      return String(a?.participant?.username || a?.participant?.nickname || "").localeCompare(String(b?.participant?.username || b?.participant?.nickname || ""));
+    })
+    .map((sub, index) => ({
+      rank: index + 1,
+      name: sub?.participant?.username || sub?.participant?.nickname || sub?.participant?.email || "Participant",
+      email: sub?.participant?.email || "",
+      score: Number(sub?.finalScore ?? sub?.score ?? 0),
+      correctnessScore: Number(sub?.correctnessScore ?? 0),
+      qualityScore: sub?.qualityScore != null ? Number(sub.qualityScore) : null,
+      executionTimeMs: sub?.executionTimeMs != null ? Number(sub.executionTimeMs) : null,
+      submittedAt: sub?.submittedAt || null,
+      outputSnapshot: String(sub?.outputSnapshot || "").trim(),
+    }));
+};
+
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
   const [virtualRoomStatus, setVirtualRoomStatus] = useState(null);
@@ -395,6 +426,34 @@ export function RecruiterDashboard() {
       fetchRooms();
     } catch (err) {
       Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || "Confirmation failed.", background: "#1a1a2e", color: "#fff" });
+    }
+  };
+
+  const handleShareResults = async (roomId, enabled) => {
+    try {
+      await updateBattleRoomStatus(roomId, { shareResults: Boolean(enabled) });
+      if (selectedRoom?._id === roomId) {
+        const r = await getBattleRoom(roomId);
+        setSelectedRoom(r.data.room);
+      }
+      fetchRooms();
+      Swal.fire({
+        icon: "success",
+        title: enabled ? "Ranking shared" : "Ranking hidden",
+        text: enabled
+          ? "Visitors can now see the published ranking state."
+          : "Visitors are now kept waiting until ranking is shared again.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Share action failed",
+        text: err?.response?.data?.message || "Could not update ranking visibility.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
     }
   };
 
@@ -887,7 +946,7 @@ export function RecruiterDashboard() {
                 </div>
               </>
             ) : (
-              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onConfirmSubmission={handleConfirmSubmission} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
+              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onConfirmSubmission={handleConfirmSubmission} onShareResults={handleShareResults} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
             )}
           </div>
         )}
@@ -923,13 +982,14 @@ export function RecruiterDashboard() {
   );
 }
 
-function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onRefresh }) {
+function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onShareResults, onRefresh }) {
   const submissions = (room.submissions || []).map(invalidateNonCodeSubmission);
   const generatedExercise = room?.challenge?.generatedExerciseSnapshot?.exercise || null;
   const expectedOutputText = generatedExercise?.expectedOutput
     || (generatedExercise?.testCases?.length
       ? `Derived from tests:\n${generatedExercise.testCases.slice(0, 3).map((test, index) => `- ${test.name || `Test ${index + 1}`}: ${test.assertion || ""}`).join("\n")}`
       : "No expected output stored.");
+  const ranking = buildVisitorRanking(submissions);
   const nonCodeByEmail = submissions.reduce((acc, sub) => {
     const email = String(sub?.participant?.email || "").toLowerCase();
     if (sub?._invalidNonCodeInput && email) acc[email] = true;
@@ -972,6 +1032,56 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
     setRating(null);
   };
 
+  const shareRanking = async () => {
+    if (!ranking.length) {
+      Swal.fire({
+        icon: "info",
+        title: "No ranking available",
+        text: "No visitor submission has been ranked yet.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    const lines = [
+      `Ranking for ${room.title}`,
+      `Challenge: ${room.challenge?.title || "Coding Challenge"}`,
+      "",
+      ...ranking.map((item) => {
+        const parts = [
+          `#${item.rank} ${item.name}`,
+          `score ${item.score}/100`,
+          `correctness ${item.correctnessScore}/100`,
+        ];
+        if (item.executionTimeMs != null) parts.push(`${item.executionTimeMs} ms`);
+        return parts.join(" · ");
+      }),
+    ];
+
+    const text = lines.join("\n");
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+      Swal.fire({
+        icon: "success",
+        title: "Ranking ready to share",
+        text: "The visitor ranking has been copied to your clipboard.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch {
+      Swal.fire({
+        icon: "info",
+        title: "Share ranking",
+        text,
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -986,9 +1096,23 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
             <p className="text-slate-300 font-medium">Live supervision</p>
             <p className="text-slate-500 text-xs">Auto-refreshes every 4 seconds while the battle is live.</p>
           </div>
-          <span className={`text-xs px-2 py-1 rounded ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
-            {room.status}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              onClick={() => onShareResults(room._id, !room?.resultsShared)}
+              className={`px-3 py-1.5 rounded text-white text-xs ${room?.resultsShared ? "bg-slate-600 hover:bg-slate-500" : "bg-indigo-600 hover:bg-indigo-500"}`}
+            >
+              {room?.resultsShared ? "Hide ranking from visitors" : "Show ranking to visitors"}
+            </button>
+            <button
+              onClick={shareRanking}
+              className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 text-xs"
+            >
+              Copy visitor ranking
+            </button>
+            <span className={`text-xs px-2 py-1 rounded ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
+              {room.status}
+            </span>
+          </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3 text-sm">
           <div className="p-3 rounded bg-slate-950 border border-slate-800">
@@ -1004,6 +1128,51 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
             <p className="text-slate-100 text-lg font-semibold">{submissions.reduce((acc, s) => acc + (s.securityAlerts?.length || 0), 0)}</p>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-5 bg-slate-900/90 border-slate-800">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <p className="text-slate-300 font-medium">Visitor ranking</p>
+            <p className="text-slate-500 text-xs">Sorted by final score, correctness, then execution time.</p>
+          </div>
+          <span className="text-xs text-slate-400">{ranking.length} ranked visitor(s)</span>
+        </div>
+        {ranking.length === 0 ? (
+          <p className="text-slate-500 text-sm">No submitted code yet. The ranking will appear after a visitor submits code.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-left text-slate-400">
+                  <th className="pb-2 pr-4">Rank</th>
+                  <th className="pb-2 pr-4">Visitor</th>
+                  <th className="pb-2 pr-4">Final score</th>
+                  <th className="pb-2 pr-4">Correctness</th>
+                  <th className="pb-2 pr-4">Time</th>
+                  <th className="pb-2 pr-4">Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((item) => (
+                  <tr key={`${item.email || item.name}-${item.rank}`} className="border-b border-slate-800/70">
+                    <td className="py-2 pr-4 text-slate-300 font-semibold">#{item.rank}</td>
+                    <td className="py-2 pr-4 text-slate-200">
+                      {item.name}
+                      {item.email ? <div className="text-slate-500 text-xs">{item.email}</div> : null}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-300">{item.score}/100</td>
+                    <td className="py-2 pr-4 text-slate-300">{item.correctnessScore}/100</td>
+                    <td className="py-2 pr-4 text-slate-400">{item.executionTimeMs != null ? `${item.executionTimeMs} ms` : "—"}</td>
+                    <td className="py-2 pr-4 text-slate-500 text-xs max-w-xs">
+                      {item.outputSnapshot || "No output captured yet."}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Card className="p-5 bg-slate-900/90 border-slate-800">

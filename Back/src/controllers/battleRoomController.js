@@ -475,36 +475,51 @@ exports.updateBattleRoomStatus = async (req, res) => {
     const recruiterId = getRecruiterId(req);
     if (!recruiterId) return res.status(401).json({ message: "Unauthorized" });
 
-    const { status } = req.body;
-    if (!ALLOWED_STATUSES.includes(status)) {
+    const { status, shareResults } = req.body;
+    const hasStatusChange = typeof status === "string" && status.length > 0;
+    const hasShareToggle = shareResults !== undefined;
+
+    if (!hasStatusChange && !hasShareToggle) {
+      return res.status(400).json({ message: "No update payload provided" });
+    }
+
+    if (hasStatusChange && !ALLOWED_STATUSES.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
     const room = await BattleRoom.findOne({ _id: req.params.id, recruiter: recruiterId });
     if (!room) return res.status(404).json({ message: "Battle room not found" });
 
-    const transitions = {
-      draft: ["scheduled", "live", "ended"],
-      scheduled: ["live", "ended"],
-      live: ["ended"],
-      ended: [],
-      // Legacy compatibility for older documents.
-      waiting: ["live", "ended"],
-      active: ["ended"],
-      completed: [],
-      cancelled: [],
-    };
-    const allowedTransitions = transitions[room.status];
-    if (!allowedTransitions) {
-      return res.status(400).json({ message: `Unknown current room status: ${room.status}` });
-    }
-    if (!allowedTransitions.includes(status)) {
-      return res.status(400).json({ message: `Cannot move room from ${room.status} to ${status}` });
+    if (hasStatusChange) {
+      const transitions = {
+        draft: ["scheduled", "live", "ended"],
+        scheduled: ["live", "ended"],
+        live: ["ended"],
+        ended: [],
+        // Legacy compatibility for older documents.
+        waiting: ["live", "ended"],
+        active: ["ended"],
+        completed: [],
+        cancelled: [],
+      };
+      const allowedTransitions = transitions[room.status];
+      if (!allowedTransitions) {
+        return res.status(400).json({ message: `Unknown current room status: ${room.status}` });
+      }
+      if (!allowedTransitions.includes(status)) {
+        return res.status(400).json({ message: `Cannot move room from ${room.status} to ${status}` });
+      }
+
+      room.status = status;
+      if (status === "live") room.startedAt = new Date();
+      if (status === "ended") room.endedAt = new Date();
     }
 
-    room.status = status;
-    if (status === "live") room.startedAt = new Date();
-    if (status === "ended") room.endedAt = new Date();
+    if (shareResults !== undefined) {
+      room.resultsShared = Boolean(shareResults);
+      room.resultsSharedAt = room.resultsShared ? new Date() : null;
+    }
+
     await room.save();
 
     const populated = await BattleRoom.findById(room._id)
@@ -771,6 +786,47 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
       participant: participantId,
     }).lean();
 
+    let sharedRanking = [];
+    if (refreshed.resultsShared) {
+      const submissions = await BattleSubmission.find({ battleRoom: refreshed._id })
+        .populate("participant", "username nickname email")
+        .lean();
+
+      sharedRanking = submissions
+        .filter((sub) => sub?.status === "submitted" || sub?.status === "evaluated" || sub?.finalScore != null)
+        .sort((a, b) => {
+          const scoreA = Number(a?.finalScore ?? a?.score ?? 0);
+          const scoreB = Number(b?.finalScore ?? b?.score ?? 0);
+          if (scoreB !== scoreA) return scoreB - scoreA;
+
+          const corrA = Number(a?.correctnessScore ?? 0);
+          const corrB = Number(b?.correctnessScore ?? 0);
+          if (corrB !== corrA) return corrB - corrA;
+
+          const timeA = Number(a?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+          const timeB = Number(b?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+          if (timeA !== timeB) return timeA - timeB;
+
+          const nameA = String(a?.participant?.username || a?.participant?.nickname || "");
+          const nameB = String(b?.participant?.username || b?.participant?.nickname || "");
+          return nameA.localeCompare(nameB);
+        })
+        .map((sub, index) => {
+          const participant = sub?.participant || {};
+          return {
+            rank: index + 1,
+            participantId: participant?._id ? String(participant._id) : "",
+            name: participant?.username || participant?.nickname || participant?.email || "Participant",
+            email: participant?.email || "",
+            score: Number(sub?.finalScore ?? sub?.score ?? 0),
+            correctnessScore: Number(sub?.correctnessScore ?? 0),
+            executionTimeMs: sub?.executionTimeMs != null ? Number(sub.executionTimeMs) : null,
+            outputSnapshot: String(sub?.outputSnapshot || "").trim(),
+            isCurrentUser: String(sub?.participant?._id || sub?.participant || "") === String(participantId),
+          };
+        });
+    }
+
     return res.json({
       room: {
         _id: refreshed._id,
@@ -781,6 +837,8 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
         recruiter: refreshed.recruiter,
         startedAt: refreshed.startedAt,
         endedAt: refreshed.endedAt,
+        resultsShared: Boolean(refreshed.resultsShared),
+        sharedRanking,
         visitorAccessCount: refreshed.visitorAccessCount || 0,
         mySubmission: submission || null,
       },

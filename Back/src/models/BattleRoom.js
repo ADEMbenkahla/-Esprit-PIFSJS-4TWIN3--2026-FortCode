@@ -74,6 +74,14 @@ const battleRoomSchema = new mongoose.Schema(
       enum: ["draft", "scheduled", "live", "ended"],
       default: "draft",
     },
+    resultsShared: {
+      type: Boolean,
+      default: false,
+    },
+    resultsSharedAt: {
+      type: Date,
+      default: null,
+    },
     startedAt: { type: Date, default: null },
     endedAt: { type: Date, default: null },
     visitorAccessCount: {
