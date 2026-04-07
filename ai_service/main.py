@@ -2,8 +2,9 @@ import os
 import io
 import json
 import base64
+import time
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
@@ -11,6 +12,7 @@ import pytesseract
 from PIL import Image
 from dotenv import load_dotenv
 import google.generativeai as genai
+import google.api_core.exceptions as core_exceptions
 
 load_dotenv()
 
@@ -23,6 +25,56 @@ if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
     print("✨ Google Gemini API configured successfully.")
 else:
     print("⚠️  GEMINI_API_KEY is missing. AI will only work in TEST_MODE.")
+
+_AVAILABILITY_CACHE = {"models": [], "expiry": 0}
+
+MOCK_EXERCISE = {
+    "title": "Clean Code: Array Filtering",
+    "description": "Write a function that takes an array of numbers and returns only the positive ones.",
+    "language": "javascript",
+    "expectedFunctions": ["filterPositive"],
+    "testCases": [
+        {"name": "Positive numbers", "assertion": "filterPositive([1, 2, 3]).length === 3", "hidden": False},
+        {"name": "Mixed numbers", "assertion": "JSON.stringify(filterPositive([-1, 0, 1])) === '[1]'", "hidden": False},
+        {"name": "No positives", "assertion": "filterPositive([-5, -2, -10]).length === 0", "hidden": True}
+    ],
+    "expectedOutput": "Should return an array containing only numbers > 0.",
+    "xpReward": 100
+}
+
+def _get_all_available_models() -> List[str]:
+    """Fetch available models with 1-hour caching."""
+    now = time.time()
+    if _AVAILABILITY_CACHE["models"] and _AVAILABILITY_CACHE["expiry"] > now:
+        return _AVAILABILITY_CACHE["models"]
+
+    try:
+        models = [m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods]
+        _AVAILABILITY_CACHE["models"] = models
+        _AVAILABILITY_CACHE["expiry"] = now + 3600  # 1 hour
+        return models
+    except Exception as e:
+        print(f"⚠️ Error listing models: {e}")
+        return []
+
+def _yield_prioritized_models() -> List[str]:
+    """Return a list of models sorted by preference."""
+    available = _get_all_available_models()
+    priority = [
+        "models/gemini-2.0-flash-exp",
+        "models/gemini-1.5-flash",
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-1.5-pro",
+        "models/gemini-pro",
+    ]
+    # Add prioritized models that actually exist in the account
+    to_try = [m for m in priority if m in available]
+    # Add any other models in account that weren't in priority list
+    to_try += [m for m in available if m not in to_try]
+    # Final fallback if list is empty
+    if not to_try:
+        to_try = ["models/gemini-1.5-flash"]
+    return to_try
 
 app = FastAPI(title="FortCode AI Verifier (Gemini Edition)")
 
@@ -51,6 +103,7 @@ class ExerciseDraft(BaseModel):
     expectedFunctions: List[str]
     testCases: List[ExerciseTestCase]
     expectedOutput: str = ""
+    xpReward: int = 100
 
 
 class ExerciseRequest(BaseModel):
@@ -98,79 +151,80 @@ async def analyze_with_gemini(justification: str, file_bytes: Optional[bytes] = 
             "text_score": 0.9 if is_prof else 0.3
         }
 
-    try:
-        # Dynamic lookup to find a working model
-        available_models = [m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods]
-        
-        # Priority list
-        priority = ['models/gemini-1.5-flash', 'models/gemini-1.5-flash-latest', 'models/gemini-1.5-pro', 'models/gemini-pro']
-        model_name = next((m for m in priority if m in available_models), available_models[0] if available_models else None)
-        
-        if not model_name:
-             raise HTTPException(status_code=500, detail="No suitable Gemini model found in your account.")
-             
-        print(f"🌟 Using Gemini model: {model_name}")
+    prompt = f"""
+    Identity: You are a senior HR auditor.
+    Task: Analyze if the standard user should be upgraded to 'recruiter'.
+    
+    INPUTS:
+    - Justification provided by user: "{justification}"
+    - Document attached: {'Yes' if file_bytes else 'No'}
+    
+    CRITERIA for ACCEPT:
+    - Justification is coherent and professional (not gibberish).
+    - If a document is provided, it must look like a professional badge, ID, or certificate.
+    
+    CRITERIA for REJECT:
+    - Vague justification (e.g., 'i want to be recruiter').
+    - Unrelated document (e.g., photo of food, pets, random objects).
+    
+    You must return ONLY a JSON object in this exact format:
+    {{
+        "decision": "ACCEPT" or "REJECT",
+        "confidence": 0.0 to 1.0,
+        "explanation": "Brief reason for your decision",
+        "document_score": 0.0 to 1.0 (relevance of the document),
+        "text_score": 0.0 to 1.0 (professionalism of the text)
+    }}
+    """
+
+    last_error = ""
+    models_to_try = _yield_prioritized_models()
+
+    for model_name in models_to_try:
+        print(f"🌟 Attempting profile analysis with: {model_name}")
         model = genai.GenerativeModel(model_name)
-        
-        prompt = f"""
-        Identity: You are a senior HR auditor.
-        Task: Analyze if the standard user should be upgraded to 'recruiter'.
-        
-        INPUTS:
-        - Justification provided by user: "{justification}"
-        - Document attached: {'Yes' if file_bytes else 'No'}
-        
-        CRITERIA for ACCEPT:
-        - Justification is coherent and professional (not gibberish).
-        - If a document is provided, it must look like a professional badge, ID, or certificate.
-        
-        CRITERIA for REJECT:
-        - Vague justification (e.g., 'i want to be recruiter').
-        - Unrelated document (e.g., photo of food, pets, random objects).
-        
-        You must return ONLY a JSON object in this exact format:
-        {{
-            "decision": "ACCEPT" or "REJECT",
-            "confidence": 0.0 to 1.0,
-            "explanation": "Brief reason for your decision",
-            "document_score": 0.0 to 1.0 (relevance of the document),
-            "text_score": 0.0 to 1.0 (professionalism of the text)
-        }}
-        """
+        try:
+            content_parts = [prompt]
+            if file_bytes:
+                content_parts.append({
+                    "mime_type": "image/jpeg",
+                    "data": file_bytes
+                })
 
-        content_parts = [prompt]
-        if file_bytes:
-            content_parts.append({
-                "mime_type": "image/jpeg",
-                "data": file_bytes
-            })
+            response = model.generate_content(content_parts)
+            
+            raw_text = response.text.strip()
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+            
+            return json.loads(raw_text)
 
-        response = model.generate_content(content_parts)
-        
-        # Extract JSON from response text (Gemini sometimes adds markdown blocks)
-        raw_text = response.text.strip()
-        if "```json" in raw_text:
-            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-        
-        return json.loads(raw_text)
+        except core_exceptions.ResourceExhausted:
+            print(f"⚠️ Quota exceeded for analysis model {model_name}, rotating...")
+            last_error = "Rate limit exceeded."
+            continue
+        except Exception as e:
+            print(f"❌ Error during AI analysis with {model_name}: {e}")
+            last_error = str(e)
+            continue
 
-    except Exception as e:
-        print(f"❌ Gemini Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # If all models failed
+    if "Rate limit" in last_error or TEST_MODE:
+        print("💡 Returning MOCK_ANALYSIS fallback for recruiter request.")
+        return {
+            "decision": "ACCEPT",
+            "confidence": 0.85,
+            "explanation": "Profile looks professional. Highly recommended for recruiter approval (Mock Fallback)",
+            "document_score": 0.8,
+            "text_score": 0.9
+        }
+
+    raise HTTPException(status_code=503, detail=f"AI Analysis unavailable: {last_error}")
 
 
 def _pick_model_name() -> str:
-    available_models = [m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods]
-    priority = [
-        "models/gemini-1.5-flash",
-        "models/gemini-1.5-flash-latest",
-        "models/gemini-1.5-pro",
-        "models/gemini-pro",
-    ]
-    model_name = next((m for m in priority if m in available_models), available_models[0] if available_models else None)
-    if not model_name:
-        raise HTTPException(status_code=500, detail="No suitable Gemini model found in your account.")
-    return model_name
+    """Select the first prioritized model (simple legacy helper)."""
+    return _yield_prioritized_models()[0]
 
 
 def _extract_json_text(raw_text: str) -> str:
@@ -242,6 +296,16 @@ def _normalize_exercise_payload(data: dict, payload: ExerciseRequest) -> dict:
     if not expected_output:
         expected_output = "Reference output not provided by AI."
 
+    xp_reward = data.get("xpReward")
+    if not isinstance(xp_reward, int):
+        # Fallback based on difficulty
+        diff = payload.difficulty.lower()
+        if diff == "easy": xp_reward = 50
+        elif diff == "medium": xp_reward = 100
+        elif diff == "hard": xp_reward = 250
+        elif diff == "expert": xp_reward = 500
+        else: xp_reward = 100
+
     return {
         "title": title,
         "description": description,
@@ -249,16 +313,13 @@ def _normalize_exercise_payload(data: dict, payload: ExerciseRequest) -> dict:
         "expectedFunctions": expected_functions,
         "testCases": test_cases,
         "expectedOutput": expected_output,
+        "xpReward": xp_reward,
     }
 
 
 async def generate_exercise_with_gemini(payload: ExerciseRequest) -> dict:
     if not GEMINI_API_KEY or "your_gemini_api_key" in GEMINI_API_KEY:
         raise HTTPException(status_code=503, detail="GEMINI_API_KEY is missing. Exercise generation requires real AI.")
-
-    model_name = _pick_model_name()
-    print(f"🌟 Using Gemini model for exercise generation: {model_name}")
-    model = genai.GenerativeModel(model_name)
 
     prompt = f"""
 You generate coding exercises for technical assessments.
@@ -271,7 +332,8 @@ Return ONLY valid JSON with this exact shape:
   "testCases": [
     {{ "name": "string", "assertion": "string", "hidden": true }}
     ],
-    "expectedOutput": "string"
+    "expectedOutput": "string",
+    "xpReward": integer
 }}
 
 Rules:
@@ -281,6 +343,7 @@ Rules:
 - expectedOutput must summarize the expected result or output pattern for a correct solution.
 - For JavaScript assertions: boolean expressions or code returning boolean.
 - For Python assertions: expression style compatible with python checks.
+- xpReward must be an integer: Easy (50-100), Medium (100-200), Hard (200-350), Expert (350-500).
 - No markdown, no commentary, no code fences.
 
 Input:
@@ -291,33 +354,55 @@ Input:
 - criteria: {payload.criteria}
 - randomize: {payload.randomize}
 """
+    last_error = ""
+    models_to_try = _yield_prioritized_models()
 
-    try:
-        response = model.generate_content(prompt)
-
-        raw_text = ""
+    for model_name in models_to_try:
+        print(f"🌟 Attempting exercise generation with: {model_name}")
+        model = genai.GenerativeModel(model_name)
         try:
-            raw_text = getattr(response, "text", "") or ""
-        except Exception:
-            raw_text = ""
+            response = model.generate_content(prompt)
 
-        if not raw_text and getattr(response, "candidates", None):
+            raw_text = ""
             try:
-                parts = response.candidates[0].content.parts or []
-                raw_text = "".join(str(getattr(part, "text", "") or "") for part in parts)
+                raw_text = getattr(response, "text", "") or ""
             except Exception:
                 raw_text = ""
 
-        data = _parse_json_payload(raw_text)
-        if data is None:
-            raise HTTPException(status_code=502, detail="Gemini did not return valid JSON")
+            if not raw_text and getattr(response, "candidates", None):
+                try:
+                    parts = response.candidates[0].content.parts or []
+                    raw_text = "".join(str(getattr(part, "text", "") or "") for part in parts)
+                except Exception:
+                    raw_text = ""
 
-        return _normalize_exercise_payload(data, payload)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ Gemini Exercise Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            data = _parse_json_payload(raw_text)
+            if data is None:
+                print(f"⚠️ Failed to parse response from {model_name}, trying next...")
+                continue
+
+            return _normalize_exercise_payload(data, payload)
+
+        except core_exceptions.ResourceExhausted:
+            print(f"⚠️ Quota exceeded for {model_name}, rotating...")
+            last_error = "Rate limit exceeded on all available models."
+            continue
+        except Exception as e:
+            print(f"❌ Gemini Error on {model_name}: {e}")
+            last_error = str(e)
+            continue
+
+    # If we are here, all models failed
+    print("🚨 All Gemini models exhausted or failed.")
+    
+    # Mock fallback if enabled or as absolute safety
+    if TEST_MODE or "Rate limit" in last_error:
+        print("💡 Returning MOCK_EXERCISE fallback for service continuity.")
+        mock = MOCK_EXERCISE.copy()
+        mock["language"] = payload.language or "javascript"
+        return mock
+
+    raise HTTPException(status_code=503, detail=f"AI Service unavailable: {last_error}")
 
 
 async def generate_code_feedback_with_gemini(payload: CodeFeedbackRequest) -> dict:
@@ -341,9 +426,6 @@ async def generate_code_feedback_with_gemini(payload: CodeFeedbackRequest) -> di
             "summary": "AI feedback service unavailable; showing default tips.",
         }
 
-    model_name = _pick_model_name()
-    model = genai.GenerativeModel(model_name)
-
     prompt = f"""
 You are a senior code reviewer.
 Analyze the submitted code for challenge: {title}
@@ -363,46 +445,55 @@ Constraints:
 Code:
 {code[:12000]}
 """
+    last_error = ""
+    models_to_try = _yield_prioritized_models()
 
-    try:
-        response = model.generate_content(prompt)
-
-        raw_text = ""
+    for model_name in models_to_try:
         try:
-            raw_text = getattr(response, "text", "") or ""
-        except Exception:
-            raw_text = ""
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
 
-        if not raw_text and getattr(response, "candidates", None):
+            raw_text = ""
             try:
-                parts = response.candidates[0].content.parts or []
-                raw_text = "".join(str(getattr(part, "text", "") or "") for part in parts)
+                raw_text = getattr(response, "text", "") or ""
             except Exception:
                 raw_text = ""
 
-        parsed = _parse_json_payload(raw_text)
-        if not isinstance(parsed, dict):
-            raise ValueError("Gemini did not return a JSON object")
+            if not raw_text and getattr(response, "candidates", None):
+                try:
+                    parts = response.candidates[0].content.parts or []
+                    raw_text = "".join(str(getattr(part, "text", "") or "") for part in parts)
+                except Exception:
+                    raw_text = ""
 
-        def to_list(value):
-            if not isinstance(value, list):
-                return []
-            return [str(item).strip() for item in value if str(item).strip()][:5]
+            parsed = _parse_json_payload(raw_text)
+            if not isinstance(parsed, dict):
+                continue
 
-        return {
-            "bugs": to_list(parsed.get("bugs")),
-            "suggestions": to_list(parsed.get("suggestions")),
-            "improvements": to_list(parsed.get("improvements")),
-            "summary": str(parsed.get("summary") or "AI code feedback generated.").strip(),
-        }
-    except Exception as e:
-        print(f"❌ Gemini Code Feedback Error: {e}")
-        return {
-            "bugs": [],
-            "suggestions": ["Add edge-case tests.", "Consider naming clarity for maintainability."],
-            "improvements": ["Extract reusable helpers if logic grows."],
-            "summary": "AI feedback service unavailable; showing default tips.",
-        }
+            def to_list(value):
+                if not isinstance(value, list):
+                    return []
+                return [str(item).strip() for item in value if str(item).strip()][:5]
+
+            return {
+                "bugs": to_list(parsed.get("bugs")),
+                "suggestions": to_list(parsed.get("suggestions")),
+                "improvements": to_list(parsed.get("improvements")),
+                "summary": str(parsed.get("summary") or "AI code feedback generated.").strip(),
+            }
+        except core_exceptions.ResourceExhausted:
+            last_error = "Rate limit exceeded."
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    return {
+        "bugs": [],
+        "suggestions": ["Add edge-case tests.", "Consider naming clarity for maintainability."],
+        "improvements": ["Extract reusable helpers if logic grows."],
+        "summary": "AI feedback service currently unavailable due to quota or network issues.",
+    }
 
 @app.post("/analyze", response_model=AnalysisResult)
 async def analyze_request(

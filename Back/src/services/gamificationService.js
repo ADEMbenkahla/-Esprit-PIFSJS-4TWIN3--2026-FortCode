@@ -61,6 +61,7 @@ exports.addXP = async (userId, xpAmount) => {
       user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
   }
   
+  const oldLevel = user.gamification.level || 1;
   user.gamification.points += xpAmount;
   
   // 1 Niveau tous les 500 points (Cap maximum à 80)
@@ -70,11 +71,14 @@ exports.addXP = async (userId, xpAmount) => {
       user.gamification.points = (80 - 1) * 500; // Plafond d'XP à 39500
   }
   
+  const levelUp = user.gamification.level > oldLevel;
+  
   await user.save();
   return { 
     points: user.gamification.points,
     level: user.gamification.level, 
-    gainedXP: xpAmount 
+    gainedXP: xpAmount,
+    levelUp
   };
 };
 

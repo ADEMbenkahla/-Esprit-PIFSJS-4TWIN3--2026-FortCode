@@ -73,6 +73,14 @@ export function Navbar() {
               // If 404, no existing request - ignore
             }
           }
+        } else if (response.status === 401) {
+          console.warn("🔐 Session Invalid/Expired (401). Cleaning up.");
+          sessionStorage.removeItem("token");
+          localStorage.removeItem("token");
+          setUserData(null);
+          setUserRole(null);
+          window.dispatchEvent(new Event('tokenChanged'));
+          navigate("/");
         } else {
           console.error("❌ Erreur réponse profile:", response.status);
           const roleFromToken = extractRoleFromToken();
@@ -440,10 +448,7 @@ export function Navbar() {
           <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
           <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
           {userData && (
-            <>
-              <NavItem to="/dashboard" icon={<User className="w-4 h-4" />} label="Commander" onClick={playClick} />
-              <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
-            </>
+            <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
           )}
         </div>
 
@@ -531,35 +536,6 @@ export function Navbar() {
                     <span>Settings</span>
                   </Link>
 
-                  {(userData?.role === "recruiter" || userData?.role === "admin") && (
-                    <button
-                      onClick={() => {
-                        handleVirtualRoomRequest();
-                        setShowDropdown(false);
-                      }}
-                      className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg transition-colors border ${
-                        virtualRoomStatus?.status === "approved"
-                          ? "text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5"
-                          : virtualRoomStatus?.status === "pending"
-                          ? "text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5"
-                          : virtualRoomStatus?.status === "rejected"
-                          ? "text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5"
-                          : "text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30"
-                      }`}
-                    >
-                      <Video className="w-4 h-4" />
-                      <span className="flex-1 text-left">
-                        {virtualRoomStatus?.status === "approved"
-                          ? "✅ Virtual Room Approved"
-                          : virtualRoomStatus?.status === "pending"
-                          ? "⏳ Virtual Room Pending"
-                          : virtualRoomStatus?.status === "rejected"
-                          ? "❌ Request Rejected"
-                          : "Request Virtual Room"}
-                      </span>
-                    </button>
-                  )}
-
                   {userRole === "participant" && (
                     <Link
                       to="/request-recruiter"
@@ -571,16 +547,6 @@ export function Navbar() {
                     </Link>
                   )}
 
-                  {(userRole === "recruiter" || userRole === "admin") && (
-                    <Link
-                      to="/create-room"
-                      onClick={() => setShowDropdown(false)}
-                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg transition-colors border border-transparent hover:border-green-500/20"
-                    >
-                      <Code2 className="w-4 h-4" />
-                      <span>Create Room</span>
-                    </Link>
-                  )}
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
@@ -705,20 +671,12 @@ export function Navbar() {
                 />
                 
                 {userData && (
-                  <>
-                    <MobileNavItem
-                      to="/dashboard"
-                      icon={<User className="w-5 h-5" />}
-                      label="Commander"
-                      onClick={handleMobileMenuClose}
-                    />
-                    <MobileNavItem
-                      to="/armory"
-                      icon={<Trophy className="w-5 h-5" />}
-                      label="Armory"
-                      onClick={handleMobileMenuClose}
-                    />
-                  </>
+                  <MobileNavItem
+                    to="/armory"
+                    icon={<Trophy className="w-5 h-5" />}
+                    label="Armory"
+                    onClick={handleMobileMenuClose}
+                  />
                 )}
                 
                 <MobileNavItem
@@ -763,16 +721,6 @@ export function Navbar() {
                   </Link>
                 )}
 
-                {(userRole === "recruiter" || userRole === "admin") && (
-                  <Link
-                    to="/create-room"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:bg-green-500 transition-colors"
-                  >
-                    <Code2 className="w-5 h-5" />
-                    <span>Create Room</span>
-                  </Link>
-                )}
               </div>
 
               <div className="h-px bg-slate-800 my-4" />
@@ -780,35 +728,7 @@ export function Navbar() {
               {/* Profile Actions */}
               {userData && (
                 <div className="space-y-2">
-                  {/* Recruiter virtual room request button - Mobile */}
-                  {(userData?.role === "recruiter" || userData?.role === "admin") && (
-                    <button
-                      onClick={() => {
-                        handleVirtualRoomRequest();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-3 w-full px-4 py-3 text-sm rounded-lg transition-colors border ${
-                        virtualRoomStatus?.status === 'approved'
-                          ? 'text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 bg-emerald-500/5'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? 'text-amber-300 hover:bg-amber-500/10 border-amber-500/30 bg-amber-500/5'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? 'text-red-300 hover:bg-red-500/10 border-red-500/30 bg-red-500/5'
-                          : 'text-emerald-300 hover:bg-emerald-500/10 border-transparent hover:border-emerald-500/30'
-                      }`}
-                    >
-                      <Video className="w-5 h-5" />
-                      <span className="flex-1 text-left">
-                        {virtualRoomStatus?.status === 'approved'
-                          ? '✅ Virtual Room Approved'
-                          : virtualRoomStatus?.status === 'pending'
-                          ? '⏳ Virtual Room Pending'
-                          : virtualRoomStatus?.status === 'rejected'
-                          ? '❌ Request Rejected'
-                          : 'Request Virtual Room'}
-                      </span>
-                    </button>
-                  )}
+
                   <button
                     onClick={() => {
                       setProfileModalOpen(true);

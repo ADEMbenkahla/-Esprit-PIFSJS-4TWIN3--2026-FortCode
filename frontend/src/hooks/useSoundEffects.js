@@ -102,6 +102,29 @@ export const useSoundEffects = () => {
           oscillator.stop(audioContext.currentTime + 0.08);
           break;
 
+        case 'levelup': {
+          // Epic Level Up sound - triumphant fanfare
+          const notes = [
+            { freq: 523.25, time: 0 },    // C5
+            { freq: 659.25, time: 0.15 }, // E5
+            { freq: 783.99, time: 0.3 },  // G5
+            { freq: 1046.50, time: 0.6 }   // C6
+          ];
+          notes.forEach((note) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.type = 'square';
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = note.freq;
+            gain.gain.setValueAtTime(0.08, audioContext.currentTime + note.time);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + note.time + 0.5);
+            osc.start(audioContext.currentTime + note.time);
+            osc.stop(audioContext.currentTime + note.time + 0.5);
+          });
+          break;
+        }
+
         case 'select':
           oscillator.frequency.value = 900;
           oscillator.type = 'triangle';
@@ -131,5 +154,6 @@ export const useSoundEffects = () => {
     playNotification: () => playSound('notification'),
     playToggle: () => playSound('toggle'),
     playSelect: () => playSound('select'),
+    playLevelUp: () => playSound('levelup'),
   };
 };

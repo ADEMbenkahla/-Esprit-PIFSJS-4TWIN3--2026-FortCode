@@ -268,16 +268,7 @@ export function RecruiterDashboard() {
       return;
     }
 
-    if (createForm.participantIds.length === 0 && inviteEmails.length === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Participants required",
-        text: "Select at least one participant or add invitation emails.",
-        background: "#1a1a2e",
-        color: "#fff",
-      });
-      return;
-    }
+    const parsedTests = normalizeChallengeTestCases(createForm.challengeTestCases);
 
     setLoading(true);
     try {
@@ -511,8 +502,8 @@ export function RecruiterDashboard() {
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setSelectedRoom(null); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.id
-                  ? "bg-slate-800 text-white border border-slate-600"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent"
+                ? "bg-slate-800 text-white border border-slate-600"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent"
                 }`}
             >
               {React.createElement(tab.icon, { className: "w-4 h-4" })}
@@ -636,8 +627,8 @@ export function RecruiterDashboard() {
                         </td>
                         <td className="py-3 pr-4">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" :
-                              room.status === "ended" ? "bg-slate-600/30 text-slate-400" :
-                                room.status === "draft" ? "bg-amber-500/20 text-amber-300" : "bg-blue-500/20 text-blue-300"
+                            room.status === "ended" ? "bg-slate-600/30 text-slate-400" :
+                              room.status === "draft" ? "bg-amber-500/20 text-amber-300" : "bg-blue-500/20 text-blue-300"
                             }`}>
                             {room.status}
                           </span>

@@ -4,6 +4,7 @@ import Editor from "@monaco-editor/react";
 import { ArrowLeft, Loader2, Play, Send, CheckCircle2, XCircle } from "lucide-react";
 import Swal from "sweetalert2";
 import { stagesApi } from "../../../services/api";
+import { LevelUpModal } from "../components/Gamification/LevelUpModal";
 
 const LANGS = ["javascript", "python", "typescript", "java", "cpp", "csharp", "go", "rust"];
 
@@ -19,6 +20,8 @@ export default function ChallengeEditor() {
   const [submitting, setSubmitting] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [newLevel, setNewLevel] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,12 +88,20 @@ export default function ChallengeEditor() {
     try {
       const { data } = await stagesApi.submit(stageId, challengeId, code);
       setSubmitResult(data);
+      
       const textMessage = data.stageCompleted
         ? `You've mastered this stage!${data.xpReward?.xpAmount ? ` You earned +${data.xpReward.xpAmount} XP!` : ''}`
         : data.nextStageUnlocked
           ? "Next stage is now available."
           : "";
       
+      // 🏆 Trigger Level Up Modal
+      if (data.xpReward?.levelUp) {
+        console.log("✨ Level Up detected! New level:", data.xpReward.newLevel);
+        setNewLevel(data.xpReward.newLevel || 1);
+        setTimeout(() => setShowLevelUp(true), 1500); // Cinematic delay
+      }
+
       Swal.fire({
         icon: "success",
         title: data.stageCompleted ? "Stage completed!" : "Challenge completed",
@@ -298,6 +309,12 @@ export default function ChallengeEditor() {
           </div>
         </div>
       </div>
+
+      <LevelUpModal 
+        isOpen={showLevelUp} 
+        level={newLevel} 
+        onClose={() => setShowLevelUp(false)} 
+      />
     </div>
   );
 }

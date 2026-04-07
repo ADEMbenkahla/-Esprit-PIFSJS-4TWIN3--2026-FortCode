@@ -17,6 +17,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
     const [role, setRole] = useState(user?.role || 'participant');
     const [rank, setRank] = useState(user?.gamification?.rank || 'Iron');
     const [level, setLevel] = useState(user?.gamification?.level || 1);
+    const [points, setPoints] = useState(user?.gamification?.points || 0);
     const [avatar, setAvatar] = useState(user?.avatar || '');
     const [loading, setLoading] = useState(false);
 
@@ -43,7 +44,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
 
         try {
             const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-            const body: any = { username, email, role, avatar, rank, level };
+            const body: any = { username, email, role, avatar, rank, level, points };
 
             // Only include password if it's provided
             if (password) {
@@ -197,6 +198,17 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                                     value={level}
                                     onChange={(e) => setLevel(Number(e.target.value))}
                                     className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white font-bold focus:outline-none focus:border-blue-400 transition-colors"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">XP (Points)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={points}
+                                    onChange={(e) => setPoints(Number(e.target.value))}
+                                    className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white font-bold focus:outline-none focus:border-emerald-400 transition-colors"
                                 />
                             </div>
                         </div>

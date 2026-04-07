@@ -4,6 +4,7 @@ const Challenge = require("../models/Challenge");
 const UserStageProgress = require("../models/UserStageProgress");
 const { runChallengeCode } = require("../utils/runChallengeCode");
 const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
+const gamificationService = require("../services/gamificationService");
 
 function toUserId(req) {
   return new mongoose.Types.ObjectId(String(req.user.id));
@@ -360,6 +361,7 @@ exports.runChallenge = async (req, res) => {
       passed: run.passed,
       testResults: run.testResults,
       executionTimeMs: run.executionTimeMs,
+      output: run.outputSnapshot,
     });
   } catch (err) {
     console.error(err);
@@ -393,7 +395,11 @@ exports.submitChallenge = async (req, res) => {
     const run = runChallengeCode(challenge.language, code || "", challenge.testCases || []);
 
     const [sonar, aiFeedback] = await Promise.all([
-      fetchSonarStub(code, challenge.language),
+      fetchSonarStub(code, challenge.language, {
+        participantId: userId,
+        stageId,
+        projectName: stage.title,
+      }),
       fetchAiFeedback(code, challenge.title),
     ]);
 
@@ -413,13 +419,24 @@ exports.submitChallenge = async (req, res) => {
     }
 
     const cidStr = challenge._id.toString();
-    if (!progress.completedChallenges.some((c) => c.toString() === cidStr)) {
+    const isNewCompletion = !progress.completedChallenges.some((c) => c.toString() === cidStr);
+    
+    if (isNewCompletion) {
       progress.completedChallenges.push(challenge._id);
     }
 
     const stageFresh = await Stage.findById(stageId);
     recomputeProgressFields(progress, stageFresh);
     await progress.save();
+
+    let xpResult = null;
+    if (isNewCompletion) {
+      try {
+        xpResult = await gamificationService.addXP(userId, challenge.xpReward || 100);
+      } catch (err) {
+        console.error("XP Award Error:", err);
+      }
+    }
 
     let nextStageUnlocked = false;
     if (progress.status === "completed") {
@@ -436,6 +453,7 @@ exports.submitChallenge = async (req, res) => {
       message: "Submission accepted",
       testResults: run.testResults,
       executionTimeMs: run.executionTimeMs,
+      output: run.outputSnapshot,
       sonar,
       aiFeedback,
       progress: {
@@ -445,6 +463,14 @@ exports.submitChallenge = async (req, res) => {
         completedAt: progress.completedAt,
       },
       stageCompleted: progress.status === "completed",
+      stageCompleted: progress.status === "completed",
+      xpReward: xpResult ? {
+        xpAwarded: true,
+        xpAmount: xpResult.gainedXP,
+        newPoints: xpResult.points,
+        newLevel: xpResult.level,
+        levelUp: xpResult.levelUp
+      } : null,
       nextStageUnlocked,
     });
   } catch (err) {
