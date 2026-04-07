@@ -16,6 +16,7 @@ const {
   getParticipantBattleRoom,
   getParticipantBattleRoomAccess,
   reportParticipantFraudEvent,
+  runParticipantBattleCode,
   submitParticipantBattleCode,
   previewBattleInvitation,
   acceptBattleInvitation,
@@ -39,6 +40,7 @@ router.get("/participant/battle-rooms", ...participantOnly, listParticipantBattl
 router.get("/participant/battle-rooms/:id", ...participantOnly, getParticipantBattleRoom);
 router.get("/participant/battle-rooms/:id/access", ...participantOnly, getParticipantBattleRoomAccess);
 router.post("/participant/battle-rooms/:id/fraud", ...participantOnly, reportParticipantFraudEvent);
+router.post("/participant/battle-rooms/:id/run", ...participantOnly, runParticipantBattleCode);
 router.post("/participant/battle-rooms/:id/submit", ...participantOnly, submitParticipantBattleCode);
 
 router.get("/battle-invitations/preview", previewBattleInvitation);

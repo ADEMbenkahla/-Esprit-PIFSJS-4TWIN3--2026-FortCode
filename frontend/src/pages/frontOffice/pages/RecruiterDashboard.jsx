@@ -22,7 +22,6 @@ import { Card } from "../components/ui/Card";
 import { ScrollButton } from "../components/ui/ScrollButton";
 import {
   getMyVirtualRoomRequest,
-  getParticipants,
   generateBattleExercise,
   createBattleRoom as apiCreateBattleRoom,
   getMyBattleRooms,
@@ -51,6 +50,38 @@ const sonarLetter = (rawRating) => {
   if (!Number.isFinite(value)) return String(rawRating);
   const map = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
   return map[value] || String(rawRating);
+};
+
+const hasLikelyCodeShape = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return false;
+
+  const codeKeywordHits = (
+    text.match(/\b(function|return|const|let|var|if|else|for|while|class|import|export|def|print|public|private|static|new|try|catch|switch|case)\b/gi) || []
+  ).length;
+  const structureHits = (text.match(/(?:[{}();=<>]|\[|\])/g) || []).length;
+  const operatorHits = (text.match(/(=>|==|===|!=|!==|\+|-|\*|\/|%)/g) || []).length;
+  const lineCount = text.split(/\r?\n/).length;
+
+  // Require at least a small amount of coding structure to avoid treating plain prose as source code.
+  return codeKeywordHits >= 1 || structureHits >= 6 || operatorHits >= 3 || (lineCount >= 3 && structureHits >= 3);
+};
+
+const invalidateNonCodeSubmission = (submission) => {
+  if (!submission?.code || hasLikelyCodeShape(submission.code)) return submission;
+
+  return {
+    ...submission,
+    _invalidNonCodeInput: true,
+    qualityGrade: "Invalid",
+    qualityScore: 0,
+    correctnessScore: 0,
+    finalScore: 0,
+    offTopic: true,
+    sonarSource: "invalid-input",
+    qualityGateStatus: "FAILED",
+    sonarSummary: "Submission does not look like source code. Sonar result ignored and score forced to 0.",
+  };
 };
 
 const TAB = { OVERVIEW: "overview", ROOMS: "rooms", CREATE: "create", SUBMISSIONS: "submissions", SUPERVISE: "supervise" };
@@ -121,10 +152,51 @@ const buildChallengeTestTemplate = (language, functionNames) => {
   });
 };
 
+const normalizeChallengeTestCases = (value) => {
+  const tests = Array.isArray(value) ? value : [];
+  return tests
+    .map((test, index) => ({
+      name: String(test?.name || `Test ${index + 1}`).trim(),
+      assertion: String(test?.assertion || "").trim(),
+      hidden: test?.hidden !== false,
+    }))
+    .filter((test) => test.assertion.length > 0);
+};
+
+const buildVisitorRanking = (submissions) => {
+  return [...(Array.isArray(submissions) ? submissions : [])]
+    .filter((sub) => sub?.status === "submitted" || sub?.status === "evaluated" || sub?.finalScore != null)
+    .sort((a, b) => {
+      const scoreA = Number(a?.finalScore ?? a?.score ?? 0);
+      const scoreB = Number(b?.finalScore ?? b?.score ?? 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const corrA = Number(a?.correctnessScore ?? 0);
+      const corrB = Number(b?.correctnessScore ?? 0);
+      if (corrB !== corrA) return corrB - corrA;
+
+      const timeA = Number(a?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+      const timeB = Number(b?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+      if (timeA !== timeB) return timeA - timeB;
+
+      return String(a?.participant?.username || a?.participant?.nickname || "").localeCompare(String(b?.participant?.username || b?.participant?.nickname || ""));
+    })
+    .map((sub, index) => ({
+      rank: index + 1,
+      name: sub?.participant?.username || sub?.participant?.nickname || sub?.participant?.email || "Participant",
+      email: sub?.participant?.email || "",
+      score: Number(sub?.finalScore ?? sub?.score ?? 0),
+      correctnessScore: Number(sub?.correctnessScore ?? 0),
+      qualityScore: sub?.qualityScore != null ? Number(sub.qualityScore) : null,
+      executionTimeMs: sub?.executionTimeMs != null ? Number(sub.executionTimeMs) : null,
+      submittedAt: sub?.submittedAt || null,
+      outputSnapshot: String(sub?.outputSnapshot || "").trim(),
+    }));
+};
+
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
   const [virtualRoomStatus, setVirtualRoomStatus] = useState(null);
-  const [participants, setParticipants] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -137,13 +209,16 @@ export function RecruiterDashboard() {
     exerciseDifficulty: "medium",
     exerciseCriteria: ["loops", "iterations"],
     randomExercise: true,
-    participantIds: [],
     inviteEmailsText: "",
     challengeTitle: "Coding Challenge",
     challengeDescription: "",
     challengeLanguage: "javascript",
     expectedFunctions: ["solve"],
-    challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
+    generatedExerciseSnapshot: null,
+    challengeTestCases: [
+      { name: "Basic", assertion: "return solve(2, 3) === 5;", hidden: false },
+      { name: "Edge", assertion: "return solve(-1, 1) === 0;", hidden: true },
+    ],
     timeLimitMinutes: 60,
     exerciseFile: null,
   });
@@ -152,11 +227,6 @@ export function RecruiterDashboard() {
     getMyVirtualRoomRequest()
       .then((r) => setVirtualRoomStatus(r.data.request))
       .catch(() => setVirtualRoomStatus(null));
-  };
-  const fetchParticipants = () => {
-    getParticipants()
-      .then((r) => setParticipants(r.data.participants || []))
-      .catch(() => setParticipants([]));
   };
   const fetchRooms = () => {
     getMyBattleRooms()
@@ -172,7 +242,6 @@ export function RecruiterDashboard() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (activeTab === TAB.CREATE) fetchParticipants();
     if (activeTab === TAB.ROOMS || activeTab === TAB.SUBMISSIONS) fetchRooms();
   }, [activeTab]);
 
@@ -188,35 +257,24 @@ export function RecruiterDashboard() {
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean);
 
-    let parsedTests = [];
-    if (createForm.challengeTestsJson.trim()) {
-      try {
-        const raw = JSON.parse(createForm.challengeTestsJson);
-        if (!Array.isArray(raw)) throw new Error("Tests must be an array");
-        parsedTests = raw
-          .map((t, idx) => ({
-            name: String(t?.name || `Test ${idx + 1}`),
-            assertion: String(t?.assertion || "").trim(),
-            hidden: t?.hidden !== false,
-          }))
-          .filter((t) => t.assertion.length > 0);
-      } catch (_error) {
-        Swal.fire({
-          icon: "error",
-          title: "Invalid challenge tests JSON",
-          text: "Use a valid JSON array like [{\"name\":\"T1\",\"assertion\":\"return solve(1)===2;\"}].",
-          background: "#1a1a2e",
-          color: "#fff",
-        });
-        return;
-      }
-    }
-
-    if (createForm.participantIds.length === 0 && inviteEmails.length === 0) {
+    if (inviteEmails.length === 0) {
       Swal.fire({
         icon: "warning",
-        title: "Participants required",
-        text: "Select at least one participant or add invitation emails.",
+        title: "Email invitations required",
+        text: "Add at least one email address for invitations.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    const parsedTests = normalizeChallengeTestCases(createForm.challengeTestCases);
+
+    if (!parsedTests.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Tests required",
+        text: "Add at least one test case before creating the room.",
         background: "#1a1a2e",
         color: "#fff",
       });
@@ -228,13 +286,13 @@ export function RecruiterDashboard() {
       const { data } = await apiCreateBattleRoom({
         title: createForm.title.trim(),
         description: createForm.description.trim(),
-        participantIds: createForm.participantIds,
         inviteEmails,
         challenge: {
           title: createForm.challengeTitle || "Coding Challenge",
           description: createForm.challengeDescription,
           language: createForm.challengeLanguage || "javascript",
           testCases: parsedTests,
+          generatedExerciseSnapshot: createForm.generatedExerciseSnapshot,
         },
         timeLimitMinutes: createForm.timeLimitMinutes || 60,
         exerciseFile: createForm.exerciseFile,
@@ -255,13 +313,16 @@ export function RecruiterDashboard() {
         exerciseDifficulty: "medium",
         exerciseCriteria: ["loops", "iterations"],
         randomExercise: true,
-        participantIds: [],
         inviteEmailsText: "",
         challengeTitle: "Coding Challenge",
         challengeDescription: "",
         challengeLanguage: "javascript",
         expectedFunctions: ["solve"],
-        challengeTestsJson: '[\n  { "name": "Basic", "assertion": "return solve(2, 3) === 5;", "hidden": false },\n  { "name": "Edge", "assertion": "return solve(-1, 1) === 0;", "hidden": true }\n]',
+        generatedExerciseSnapshot: null,
+        challengeTestCases: [
+          { name: "Basic", assertion: "return solve(2, 3) === 5;", hidden: false },
+          { name: "Edge", assertion: "return solve(-1, 1) === 0;", hidden: true },
+        ],
         timeLimitMinutes: 60,
         exerciseFile: null,
       });
@@ -293,23 +354,31 @@ export function RecruiterDashboard() {
       const exercise = data?.exercise || {};
       setCreateForm((f) => ({
         ...f,
+        generatedExerciseSnapshot: {
+          source: data?.source || "ai",
+          provider: data?.provider || "gemini",
+          prompt: f.exercisePrompt,
+          difficulty: f.exerciseDifficulty,
+          criteria: f.exerciseCriteria,
+          randomize: f.randomExercise,
+          generatedAt: new Date().toISOString(),
+          exercise,
+        },
         challengeTitle: exercise.title || f.challengeTitle,
         challengeDescription: exercise.description || f.challengeDescription,
         challengeLanguage: exercise.language || f.challengeLanguage,
         expectedFunctions: Array.isArray(exercise.expectedFunctions) && exercise.expectedFunctions.length
           ? exercise.expectedFunctions
           : f.expectedFunctions,
-        challengeTestsJson: Array.isArray(exercise.testCases)
-          ? JSON.stringify(exercise.testCases, null, 2)
-          : f.challengeTestsJson,
+        challengeTestCases: Array.isArray(exercise.testCases) && exercise.testCases.length
+          ? normalizeChallengeTestCases(exercise.testCases)
+          : f.challengeTestCases,
       }));
 
       Swal.fire({
         icon: "success",
         title: "Exercise generated",
-        text: data?.source === "ai"
-          ? "Exercise and tests were generated by AI."
-          : "AI unavailable. A fallback exercise draft was generated.",
+        text: `Exercise and tests were generated by ${String(data?.provider || "AI").toUpperCase()}.`,
         background: "#1a1a2e",
         color: "#fff",
       });
@@ -357,6 +426,34 @@ export function RecruiterDashboard() {
       fetchRooms();
     } catch (err) {
       Swal.fire({ icon: "error", title: "Error", text: err?.response?.data?.message || "Confirmation failed.", background: "#1a1a2e", color: "#fff" });
+    }
+  };
+
+  const handleShareResults = async (roomId, enabled) => {
+    try {
+      await updateBattleRoomStatus(roomId, { shareResults: Boolean(enabled) });
+      if (selectedRoom?._id === roomId) {
+        const r = await getBattleRoom(roomId);
+        setSelectedRoom(r.data.room);
+      }
+      fetchRooms();
+      Swal.fire({
+        icon: "success",
+        title: enabled ? "Ranking shared" : "Ranking hidden",
+        text: enabled
+          ? "Visitors can now see the published ranking state."
+          : "Visitors are now kept waiting until ranking is shared again.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Share action failed",
+        text: err?.response?.data?.message || "Could not update ranking visibility.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
     }
   };
 
@@ -411,18 +508,18 @@ export function RecruiterDashboard() {
 
         {/* Tabs */}
         <nav className="flex flex-wrap gap-2 mb-8 border-b border-slate-800 pb-4">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {tabs.map((tab) => (
             <button
-              key={id}
-              onClick={() => { setActiveTab(id); setSelectedRoom(null); }}
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setSelectedRoom(null); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === id
+                activeTab === tab.id
                   ? "bg-slate-800 text-white border border-slate-600"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent"
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              {React.createElement(tab.icon, { className: "w-4 h-4" })}
+              {tab.label}
             </button>
           ))}
         </nav>
@@ -481,7 +578,7 @@ export function RecruiterDashboard() {
                 <div>
                   <h3 className="text-slate-100 font-semibold mb-2">Workflow</h3>
                   <ul className="text-slate-400 text-sm space-y-1 list-disc list-inside">
-                    <li><strong className="text-slate-300">Create Battle Room</strong> — Select participants, set challenge and time limit.</li>
+                    <li><strong className="text-slate-300">Create Battle Room</strong> — Add participant emails and set the challenge and time limit.</li>
                     <li><strong className="text-slate-300">Start battle</strong> — Room becomes visible to selected participants; they can submit code.</li>
                     <li><strong className="text-slate-300">Submissions</strong> — Review code, metrics, add comments and ratings.</li>
                     <li><strong className="text-slate-300">Supervise</strong> — Monitor in real time and confirm results before final scoring.</li>
@@ -567,7 +664,7 @@ export function RecruiterDashboard() {
         {activeTab === TAB.CREATE && (
           <Card className="p-6 max-w-2xl">
             <h2 className="text-xl font-semibold text-slate-100 mb-6">Create battle room</h2>
-            <p className="text-slate-400 text-sm mb-6">Select participants, set the challenge and time limit. The room will be visible only to selected participants.</p>
+            <p className="text-slate-400 text-sm mb-6">Set the challenge details and add participant emails. Invitees will receive a secure link and invitation code by email.</p>
             <form onSubmit={handleCreateRoom} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Room title *</label>
@@ -576,19 +673,6 @@ export function RecruiterDashboard() {
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Description (optional)</label>
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of the battle" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Participants</label>
-                <div className="max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3 bg-slate-800/50 space-y-2">
-                  {participants.length === 0 ? <p className="text-slate-500 text-sm">No participants in the system yet.</p> : participants.map((p) => (
-                    <label key={p._id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={createForm.participantIds.includes(p._id)} onChange={(e) => setCreateForm((f) => ({ ...f, participantIds: e.target.checked ? [...f.participantIds, p._id] : f.participantIds.filter((id) => id !== p._id) }))} className="rounded border-slate-600 text-blue-500" />
-                      <span className="text-slate-200">{p.username || p.nickname}</span>
-                      <span className="text-slate-500 text-xs">{p.email}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Selected users with accounts will be added directly to the room.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Invite by email (non-registered users allowed)</label>
@@ -726,7 +810,7 @@ export function RecruiterDashboard() {
                     type="button"
                     onClick={() => {
                       const template = buildChallengeTestTemplate(createForm.challengeLanguage, createForm.expectedFunctions);
-                      setCreateForm((f) => ({ ...f, challengeTestsJson: JSON.stringify(template, null, 2) }));
+                      setCreateForm((f) => ({ ...f, challengeTestCases: normalizeChallengeTestCases(template) }));
                     }}
                     className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-100 hover:bg-slate-600"
                   >
@@ -734,16 +818,85 @@ export function RecruiterDashboard() {
                   </button>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Challenge tests (JSON)</label>
-                <textarea
-                  value={createForm.challengeTestsJson}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, challengeTestsJson: e.target.value }))}
-                  rows={7}
-                  className="w-full px-4 py-2.5 font-mono text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  Assertions run on server at submit time. Example assertion: <code>return solve(2, 3) === 5;</code>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="block text-sm font-medium text-slate-300">Challenge tests</label>
+                  <button
+                    type="button"
+                    onClick={() => setCreateForm((f) => ({
+                      ...f,
+                      challengeTestCases: [...(f.challengeTestCases || []), { name: `Test ${((f.challengeTestCases || []).length || 0) + 1}`, assertion: "", hidden: true }],
+                    }))}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-sm"
+                  >
+                    + Add test
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {createForm.challengeTestCases.map((test, idx) => (
+                    <div key={`challenge-test-${idx}`} className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Name</label>
+                          <input
+                            type="text"
+                            value={test.name}
+                            onChange={(e) => setCreateForm((f) => ({
+                              ...f,
+                              challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                                itemIndex === idx ? { ...item, name: e.target.value } : item
+                              )),
+                            }))}
+                            placeholder="Basic"
+                            className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-300 mb-2">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(test.hidden)}
+                              onChange={(e) => setCreateForm((f) => ({
+                                ...f,
+                                challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                                  itemIndex === idx ? { ...item, hidden: e.target.checked } : item
+                                )),
+                              }))}
+                            />
+                            Hidden
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setCreateForm((f) => ({
+                              ...f,
+                              challengeTestCases: f.challengeTestCases.filter((_, itemIndex) => itemIndex !== idx),
+                            }))}
+                            className="px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Assertion</label>
+                        <textarea
+                          value={test.assertion}
+                          onChange={(e) => setCreateForm((f) => ({
+                            ...f,
+                            challengeTestCases: f.challengeTestCases.map((item, itemIndex) => (
+                              itemIndex === idx ? { ...item, assertion: e.target.value } : item
+                            )),
+                          }))}
+                          rows={3}
+                          placeholder="return solve(2, 3) === 5;"
+                          className="w-full px-4 py-2.5 font-mono text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Assertions run on server at submit time.
                 </p>
               </div>
               <div>
@@ -793,7 +946,7 @@ export function RecruiterDashboard() {
                 </div>
               </>
             ) : (
-              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onConfirmSubmission={handleConfirmSubmission} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
+              <SubmissionView room={selectedRoom} onBack={() => setSelectedRoom(null)} onSaveEvaluation={handleSaveEvaluation} onConfirmSubmission={handleConfirmSubmission} onShareResults={handleShareResults} onRefresh={() => getBattleRoom(selectedRoom._id).then((r) => setSelectedRoom(r.data.room))} />
             )}
           </div>
         )}
@@ -829,9 +982,32 @@ export function RecruiterDashboard() {
   );
 }
 
-function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onRefresh }) {
-  const submissions = room.submissions || [];
-  const visitors = room.visitorDetails || [];
+function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, onShareResults, onRefresh }) {
+  const submissions = (room.submissions || []).map(invalidateNonCodeSubmission);
+  const generatedExercise = room?.challenge?.generatedExerciseSnapshot?.exercise || null;
+  const expectedOutputText = generatedExercise?.expectedOutput
+    || (generatedExercise?.testCases?.length
+      ? `Derived from tests:\n${generatedExercise.testCases.slice(0, 3).map((test, index) => `- ${test.name || `Test ${index + 1}`}: ${test.assertion || ""}`).join("\n")}`
+      : "No expected output stored.");
+  const ranking = buildVisitorRanking(submissions);
+  const nonCodeByEmail = submissions.reduce((acc, sub) => {
+    const email = String(sub?.participant?.email || "").toLowerCase();
+    if (sub?._invalidNonCodeInput && email) acc[email] = true;
+    return acc;
+  }, {});
+  const visitors = (room.visitorDetails || []).map((visitor) => {
+    const email = String(visitor?.email || "").toLowerCase();
+    if (!email || !nonCodeByEmail[email]) return visitor;
+    return {
+      ...visitor,
+      qualityGrade: "Invalid",
+      qualityScore: 0,
+      correctnessScore: 0,
+      finalScore: 0,
+      offTopic: true,
+      sonarSummary: "Submission is not valid source code. Sonar result ignored.",
+    };
+  });
   const [editingSub, setEditingSub] = useState(null);
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(null);
@@ -856,6 +1032,56 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
     setRating(null);
   };
 
+  const shareRanking = async () => {
+    if (!ranking.length) {
+      Swal.fire({
+        icon: "info",
+        title: "No ranking available",
+        text: "No visitor submission has been ranked yet.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    const lines = [
+      `Ranking for ${room.title}`,
+      `Challenge: ${room.challenge?.title || "Coding Challenge"}`,
+      "",
+      ...ranking.map((item) => {
+        const parts = [
+          `#${item.rank} ${item.name}`,
+          `score ${item.score}/100`,
+          `correctness ${item.correctnessScore}/100`,
+        ];
+        if (item.executionTimeMs != null) parts.push(`${item.executionTimeMs} ms`);
+        return parts.join(" · ");
+      }),
+    ];
+
+    const text = lines.join("\n");
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+      Swal.fire({
+        icon: "success",
+        title: "Ranking ready to share",
+        text: "The visitor ranking has been copied to your clipboard.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    } catch {
+      Swal.fire({
+        icon: "info",
+        title: "Share ranking",
+        text,
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -870,9 +1096,23 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
             <p className="text-slate-300 font-medium">Live supervision</p>
             <p className="text-slate-500 text-xs">Auto-refreshes every 4 seconds while the battle is live.</p>
           </div>
-          <span className={`text-xs px-2 py-1 rounded ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
-            {room.status}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              onClick={() => onShareResults(room._id, !room?.resultsShared)}
+              className={`px-3 py-1.5 rounded text-white text-xs ${room?.resultsShared ? "bg-slate-600 hover:bg-slate-500" : "bg-indigo-600 hover:bg-indigo-500"}`}
+            >
+              {room?.resultsShared ? "Hide ranking from visitors" : "Show ranking to visitors"}
+            </button>
+            <button
+              onClick={shareRanking}
+              className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 text-xs"
+            >
+              Copy visitor ranking
+            </button>
+            <span className={`text-xs px-2 py-1 rounded ${room.status === "live" ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
+              {room.status}
+            </span>
+          </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3 text-sm">
           <div className="p-3 rounded bg-slate-950 border border-slate-800">
@@ -888,6 +1128,51 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
             <p className="text-slate-100 text-lg font-semibold">{submissions.reduce((acc, s) => acc + (s.securityAlerts?.length || 0), 0)}</p>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-5 bg-slate-900/90 border-slate-800">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <p className="text-slate-300 font-medium">Visitor ranking</p>
+            <p className="text-slate-500 text-xs">Sorted by final score, correctness, then execution time.</p>
+          </div>
+          <span className="text-xs text-slate-400">{ranking.length} ranked visitor(s)</span>
+        </div>
+        {ranking.length === 0 ? (
+          <p className="text-slate-500 text-sm">No submitted code yet. The ranking will appear after a visitor submits code.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-left text-slate-400">
+                  <th className="pb-2 pr-4">Rank</th>
+                  <th className="pb-2 pr-4">Visitor</th>
+                  <th className="pb-2 pr-4">Final score</th>
+                  <th className="pb-2 pr-4">Correctness</th>
+                  <th className="pb-2 pr-4">Time</th>
+                  <th className="pb-2 pr-4">Output</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((item) => (
+                  <tr key={`${item.email || item.name}-${item.rank}`} className="border-b border-slate-800/70">
+                    <td className="py-2 pr-4 text-slate-300 font-semibold">#{item.rank}</td>
+                    <td className="py-2 pr-4 text-slate-200">
+                      {item.name}
+                      {item.email ? <div className="text-slate-500 text-xs">{item.email}</div> : null}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-300">{item.score}/100</td>
+                    <td className="py-2 pr-4 text-slate-300">{item.correctnessScore}/100</td>
+                    <td className="py-2 pr-4 text-slate-400">{item.executionTimeMs != null ? `${item.executionTimeMs} ms` : "—"}</td>
+                    <td className="py-2 pr-4 text-slate-500 text-xs max-w-xs">
+                      {item.outputSnapshot || "No output captured yet."}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Card className="p-5 bg-slate-900/90 border-slate-800">
@@ -980,6 +1265,9 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
                   <p className="text-slate-400 text-xs mt-1">Source: {sub.sonarSource || "heuristic"}{sub.qualityGateStatus ? ` · Quality Gate: ${sub.qualityGateStatus}` : ""}</p>
                   {sub.sonarProjectKey && <p className="text-slate-500 text-xs mt-1">Project Key: {sub.sonarProjectKey}</p>}
                   <p className="text-slate-500 text-xs mt-1">{sub.sonarSummary || "No quality summary yet."}</p>
+                  {sub._invalidNonCodeInput && (
+                    <p className="text-red-300 text-xs mt-2">Invalid submission content: Sonar ignored, score forced to 0.</p>
+                  )}
                   <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                     <div className="p-2 rounded bg-slate-950 border border-slate-800">
                       <p className="text-slate-500">Security</p>
@@ -1011,6 +1299,47 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
                 <div className="mt-4">
                   <p className="text-slate-400 text-sm mb-2">Submitted code</p>
                   <pre className="p-4 bg-slate-950 rounded-lg border border-slate-700 text-slate-300 text-xs overflow-x-auto max-h-48">{sub.code}</pre>
+                </div>
+              )}
+              <div className="mt-4 grid gap-4 md:grid-cols-2 text-sm">
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-slate-400 mb-2">Generated exercise snapshot</p>
+                  {generatedExercise ? (
+                    <div className="space-y-2 text-slate-300">
+                      <p><span className="text-slate-500">Title:</span> {generatedExercise.title || "—"}</p>
+                      <p><span className="text-slate-500">Language:</span> {generatedExercise.language || "—"}</p>
+                      <p><span className="text-slate-500">Function(s):</span> {(generatedExercise.expectedFunctions || []).join(", ") || "—"}</p>
+                      <p className="text-slate-500 text-xs whitespace-pre-wrap">{generatedExercise.description || "No description stored."}</p>
+                      <div className="rounded border border-slate-800 bg-slate-900/60 p-2 mt-2">
+                        <p className="text-slate-500 text-xs uppercase tracking-wide">Expected output</p>
+                        <pre className="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap break-words mt-1">{expectedOutputText}</pre>
+                      </div>
+                      <div className="space-y-2 pt-2">
+                        {(generatedExercise.testCases || []).slice(0, 3).map((test, index) => (
+                          <div key={`${test.name || "test"}-${index}`} className="rounded border border-slate-800 bg-slate-900/60 p-2">
+                            <p className="text-slate-200 text-xs font-medium">{test.name || `Test ${index + 1}`}</p>
+                            <p className="text-slate-500 text-[11px] mt-1 whitespace-pre-wrap">{test.assertion || "No assertion"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-xs">No generated exercise snapshot stored for this room.</p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                  <p className="text-slate-400 mb-2">Visitor output snapshot</p>
+                  <pre className="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap break-words bg-slate-900/60 border border-slate-800 rounded p-3 max-h-64 overflow-auto">
+                    {sub.outputSnapshot || "No output captured yet. Run or submit once after this update to store execution output."}
+                  </pre>
+                </div>
+              </div>
+              {generatedExercise?.testCases?.length > 0 && (
+                <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm">
+                  <p className="text-slate-400 mb-2">Expected comparison</p>
+                  <p className="text-slate-300 text-xs whitespace-pre-wrap">
+                    {expectedOutputText}
+                  </p>
                 </div>
               )}
               <div className="mt-4 pt-4 border-t border-slate-800">

@@ -44,6 +44,7 @@ const battleRoomSchema = new mongoose.Schema(
       description: { type: String, default: "" },
       starterCode: { type: String, default: "" },
       language: { type: String, default: "javascript" },
+      generatedExerciseSnapshot: { type: mongoose.Schema.Types.Mixed, default: null },
       testCases: {
         type: [
           {
@@ -72,6 +73,14 @@ const battleRoomSchema = new mongoose.Schema(
       type: String,
       enum: ["draft", "scheduled", "live", "ended"],
       default: "draft",
+    },
+    resultsShared: {
+      type: Boolean,
+      default: false,
+    },
+    resultsSharedAt: {
+      type: Date,
+      default: null,
     },
     startedAt: { type: Date, default: null },
     endedAt: { type: Date, default: null },

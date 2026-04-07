@@ -127,6 +127,10 @@ export const reportParticipantBattleFraud = (roomId: string, reason: string) => 
     return api.post(`/battle-rooms/participant/battle-rooms/${roomId}/fraud`, { reason });
 };
 
+export const runParticipantBattleCode = (roomId: string, code: string) => {
+    return api.post(`/battle-rooms/participant/battle-rooms/${roomId}/run`, { code });
+};
+
 export const submitParticipantBattleCode = (roomId: string, code: string) => {
     return api.post(`/battle-rooms/participant/battle-rooms/${roomId}/submit`, { code });
 };
