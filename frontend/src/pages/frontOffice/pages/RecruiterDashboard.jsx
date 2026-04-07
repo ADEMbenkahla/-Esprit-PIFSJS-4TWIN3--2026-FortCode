@@ -124,7 +124,6 @@ const buildChallengeTestTemplate = (language, functionNames) => {
 export function RecruiterDashboard() {
   const [activeTab, setActiveTab] = useState(TAB.OVERVIEW);
   const [virtualRoomStatus, setVirtualRoomStatus] = useState(null);
-  const [participants, setParticipants] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -137,7 +136,6 @@ export function RecruiterDashboard() {
     exerciseDifficulty: "medium",
     exerciseCriteria: ["loops", "iterations"],
     randomExercise: true,
-    participantIds: [],
     inviteEmailsText: "",
     challengeTitle: "Coding Challenge",
     challengeDescription: "",
@@ -153,11 +151,6 @@ export function RecruiterDashboard() {
       .then((r) => setVirtualRoomStatus(r.data.request))
       .catch(() => setVirtualRoomStatus(null));
   };
-  const fetchParticipants = () => {
-    getParticipants()
-      .then((r) => setParticipants(r.data.participants || []))
-      .catch(() => setParticipants([]));
-  };
   const fetchRooms = () => {
     getMyBattleRooms()
       .then((r) => setRooms(r.data.rooms || []))
@@ -172,7 +165,6 @@ export function RecruiterDashboard() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    if (activeTab === TAB.CREATE) fetchParticipants();
     if (activeTab === TAB.ROOMS || activeTab === TAB.SUBMISSIONS) fetchRooms();
   }, [activeTab]);
 
@@ -212,11 +204,11 @@ export function RecruiterDashboard() {
       }
     }
 
-    if (createForm.participantIds.length === 0 && inviteEmails.length === 0) {
+    if (inviteEmails.length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Participants required",
-        text: "Select at least one participant or add invitation emails.",
+        text: "Add at least one invitation email.",
         background: "#1a1a2e",
         color: "#fff",
       });
@@ -228,7 +220,6 @@ export function RecruiterDashboard() {
       const { data } = await apiCreateBattleRoom({
         title: createForm.title.trim(),
         description: createForm.description.trim(),
-        participantIds: createForm.participantIds,
         inviteEmails,
         challenge: {
           title: createForm.challengeTitle || "Coding Challenge",
@@ -255,7 +246,6 @@ export function RecruiterDashboard() {
         exerciseDifficulty: "medium",
         exerciseCriteria: ["loops", "iterations"],
         randomExercise: true,
-        participantIds: [],
         inviteEmailsText: "",
         challengeTitle: "Coding Challenge",
         challengeDescription: "",
@@ -576,19 +566,6 @@ export function RecruiterDashboard() {
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Description (optional)</label>
                 <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of the battle" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Participants</label>
-                <div className="max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3 bg-slate-800/50 space-y-2">
-                  {participants.length === 0 ? <p className="text-slate-500 text-sm">No participants in the system yet.</p> : participants.map((p) => (
-                    <label key={p._id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={createForm.participantIds.includes(p._id)} onChange={(e) => setCreateForm((f) => ({ ...f, participantIds: e.target.checked ? [...f.participantIds, p._id] : f.participantIds.filter((id) => id !== p._id) }))} className="rounded border-slate-600 text-blue-500" />
-                      <span className="text-slate-200">{p.username || p.nickname}</span>
-                      <span className="text-slate-500 text-xs">{p.email}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">Selected users with accounts will be added directly to the room.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Invite by email (non-registered users allowed)</label>

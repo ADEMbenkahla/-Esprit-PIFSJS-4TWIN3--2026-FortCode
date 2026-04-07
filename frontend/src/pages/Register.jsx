@@ -13,6 +13,7 @@ function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [googleId, setGoogleId] = useState("");
   const [avatar, setAvatar] = useState("https://api.dicebear.com/9.x/avataaars/svg?seed=default");
   const navigate = useNavigate();
 
@@ -23,6 +24,7 @@ function Register() {
       setIsGoogleUser(true);
       setEmail(searchParams.get('email') || "");
       setUsername(searchParams.get('name')?.replace(/\s+/g, '_') || "");
+      setGoogleId(searchParams.get('googleId') || "");
       setAvatar(searchParams.get('avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=${searchParams.get('name') || 'default'}`);
       return;
     }
@@ -84,7 +86,7 @@ function Register() {
         email,
         password,
         avatar,
-        ...(isGoogleUser && { googleId: googleData.googleId })
+        ...(isGoogleUser && { googleId })
       };
 
       const response = await fetch("http://localhost:5000/api/auth/register", {

@@ -437,7 +437,7 @@ export default function Challenges() {
                 placeholder="Ex: 1 <= nums.length <= 10^4"
               ></textarea>
             </div>
-          </div>
+            </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-purple-900/20">
             <button 
