@@ -7,6 +7,7 @@ const vm = require("node:vm");
  */
 function runJavaScriptTests(userCode, testCases) {
   const results = [];
+  const outputLines = [];
   const start = Date.now();
 
   if (!testCases || testCases.length === 0) {
@@ -25,8 +26,24 @@ function runJavaScriptTests(userCode, testCases) {
         ? `"use strict";\n${userCode}\n;(function(){\n${assertion}\n})();`
         : `"use strict";\n${userCode}\n;(function(){ return Boolean(${assertion}); })();`;
       const script = new vm.Script(body, { filename: "user-challenge.js" });
+      const capture = (level) => (...args) => {
+        const line = args.map((item) => {
+          if (typeof item === "string") return item;
+          try {
+            return JSON.stringify(item);
+          } catch (_error) {
+            return String(item);
+          }
+        }).join(" ");
+        outputLines.push(level ? `[${level}] ${line}` : line);
+      };
       const ctx = vm.createContext({
-        console,
+        console: {
+          log: capture("log"),
+          info: capture("info"),
+          warn: capture("warn"),
+          error: capture("error"),
+        },
         Math,
         JSON,
         String,
@@ -51,20 +68,25 @@ function runJavaScriptTests(userCode, testCases) {
 
   const executionTimeMs = Date.now() - start;
   const passed = results.length > 0 && results.every((r) => r.passed);
-  return { passed, testResults: results, executionTimeMs };
+  const outputSnapshot = outputLines.length
+    ? outputLines.join("\n")
+    : results.map((item) => `${item.passed ? "PASS" : "FAIL"} - ${item.name}${item.error ? `: ${item.error}` : ""}`).join("\n");
+  return { passed, testResults: results, executionTimeMs, outputSnapshot };
 }
 
 function runPythonPlaceholder() {
+  const message = "Python execution is not available on the server sandbox yet. Use JavaScript challenges for graded runs.";
   return {
     passed: false,
     testResults: [
       {
         name: "python",
         passed: false,
-        error: "Python execution is not available on the server sandbox yet. Use JavaScript challenges for graded runs.",
+        error: message,
       },
     ],
     executionTimeMs: 0,
+    outputSnapshot: message,
   };
 }
 

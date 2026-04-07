@@ -445,7 +445,6 @@ export function Navbar() {
               <NavItem to="/armory" icon={<Trophy className="w-4 h-4" />} label="Armory" onClick={playClick} />
             </>
           )}
-          <NavItem to="/programming-rooms" icon={<Code2 className="w-4 h-4" />} label="Rooms" onClick={playClick} />
         </div>
 
         {/* Desktop Right Section */}
@@ -722,12 +721,6 @@ export function Navbar() {
                   </>
                 )}
                 
-                <MobileNavItem
-                  to="/programming-rooms"
-                  icon={<Code2 className="w-5 h-5" />}
-                  label="Programming Rooms"
-                  onClick={handleMobileMenuClose}
-                />
                 <MobileNavItem
                   to="/settings"
                   icon={<Settings className="w-5 h-5" />}

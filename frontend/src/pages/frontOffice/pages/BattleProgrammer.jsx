@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import {
   getParticipantBattleRoomAccess,
   reportParticipantBattleFraud,
+  runParticipantBattleCode,
   submitParticipantBattleCode,
 } from "../../../services/api";
 
@@ -52,9 +53,14 @@ export default function BattleProgrammer() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [runningShell, setRunningShell] = useState(false);
+  const [shellRun, setShellRun] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [fraudBlocked, setFraudBlocked] = useState(false);
   const [finalSubmitted, setFinalSubmitted] = useState(false);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [resultsShared, setResultsShared] = useState(false);
+  const [sharedRanking, setSharedRanking] = useState([]);
   const fraudReportedRef = useRef(false);
 
   const isLive = room?.status === "live";
@@ -62,10 +68,12 @@ export default function BattleProgrammer() {
   const waitingStart = room?.status === "draft" || room?.status === "scheduled";
   const remainingMs = useMemo(() => getRemainingMs(room?.startedAt, room?.timeLimitMinutes, now), [room?.startedAt, room?.timeLimitMinutes, now]);
   const timeExpired = isLive && remainingMs === 0;
-  const blockedByFraud = fraudBlocked || room?.mySubmission?.fraudDetected;
-  const blockedByFinalSubmit = finalSubmitted || ["submitted", "evaluated"].includes(String(room?.mySubmission?.status || ""));
+  const hasSubmission = rankingLoading || finalSubmitted || ["submitted", "evaluated"].includes(String(room?.mySubmission?.status || ""));
+  const blockedByFraud = !hasSubmission && (fraudBlocked || room?.mySubmission?.fraudDetected);
+  const blockedByFinalSubmit = hasSubmission;
   const canEdit = isLive && !timeExpired && !blockedByFraud && !blockedByFinalSubmit;
   const monacoLanguage = normalizeMonacoLanguage(room?.challenge?.language);
+  const shellLanguageSupported = monacoLanguage === "javascript" || monacoLanguage === "python";
 
   const triggerFraudBlock = async (reason = "focus-lost") => {
     if (!roomId || fraudReportedRef.current) return;
@@ -87,13 +95,16 @@ export default function BattleProgrammer() {
     });
   };
 
-  const refreshAccess = async (silent = false) => {
+  const refreshAccess = async (silent = false, options = {}) => {
+    const { suppressFraud = false } = options;
     if (!roomId) return;
     if (!silent) setLoading(true);
     try {
       const { data } = await getParticipantBattleRoomAccess(roomId);
       setRoom(data?.room || null);
-      if (data?.room?.mySubmission?.fraudDetected) {
+      setResultsShared(Boolean(data?.room?.resultsShared));
+      setSharedRanking(Array.isArray(data?.room?.sharedRanking) ? data.room.sharedRanking : []);
+      if (data?.room?.mySubmission?.fraudDetected && !suppressFraud) {
         setFraudBlocked(true);
         fraudReportedRef.current = true;
       }
@@ -136,7 +147,16 @@ export default function BattleProgrammer() {
   }, [roomId, waitingStart]);
 
   useEffect(() => {
-    if (!isLive || isEnded || timeExpired || blockedByFraud) return undefined;
+    if (!rankingLoading) return undefined;
+    const timer = setInterval(() => {
+      refreshAccess(true, { suppressFraud: true });
+    }, 3000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankingLoading, roomId]);
+
+  useEffect(() => {
+    if (!isLive || isEnded || timeExpired || hasSubmission || blockedByFraud) return undefined;
 
     const onVisibilityChange = () => {
       if (document.hidden) {
@@ -155,7 +175,7 @@ export default function BattleProgrammer() {
       window.removeEventListener("blur", onWindowBlur);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLive, isEnded, timeExpired, blockedByFraud, roomId]);
+  }, [isLive, isEnded, timeExpired, blockedByFraud, hasSubmission, roomId]);
 
   const remainingText = formatRemaining(remainingMs);
 
@@ -184,6 +204,7 @@ export default function BattleProgrammer() {
     setSaving(true);
     try {
       const { data } = await submitParticipantBattleCode(roomId, code);
+      setRankingLoading(true);
       setFinalSubmitted(true);
       setRoom((prev) => ({
         ...(prev || {}),
@@ -196,7 +217,9 @@ export default function BattleProgrammer() {
         background: "#1a1a2e",
         color: "#fff",
       });
+      await refreshAccess(true, { suppressFraud: true });
     } catch (error) {
+      setRankingLoading(false);
       Swal.fire({
         icon: "error",
         title: "Submission failed",
@@ -209,12 +232,157 @@ export default function BattleProgrammer() {
     }
   };
 
+  const handleRunShell = async () => {
+    if (!canEdit && !isEnded) {
+      Swal.fire({
+        icon: "info",
+        title: "Execution unavailable",
+        text: "Code execution is only available while the challenge is active and editable.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    if (!code.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Code required",
+        text: "Write your code before running the shell.",
+        background: "#1a1a2e",
+        color: "#fff",
+      });
+      return;
+    }
+
+    if (!shellLanguageSupported) {
+      setShellRun({
+        total: 0,
+        passed: 0,
+        failed: 0,
+        executionTimeMs: null,
+        results: [],
+        error: "Shell currently accepts only JavaScript or Python.",
+      });
+      return;
+    }
+
+    setRunningShell(true);
+    try {
+      const { data } = await runParticipantBattleCode(roomId, code);
+      const tests = data?.analysis?.tests || {};
+      const rawResults = Array.isArray(tests.results) ? tests.results : [];
+      const normalizedResults = rawResults.map((item, index) => ({
+        name: String(item?.name || `Test ${index + 1}`),
+        expected: true,
+        actual: Boolean(item?.passed),
+        passed: Boolean(item?.passed),
+        error: item?.error || null,
+      }));
+
+      setShellRun({
+        total: Number(tests.total ?? normalizedResults.length),
+        passed: Number(tests.passed ?? normalizedResults.filter((r) => r.passed).length),
+        failed: Number(tests.failed ?? normalizedResults.filter((r) => !r.passed).length),
+        executionTimeMs: tests.executionTimeMs != null ? Number(tests.executionTimeMs) : null,
+        results: normalizedResults,
+        error: null,
+      });
+    } catch (error) {
+      setShellRun({
+        total: 0,
+        passed: 0,
+        failed: 0,
+        executionTimeMs: null,
+        results: [],
+        error: error?.response?.data?.message || "Code execution failed.",
+      });
+    } finally {
+      setRunningShell(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center">Loading programmer platform...</div>;
   }
 
   if (!room) {
     return <div className="min-h-screen bg-slate-950 text-red-300 flex items-center justify-center">Battle room not found.</div>;
+  }
+
+  if (rankingLoading && !resultsShared) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-6">
+        <div className="max-w-xl text-center space-y-3">
+          <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Ranking loading</p>
+          <h1 className="text-4xl md:text-5xl font-bold mt-2">Submission received</h1>
+          <p className="text-slate-300/90 mt-2 text-lg">
+            Your code has been submitted successfully. The ranking is being updated right now.
+          </p>
+          <p className="text-slate-400 text-sm">
+            Please wait while the recruiter decides whether to share the result.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (rankingLoading && resultsShared) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="rounded-xl border border-emerald-700/30 bg-emerald-900/10 p-5 text-center">
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Results shared</p>
+            <h1 className="text-3xl md:text-4xl font-bold mt-2">Ranking published</h1>
+            <p className="text-slate-300/90 mt-2 text-base md:text-lg">
+              The recruiter shared the ranking list.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-slate-200 font-semibold">Shared visitor ranking</p>
+              <span className="text-xs text-slate-400">{sharedRanking.length} ranked visitor(s)</span>
+            </div>
+
+            {sharedRanking.length === 0 ? (
+              <p className="text-slate-400 text-sm">No ranked submissions yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-left text-slate-400">
+                      <th className="pb-2 pr-4">Rank</th>
+                      <th className="pb-2 pr-4">Visitor</th>
+                      <th className="pb-2 pr-4">Final score</th>
+                      <th className="pb-2 pr-4">Correctness</th>
+                      <th className="pb-2 pr-4">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sharedRanking.map((item, index) => (
+                      <tr
+                        key={`${item.participantId || item.email || item.name || "visitor"}-${index}`}
+                        className={`border-b border-slate-800/70 ${item.isCurrentUser ? "bg-emerald-900/20" : ""}`}
+                      >
+                        <td className="py-2 pr-4 text-slate-200 font-semibold">#{item.rank}</td>
+                        <td className="py-2 pr-4 text-slate-200">
+                          {item.name}
+                          {item.isCurrentUser ? <span className="ml-2 text-[11px] text-emerald-300">(You)</span> : null}
+                        </td>
+                        <td className="py-2 pr-4 text-slate-300">{item.score}/100</td>
+                        <td className="py-2 pr-4 text-slate-300">{item.correctnessScore}/100</td>
+                        <td className="py-2 pr-4 text-slate-400">{item.executionTimeMs != null ? `${item.executionTimeMs} ms` : "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (blockedByFraud) {
@@ -347,6 +515,13 @@ export default function BattleProgrammer() {
                 </div>
                 <div className="mt-4 flex gap-3">
                   <button
+                    onClick={handleRunShell}
+                    disabled={runningShell || (!canEdit && !isEnded) || !shellLanguageSupported}
+                    className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+                  >
+                    {runningShell ? "Running..." : "Run code (JS/Python)"}
+                  </button>
+                  <button
                     onClick={handleSubmit}
                     disabled={!canEdit || saving}
                     className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
@@ -360,6 +535,37 @@ export default function BattleProgrammer() {
                     Refresh status
                   </button>
                 </div>
+
+                {shellRun && (
+                  <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Shell Result (comparison with backend exercise tests)</p>
+                    {shellRun.error ? (
+                      <p className="text-red-300 text-sm mt-2">{shellRun.error}</p>
+                    ) : (
+                      <>
+                        <p className="text-slate-200 text-sm mt-2">
+                          Passed {shellRun.passed}/{shellRun.total} tests
+                          {typeof shellRun.executionTimeMs === "number" ? ` in ${shellRun.executionTimeMs} ms` : ""}
+                        </p>
+                        <div className="mt-2 space-y-2 max-h-44 overflow-y-auto pr-1">
+                          {shellRun.results.map((item, index) => (
+                            <div key={`${item.name}-${index}`} className="rounded border border-slate-700 bg-slate-950/50 p-2 text-xs">
+                              <p className="text-slate-200 font-medium">{item.name}</p>
+                              <p className="text-slate-400 mt-1">
+                                Expected: <span className="text-slate-200">{String(item.expected)}</span>
+                                {" · "}
+                                Actual: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.actual == null ? "error" : String(item.actual)}</span>
+                                {" · "}
+                                Status: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.passed ? "PASS" : "FAIL"}</span>
+                              </p>
+                              {item.error && <p className="text-red-300 mt-1">{item.error}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

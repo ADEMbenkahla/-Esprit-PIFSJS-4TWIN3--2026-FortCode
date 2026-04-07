@@ -100,127 +100,6 @@ const normalizeExpectedFunctions = (value) => {
   const unique = [...new Set(valid)];
   return unique.length ? unique : ["solve"];
 };
-const buildTemplateForFunction = (language, functionName) => {
-  const fn = String(functionName || "solve").trim() || "solve";
-  if (fn.toLowerCase() === "shortestpath") {
-    return [
-      {
-        name: "Basic shortest path",
-        assertion: `const g = { A: { B: 4, C: 2 }, B: { C: 1, D: 5 }, C: { B: 1, D: 8, E: 10 }, D: { E: 2, F: 6 }, E: { F: 2 }, F: {} }; const r = ${fn}(g, "A", "F"); return r.distance === 10 && Array.isArray(r.path) && r.path.join("->") === "A->C->B->D->E->F";`,
-        hidden: false,
-      },
-      {
-        name: "Start equals target",
-        assertion: `const g = { A: { B: 1 }, B: {} }; const r = ${fn}(g, "A", "A"); return r.distance === 0 && r.path.join("->") === "A";`,
-        hidden: true,
-      },
-      {
-        name: "Unreachable target",
-        assertion: `const g = { A: { B: 1 }, B: {}, C: {} }; const r = ${fn}(g, "A", "C"); return r.distance === Infinity && Array.isArray(r.path) && r.path.length === 0;`,
-        hidden: true,
-      },
-    ];
-  }
-
-  if (String(language || "javascript").toLowerCase() === "python") {
-    return [
-      { name: "Basic", assertion: `${fn}(2, 3) == 5`, hidden: false },
-      { name: "Zero", assertion: `${fn}(0, 0) == 0`, hidden: false },
-      { name: "Negative", assertion: `${fn}(-1, 1) == 0`, hidden: true },
-    ];
-  }
-
-  return [
-    { name: "Basic", assertion: `return ${fn}(2, 3) === 5;`, hidden: false },
-    { name: "Zero", assertion: `return ${fn}(0, 0) === 0;`, hidden: false },
-    { name: "Negative", assertion: `return ${fn}(-1, 1) === 0;`, hidden: true },
-  ];
-};
-const EXERCISE_CATALOG = [
-  {
-    title: "Loop Sum Analyzer",
-    description: "Given an array of integers, return the sum of all even values and the sum of all odd values as an object.",
-    difficulty: "easy",
-    criteria: ["loops", "iterations", "arrays"],
-    expectedFunctions: ["analyzeSums"],
-  },
-  {
-    title: "String Compression Counter",
-    description: "Implement run-length encoding for a string and return the compressed representation.",
-    difficulty: "easy",
-    criteria: ["strings", "loops", "iterations"],
-    expectedFunctions: ["compressString"],
-  },
-  {
-    title: "Sliding Window Max Sum",
-    description: "Find the maximum sum of any contiguous subarray of size k.",
-    difficulty: "medium",
-    criteria: ["arrays", "iterations", "performance"],
-    expectedFunctions: ["maxWindowSum"],
-  },
-  {
-    title: "Parentheses Validator",
-    description: "Validate if a string of brackets is balanced using a stack approach.",
-    difficulty: "medium",
-    criteria: ["strings", "iterations", "data-structures"],
-    expectedFunctions: ["isBalanced"],
-  },
-  {
-    title: "Shortest Path in Weighted Graph",
-    description: "Implement Dijkstra to compute shortest distance and path between two nodes.",
-    difficulty: "hard",
-    criteria: ["graphs", "iterations", "loops"],
-    expectedFunctions: ["shortestPath"],
-  },
-  {
-    title: "Coin Change Dynamic Programming",
-    description: "Return the minimum number of coins needed to reach a target amount.",
-    difficulty: "hard",
-    criteria: ["dynamic-programming", "iterations", "arrays"],
-    expectedFunctions: ["minCoins"],
-  },
-];
-const pickRandomExerciseTemplate = ({ difficulty, criteria }) => {
-  const normalizedDifficulty = String(difficulty || "medium").toLowerCase();
-  const normalizedCriteria = normalizeCriteria(criteria);
-
-  const byDifficulty = EXERCISE_CATALOG.filter((item) => item.difficulty === normalizedDifficulty);
-  const withCriteria = byDifficulty.filter((item) =>
-    normalizedCriteria.length === 0
-      ? true
-      : normalizedCriteria.every((criterion) => item.criteria.includes(criterion))
-  );
-
-  const pool = withCriteria.length ? withCriteria : (byDifficulty.length ? byDifficulty : EXERCISE_CATALOG);
-  return pool[Math.floor(Math.random() * pool.length)];
-};
-const buildExerciseDraftFallback = ({ prompt, difficulty, language, expectedFunctions, criteria, randomize }) => {
-  const topic = String(prompt || "").trim() || "algorithmic thinking";
-  const normalizedDifficulty = String(difficulty || "medium").toLowerCase();
-  const normalizedLanguage = String(language || "javascript").toLowerCase();
-  const selectedTemplate = randomize ? pickRandomExerciseTemplate({ difficulty: normalizedDifficulty, criteria }) : null;
-  const fallbackFns = selectedTemplate?.expectedFunctions || expectedFunctions;
-  const fns = normalizeExpectedFunctions(fallbackFns);
-
-  const testCases = fns.flatMap((fnName) =>
-    buildTemplateForFunction(normalizedLanguage, fnName).map((test) => ({
-      ...test,
-      name: fns.length > 1 ? `${fnName} - ${test.name}` : test.name,
-    }))
-  );
-
-  return {
-    title: selectedTemplate?.title || `AI Draft - ${topic.slice(0, 60)}`,
-    description:
-      selectedTemplate?.description
-      || `Difficulty: ${normalizedDifficulty}. ${
-        `Implement the required function(s) to solve: ${topic}. `
-      }Return deterministic outputs and handle edge cases.`,
-    language: normalizedLanguage,
-    expectedFunctions: fns,
-    testCases,
-  };
-};
 const normalizeChallengeTests = (testCases) => {
   if (!Array.isArray(testCases)) return [];
   return testCases
@@ -274,15 +153,6 @@ exports.generateExerciseDraft = async (req, res) => {
     const criteria = normalizeCriteria(req.body?.criteria || []);
     const randomize = req.body?.randomize !== false;
     const expectedFunctions = normalizeExpectedFunctions(req.body?.expectedFunctions);
-
-    const fallback = buildExerciseDraftFallback({
-      prompt,
-      difficulty,
-      language,
-      expectedFunctions,
-      criteria,
-      randomize,
-    });
     const aiUrl = process.env.AI_EXERCISE_URL || "http://localhost:8000/generate-exercise";
 
     let draft = null;
@@ -295,22 +165,52 @@ exports.generateExerciseDraft = async (req, res) => {
       if (response.status >= 200 && response.status < 300 && response.data) {
         draft = response.data.exercise || response.data;
       }
-    } catch (_error) {
-      draft = null;
+    } catch (error) {
+      return res.status(502).json({
+        message: "AI exercise generation failed",
+        source: "ai",
+        aiEndpoint: aiUrl,
+        error: error.message,
+      });
+    }
+
+    if (!draft || typeof draft !== "object") {
+      return res.status(502).json({
+        message: "AI returned no exercise draft",
+        source: "ai",
+        aiEndpoint: aiUrl,
+      });
     }
 
     const exercise = {
-      title: String(draft?.title || fallback.title),
-      description: String(draft?.description || fallback.description),
-      language: String(draft?.language || fallback.language).toLowerCase(),
-      expectedFunctions: normalizeExpectedFunctions(draft?.expectedFunctions || fallback.expectedFunctions),
-      testCases: normalizeChallengeTests(draft?.testCases || fallback.testCases),
+      title: String(draft?.title || "").trim(),
+      description: String(draft?.description || "").trim(),
+      language: String(draft?.language || language).toLowerCase().trim(),
+      expectedFunctions: normalizeExpectedFunctions(draft?.expectedFunctions || expectedFunctions),
+      testCases: normalizeChallengeTests(draft?.testCases),
     };
 
+    if (!exercise.title || !exercise.description || !exercise.language) {
+      return res.status(502).json({
+        message: "AI returned an incomplete exercise",
+        source: "ai",
+        aiEndpoint: aiUrl,
+      });
+    }
+
+    if (!exercise.testCases.length) {
+      return res.status(502).json({
+        message: "AI returned no valid test cases",
+        source: "ai",
+        aiEndpoint: aiUrl,
+      });
+    }
+
     return res.json({
-      message: draft ? "Exercise generated with AI" : "AI unavailable, generated fallback draft",
+      message: "Exercise generated with AI",
       exercise,
-      source: draft ? "ai" : "fallback",
+      source: "ai",
+      aiEndpoint: aiUrl,
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -428,6 +328,7 @@ exports.createBattleRoom = async (req, res) => {
         description: challenge?.description || "",
         starterCode: challenge?.starterCode || "",
         language: challenge?.language || "javascript",
+        generatedExerciseSnapshot: challenge?.generatedExerciseSnapshot || null,
         testCases: challengeTests,
         statementAttachment,
       },
@@ -574,36 +475,51 @@ exports.updateBattleRoomStatus = async (req, res) => {
     const recruiterId = getRecruiterId(req);
     if (!recruiterId) return res.status(401).json({ message: "Unauthorized" });
 
-    const { status } = req.body;
-    if (!ALLOWED_STATUSES.includes(status)) {
+    const { status, shareResults } = req.body;
+    const hasStatusChange = typeof status === "string" && status.length > 0;
+    const hasShareToggle = shareResults !== undefined;
+
+    if (!hasStatusChange && !hasShareToggle) {
+      return res.status(400).json({ message: "No update payload provided" });
+    }
+
+    if (hasStatusChange && !ALLOWED_STATUSES.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
     const room = await BattleRoom.findOne({ _id: req.params.id, recruiter: recruiterId });
     if (!room) return res.status(404).json({ message: "Battle room not found" });
 
-    const transitions = {
-      draft: ["scheduled", "live", "ended"],
-      scheduled: ["live", "ended"],
-      live: ["ended"],
-      ended: [],
-      // Legacy compatibility for older documents.
-      waiting: ["live", "ended"],
-      active: ["ended"],
-      completed: [],
-      cancelled: [],
-    };
-    const allowedTransitions = transitions[room.status];
-    if (!allowedTransitions) {
-      return res.status(400).json({ message: `Unknown current room status: ${room.status}` });
-    }
-    if (!allowedTransitions.includes(status)) {
-      return res.status(400).json({ message: `Cannot move room from ${room.status} to ${status}` });
+    if (hasStatusChange) {
+      const transitions = {
+        draft: ["scheduled", "live", "ended"],
+        scheduled: ["live", "ended"],
+        live: ["ended"],
+        ended: [],
+        // Legacy compatibility for older documents.
+        waiting: ["live", "ended"],
+        active: ["ended"],
+        completed: [],
+        cancelled: [],
+      };
+      const allowedTransitions = transitions[room.status];
+      if (!allowedTransitions) {
+        return res.status(400).json({ message: `Unknown current room status: ${room.status}` });
+      }
+      if (!allowedTransitions.includes(status)) {
+        return res.status(400).json({ message: `Cannot move room from ${room.status} to ${status}` });
+      }
+
+      room.status = status;
+      if (status === "live") room.startedAt = new Date();
+      if (status === "ended") room.endedAt = new Date();
     }
 
-    room.status = status;
-    if (status === "live") room.startedAt = new Date();
-    if (status === "ended") room.endedAt = new Date();
+    if (shareResults !== undefined) {
+      room.resultsShared = Boolean(shareResults);
+      room.resultsSharedAt = room.resultsShared ? new Date() : null;
+    }
+
     await room.save();
 
     const populated = await BattleRoom.findById(room._id)
@@ -870,6 +786,47 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
       participant: participantId,
     }).lean();
 
+    let sharedRanking = [];
+    if (refreshed.resultsShared) {
+      const submissions = await BattleSubmission.find({ battleRoom: refreshed._id })
+        .populate("participant", "username nickname email")
+        .lean();
+
+      sharedRanking = submissions
+        .filter((sub) => sub?.status === "submitted" || sub?.status === "evaluated" || sub?.finalScore != null)
+        .sort((a, b) => {
+          const scoreA = Number(a?.finalScore ?? a?.score ?? 0);
+          const scoreB = Number(b?.finalScore ?? b?.score ?? 0);
+          if (scoreB !== scoreA) return scoreB - scoreA;
+
+          const corrA = Number(a?.correctnessScore ?? 0);
+          const corrB = Number(b?.correctnessScore ?? 0);
+          if (corrB !== corrA) return corrB - corrA;
+
+          const timeA = Number(a?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+          const timeB = Number(b?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+          if (timeA !== timeB) return timeA - timeB;
+
+          const nameA = String(a?.participant?.username || a?.participant?.nickname || "");
+          const nameB = String(b?.participant?.username || b?.participant?.nickname || "");
+          return nameA.localeCompare(nameB);
+        })
+        .map((sub, index) => {
+          const participant = sub?.participant || {};
+          return {
+            rank: index + 1,
+            participantId: participant?._id ? String(participant._id) : "",
+            name: participant?.username || participant?.nickname || participant?.email || "Participant",
+            email: participant?.email || "",
+            score: Number(sub?.finalScore ?? sub?.score ?? 0),
+            correctnessScore: Number(sub?.correctnessScore ?? 0),
+            executionTimeMs: sub?.executionTimeMs != null ? Number(sub.executionTimeMs) : null,
+            outputSnapshot: String(sub?.outputSnapshot || "").trim(),
+            isCurrentUser: String(sub?.participant?._id || sub?.participant || "") === String(participantId),
+          };
+        });
+    }
+
     return res.json({
       room: {
         _id: refreshed._id,
@@ -880,6 +837,8 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
         recruiter: refreshed.recruiter,
         startedAt: refreshed.startedAt,
         endedAt: refreshed.endedAt,
+        resultsShared: Boolean(refreshed.resultsShared),
+        sharedRanking,
         visitorAccessCount: refreshed.visitorAccessCount || 0,
         mySubmission: submission || null,
       },
@@ -920,6 +879,73 @@ exports.reportParticipantFraudEvent = async (req, res) => {
     return res.status(200).json({
       message: "Fraud event recorded. Submission is blocked.",
       submission: updated,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Participant runs code without final submission lock.
+exports.runParticipantBattleCode = async (req, res) => {
+  try {
+    const participantId = getUserId(req);
+    if (!participantId) return res.status(401).json({ message: "Unauthorized" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Battle room not found" });
+    }
+
+    const room = await BattleRoom.findOne({ _id: req.params.id, participants: participantId }).lean();
+    if (!room) return res.status(404).json({ message: "Battle room not found" });
+    if (room.status !== "live" && room.status !== "ended") {
+      return res.status(400).json({ message: "Challenge has not started yet" });
+    }
+
+    const existingSubmission = await BattleSubmission.findOne({
+      battleRoom: room._id,
+      participant: participantId,
+    }).lean();
+    if (existingSubmission?.fraudDetected) {
+      return res.status(403).json({
+        message: "Execution blocked due to fraud detection.",
+        fraudDetected: true,
+      });
+    }
+
+    const code = String(req.body.code || "");
+    const testRun = runChallengeCode(room.challenge?.language, code, room.challenge?.testCases || []);
+    const correctness = computeCorrectnessFromRun(testRun);
+
+    await BattleSubmission.findOneAndUpdate(
+      { battleRoom: room._id, participant: participantId },
+      {
+        $set: {
+          code,
+          status: existingSubmission?.status || "pending",
+          executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
+          correctnessScore: correctness.correctnessScore,
+          metrics: {
+            passedTests: correctness.passedTests,
+            totalTests: correctness.totalTests,
+          },
+        },
+      },
+      { upsert: true }
+    );
+
+    return res.json({
+      message: "Code executed",
+      analysis: {
+        tests: {
+          total: correctness.totalTests,
+          passed: correctness.passedTests,
+          failed: Math.max(0, correctness.totalTests - correctness.passedTests),
+          results: correctness.testResults,
+          executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
+        },
+        correctnessScore: correctness.correctnessScore,
+      },
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -980,6 +1006,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           submittedAt: new Date(),
           score: finalScore != null ? finalScore : 0,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
           sonarSummary: analysis.sonar?.summary || "",
           sonarSource: analysis.sonar?.source || "",
           sonarProjectKey: analysis.sonar?.projectKey || "",
@@ -1027,6 +1054,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           passed: correctness.passedTests,
           results: correctness.testResults,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
+          outputSnapshot: testRun?.outputSnapshot || "",
         },
         correctnessScore: correctness.correctnessScore,
         finalScore,

@@ -36,8 +36,6 @@ import Settings from "./pages/frontOffice/pages/Settings";
 import { UnityCastlePage } from "./pages/frontOffice/pages/UnityCastlePage";
 import VirtualRoom from "./pages/frontOffice/pages/VirtualRoom";
 import RequestRecruiterRole from "./pages/frontOffice/pages/RequestRecruiterRole";
-import CreateProgrammingRoom from "./pages/frontOffice/pages/CreateProgrammingRoom";
-import ProgrammingRooms from "./pages/frontOffice/pages/ProgrammingRooms";
 import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
 import { Footer } from "./pages/frontOffice/components/layout/Footer";
 import { SidebarProvider } from "./context/SidebarContext";
@@ -106,15 +104,6 @@ function AppContent() {
         <Route path="/virtual-room/:roomSlug" element={<FrontOfficeOnlyRoute><VirtualRoom /></FrontOfficeOnlyRoute>} />
         <Route path="/level/:id" element={<FrontOfficeOnlyRoute><div>Challenge Page Coming Soon!</div></FrontOfficeOnlyRoute>} />
         <Route path="/request-recruiter" element={<FrontOfficeOnlyRoute><RequestRecruiterRole /></FrontOfficeOnlyRoute>} />
-        <Route path="/programming-rooms" element={<FrontOfficeOnlyRoute><ProgrammingRooms /></FrontOfficeOnlyRoute>} />
-        <Route
-          path="/create-room"
-          element={
-            <ProtectedRoute requiredRole={["recruiter", "admin"]}>
-              <CreateProgrammingRoom />
-            </ProtectedRoute>
-          }
-        />
 
         {/* Back Office & Admin — only admin; participants/recruiters redirected to /home */}
         <Route path="/backoffice/dashboard" element={<AdminOnlyRoute><Dashboard /></AdminOnlyRoute>} />

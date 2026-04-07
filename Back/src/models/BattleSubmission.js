@@ -24,6 +24,10 @@ const battleSubmissionSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    outputSnapshot: {
+      type: String,
+      default: "",
+    },
     status: {
       type: String,
       enum: ["pending", "submitted", "evaluated"],
