@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { clearStoredAuth, decodeJwtPayload, getStoredToken, isTokenExpired } from '../../../../services/token';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
 
@@ -18,14 +19,16 @@ export default function DuelLobby() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        if (!token) {
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+            clearStoredAuth();
             navigate('/login');
             return;
         }
 
         const newSocket = io(SOCKET_URL, {
-            auth: { token }
+            auth: { token },
+            reconnection: false,
         });
 
         newSocket.on("connect", () => {
@@ -41,26 +44,37 @@ export default function DuelLobby() {
             navigate(`/arena/battle/${matchId}?room=${roomId}`);
         });
 
+        newSocket.on("connect_error", (error) => {
+            const message = (error && error.message) || "Socket connection failed";
+            if (message.toLowerCase().includes("unauthorized")) {
+                clearStoredAuth();
+                navigate('/');
+            }
+        });
+
         setSocket(newSocket);
 
         // Get user info
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            setUser(payload);
-            
-            // Fetch full profile for level verification
-            fetch('http://localhost:5000/api/auth/profile', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.user) {
-                    setFullProfile(data.user);
-                }
-            })
-            .catch(console.error);
+        const payload = decodeJwtPayload(token);
+        if (!payload) {
+            clearStoredAuth();
+            navigate('/');
+            return;
+        }
 
-        } catch (e) { }
+        setUser(payload);
+
+        // Fetch full profile for level verification
+        fetch('http://localhost:5000/api/auth/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.user) {
+                setFullProfile(data.user);
+            }
+        })
+        .catch(console.error);
 
         return () => newSocket.disconnect();
     }, [navigate]);

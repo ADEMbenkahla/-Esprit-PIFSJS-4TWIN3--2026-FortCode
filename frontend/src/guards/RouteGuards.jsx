@@ -1,5 +1,6 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { decodeJwtPayload, getStoredToken, isTokenExpired } from "../services/token";
 
 /**
  * Get current user role from JWT (same token source order as axios: sessionStorage, then localStorage).
@@ -7,9 +8,10 @@ import { Navigate, useLocation } from "react-router-dom";
  */
 export function getUserRole() {
   try {
-    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) return null;
+    const payload = decodeJwtPayload(token);
+    if (!payload) return null;
     const r = payload.role;
     return r != null ? String(r).toLowerCase().trim() : null;
   } catch {

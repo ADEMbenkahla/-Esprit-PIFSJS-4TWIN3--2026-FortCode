@@ -12,63 +12,61 @@ const initSocket = (server) => {
         }
     });
 
-    io.on("connection", async (socket) => {
-        console.log("A user connected:", socket.id);
+    io.use(async (socket, next) => {
+        const token = socket.handshake?.auth?.token;
 
-        // Authentication via token in handshake
-        const token = socket.handshake.auth.token;
         if (!token) {
-            console.log("No token provided, disconnecting socket.");
-            socket.disconnect();
-            return;
+            return next(new Error("No token provided"));
         }
 
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const userId = decoded.id;
-
-            socket.userId = userId;
+            socket.userId = decoded.id;
             socket.userRole = decoded.role;
-
-            // Update user status to online
-            await User.findByIdAndUpdate(userId, { isOnline: true });
-            io.emit("userStatusChanged", { userId, isOnline: true });
-
-            socket.on("battleRoom:join", ({ roomId }) => {
-                if (!roomId) return;
-                socket.join(`battle-room:${roomId}`);
-            });
-
-            socket.on("battleRoom:leave", ({ roomId }) => {
-                if (!roomId) return;
-                socket.leave(`battle-room:${roomId}`);
-            });
-
-            socket.on("disconnect", async () => {
-                console.log("User disconnected:", socket.userId);
-                if (socket.userId) {
-                    // Give it a small delay to allow list to update OR check current socket list
-                    setTimeout(async () => {
-                        const sockets = await io.fetchSockets();
-                        const isStillConnected = sockets.some(s => s.userId === socket.userId);
-
-                        if (!isStillConnected) {
-                            try {
-                                await User.findByIdAndUpdate(socket.userId, { isOnline: false });
-                                io.emit("userStatusChanged", { userId: socket.userId, isOnline: false });
-                                console.log(`User ${socket.userId} is now offline (no active sockets).`);
-                            } catch (err) {
-                                console.error("Error updating user status on disconnect:", err);
-                            }
-                        }
-                    }, 1000); // Small grace period
-                }
-            });
-
+            return next();
         } catch (error) {
             console.error("Socket authentication error:", error.message);
-            socket.disconnect();
+            return next(new Error("Unauthorized"));
         }
+    });
+
+    io.on("connection", async (socket) => {
+        console.log("A user connected:", socket.id);
+
+        // Update user status to online
+        await User.findByIdAndUpdate(socket.userId, { isOnline: true });
+        io.emit("userStatusChanged", { userId: socket.userId, isOnline: true });
+
+        socket.on("battleRoom:join", ({ roomId }) => {
+            if (!roomId) return;
+            socket.join(`battle-room:${roomId}`);
+        });
+
+        socket.on("battleRoom:leave", ({ roomId }) => {
+            if (!roomId) return;
+            socket.leave(`battle-room:${roomId}`);
+        });
+
+        socket.on("disconnect", async () => {
+            console.log("User disconnected:", socket.userId);
+            if (socket.userId) {
+                // Give it a small delay to allow list to update OR check current socket list
+                setTimeout(async () => {
+                    const sockets = await io.fetchSockets();
+                    const isStillConnected = sockets.some(s => s.userId === socket.userId);
+
+                    if (!isStillConnected) {
+                        try {
+                            await User.findByIdAndUpdate(socket.userId, { isOnline: false });
+                            io.emit("userStatusChanged", { userId: socket.userId, isOnline: false });
+                            console.log(`User ${socket.userId} is now offline (no active sockets).`);
+                        } catch (err) {
+                            console.error("Error updating user status on disconnect:", err);
+                        }
+                    }
+                }, 1000); // Small grace period
+            }
+        });
     });
 
     return io;

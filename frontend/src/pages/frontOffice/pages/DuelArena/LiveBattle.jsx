@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import Swal from 'sweetalert2';
+import { clearStoredAuth, decodeJwtPayload, getStoredToken, isTokenExpired } from '../../../../services/token';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
 
@@ -27,8 +28,14 @@ export default function LiveBattle() {
     const [winner, setWinner] = useState(null);
 
     useEffect(() => {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const newSocket = io(SOCKET_URL, { auth: { token } });
+        const token = getStoredToken();
+        if (!token || isTokenExpired(token)) {
+            clearStoredAuth();
+            navigate('/');
+            return;
+        }
+
+        const newSocket = io(SOCKET_URL, { auth: { token }, reconnection: false });
 
         // Register listeners FIRST
         newSocket.on("matchFound", ({ match }) => {
@@ -52,13 +59,22 @@ export default function LiveBattle() {
 
         newSocket.on("matchEnded", ({ winnerId, match: endMatch }) => {
             setWinner(winnerId);
-            const isMe = winnerId === JSON.parse(atob(token.split('.')[1])).id;
+            const payload = decodeJwtPayload(token);
+            const isMe = payload && winnerId === payload.id;
             Swal.fire({
                 title: isMe ? "GLORIOUS VICTORY!" : "DEFEAT...",
                 text: isMe ? "You have crushed your opponent!" : "The recursion was too strong for you.",
                 icon: isMe ? "success" : "error",
                 confirmButtonText: "Return to Arena"
             }).then(() => navigate('/arena'));
+        });
+
+        newSocket.on("connect_error", (error) => {
+            const message = (error && error.message) || "Socket connection failed";
+            if (message.toLowerCase().includes("unauthorized")) {
+                clearStoredAuth();
+                navigate('/');
+            }
         });
 
         // Then handle connection
@@ -86,8 +102,11 @@ export default function LiveBattle() {
 
                 if (newOppHealth <= 0) {
                     // I win
-                    const userId = JSON.parse(atob((sessionStorage.getItem('token') || localStorage.getItem('token')).split('.')[1])).id;
-                    socket.emit("matchResult", { roomId, matchId, winnerId: userId });
+                    const currentToken = getStoredToken();
+                    const payload = currentToken ? decodeJwtPayload(currentToken) : null;
+                    if (payload && payload.id) {
+                        socket.emit("matchResult", { roomId, matchId, winnerId: payload.id });
+                    }
                 }
             } else {
                 setOutput("❌ SPELL FIZZLED.\n> Syntax error in your incantation.");
@@ -109,13 +128,9 @@ export default function LiveBattle() {
         </div>
     );
 
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    let userId = "";
-    try {
-        userId = JSON.parse(atob(token.split('.')[1])).id;
-    } catch (e) {
-        console.error("Token parsing error", e);
-    }
+    const token = getStoredToken();
+    const tokenPayload = token ? decodeJwtPayload(token) : null;
+    const userId = tokenPayload && tokenPayload.id ? String(tokenPayload.id) : "";
 
     const me = match?.players?.find(p => p.user.toString() === userId);
     const opponent = match?.players?.find(p => p.user.toString() !== userId);
