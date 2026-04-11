@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
 
+import { getCurrentMatch } from '../../../../services/api';
+
 export default function DuelLobby() {
     const [searching, setSearching] = useState(false);
     const [searchType, setSearchType] = useState(null); // 'training' or 'ranked'
@@ -38,7 +40,8 @@ export default function DuelLobby() {
 
         newSocket.on("matchFound", ({ matchId, roomId }) => {
             setSearching(false);
-            navigate(`/arena/battle/${matchId}?room=${roomId}`);
+            // Forced refresh redirection to ensure clean battlefield state
+            window.location.href = `/arena/battle/${matchId}?room=${roomId}`;
         });
 
         setSocket(newSocket);
@@ -64,6 +67,28 @@ export default function DuelLobby() {
 
         return () => newSocket.disconnect();
     }, [navigate]);
+
+    // FALLBACK POLLING: Verify match status every few seconds in case socket fails
+    useEffect(() => {
+        let interval;
+        if (searching) {
+            interval = setInterval(async () => {
+                try {
+                    const { data } = await getCurrentMatch();
+                    if (data && data.match && data.match.status === "waiting") {
+                        console.log("💎 Match found via fallback polling!");
+                        setSearching(false);
+                        window.location.href = `/arena/battle/${data.match._id}?room=match:${data.match._id}`;
+                    }
+                } catch (err) {
+                    console.error("Polling error", err);
+                }
+            }, 3000); // Check every 3 seconds
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [searching]);
 
     const handleStartSearch = (type) => {
         setSearching(true);

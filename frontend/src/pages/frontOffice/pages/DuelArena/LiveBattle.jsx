@@ -9,6 +9,8 @@ import Swal from 'sweetalert2';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
 
+import { getDuelMatchDetails } from '../../../../services/api';
+
 export default function LiveBattle() {
     const { matchId } = useParams();
     const [searchParams] = useSearchParams();
@@ -23,20 +25,59 @@ export default function LiveBattle() {
     const [health, setHealth] = useState(100);
     const [opponentHealth, setOpponentHealth] = useState(100);
     const [output, setOutput] = useState("");
+    const [testResults, setTestResults] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [winner, setWinner] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(210); // 3:30 in seconds
+
+    const loadMatchData = useCallback(async () => {
+        try {
+            const { data } = await getDuelMatchDetails(matchId);
+            if (data && data.match) {
+                console.log("🎮 Match data loaded via API:", data.match);
+                setMatch(data.match);
+                
+                // Calculate initial time left
+                if (data.match.startedAt) {
+                    const start = new Date(data.match.startedAt);
+                    const now = new Date();
+                    const elapsed = Math.floor((now - start) / 1000);
+                    setTimeLeft(Math.max(0, 210 - elapsed));
+                }
+                
+                const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+                const userId = JSON.parse(atob(token.split('.')[1])).id;
+                
+                const me = data.match.players.find(p => p.user._id === userId || p.user === userId);
+                const opp = data.match.players.find(p => p.user._id !== userId && p.user !== userId);
+                
+                if (me) setHealth(me.health);
+                if (opp) setOpponentHealth(opp.health);
+
+                if (data.match.challenge?.data?.[language]) {
+                    setCode(data.match.challenge.data[language].starterCode);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load match data", error);
+            Swal.fire({
+                icon: "error",
+                title: "Connection Error",
+                text: "Could not synchronize with the battlefield. Please try again.",
+                confirmButtonText: "Return to Arena"
+            }).then(() => navigate('/arena'));
+        }
+    }, [matchId, language, navigate]);
 
     useEffect(() => {
+        loadMatchData();
+
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const userId = JSON.parse(atob(token.split('.')[1])).id;
         const newSocket = io(SOCKET_URL, { auth: { token } });
 
-        // Register listeners FIRST
         newSocket.on("matchFound", ({ match }) => {
-            console.log("🎮 Match data received:", match);
             setMatch(match);
-            if (match.challenge?.data?.[language]) {
-                setCode(match.challenge.data[language].starterCode);
-            }
         });
 
         newSocket.on("opponentCodeUpdate", ({ code }) => {
@@ -45,56 +86,83 @@ export default function LiveBattle() {
 
         newSocket.on("opponentBattleEvent", ({ event, data }) => {
             if (event === "damageTaken") {
-                setHealth(data.health);
-                setOutput(`⚠️ INCANTATION DETECTED: Opponent dealt damage!`);
+                // Update health based on who took damage
+                if (data.targetId === userId) {
+                    setHealth(data.newHealth);
+                    setOutput(`⚠️ INCANTATION DETECTED: Opponent struck you for ${data.damage} DMG!`);
+                } else {
+                    setOpponentHealth(data.newHealth);
+                    setOutput(`✨ SPELL SUCCESSFUL: You dealt ${data.damage} DMG!`);
+                }
+                
+                if (data.results) {
+                    setTestResults(data.results);
+                }
+            } else if (event === "spellFizzled") {
+                setOutput(`❌ SPELL FIZZLED: Your incantation was architecturally unsound.`);
+                if (data.results) {
+                    setTestResults(data.results);
+                }
             }
         });
 
         newSocket.on("matchEnded", ({ winnerId, match: endMatch }) => {
             setWinner(winnerId);
-            const isMe = winnerId === JSON.parse(atob(token.split('.')[1])).id;
+            const isMe = winnerId === userId;
             Swal.fire({
-                title: isMe ? "GLORIOUS VICTORY!" : "DEFEAT...",
-                text: isMe ? "You have crushed your opponent!" : "The recursion was too strong for you.",
-                icon: isMe ? "success" : "error",
+                title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
+                text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired. It's a draw." : "The recursion was too strong for you."),
+                icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
                 confirmButtonText: "Return to Arena"
             }).then(() => navigate('/arena'));
         });
 
-        // Then handle connection
         newSocket.on("connect", () => {
-            console.log("🔌 Connected to socket, joining match...");
             newSocket.emit("joinMatch", { matchId, roomId });
         });
 
         setSocket(newSocket);
         return () => newSocket.disconnect();
-    }, [matchId, roomId, navigate]);
+    }, [matchId, roomId, navigate, loadMatchData]);
+
+    // Timer Interval
+    useEffect(() => {
+        if (!match || winner) return;
+        
+        const interval = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 0) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        
+        return () => clearInterval(interval);
+    }, [match, winner]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleRun = useCallback(() => {
+        if (!socket) return;
         setIsRunning(true);
-        setOutput("⚡ Casting spell...");
+        setOutput("⚡ Channeling code magic...");
 
-        // Simple mock execution
-        setTimeout(() => {
-            const fakeSuccess = Math.random() > 0.3; // 70% chance of success for demo
-            if (fakeSuccess) {
-                const newOppHealth = Math.max(0, opponentHealth - 25);
-                setOpponentHealth(newOppHealth);
-                setOutput("✅ SPELL SUCCESSFUL!\n> Opponent took 25 damage.");
-                socket.emit("battleEvent", { roomId, event: "damageTaken", data: { health: newOppHealth } });
+        socket.emit("executeIncantation", { 
+            matchId, 
+            roomId, 
+            code, 
+            language 
+        });
 
-                if (newOppHealth <= 0) {
-                    // I win
-                    const userId = JSON.parse(atob((sessionStorage.getItem('token') || localStorage.getItem('token')).split('.')[1])).id;
-                    socket.emit("matchResult", { roomId, matchId, winnerId: userId });
-                }
-            } else {
-                setOutput("❌ SPELL FIZZLED.\n> Syntax error in your incantation.");
-            }
-            setIsRunning(false);
-        }, 1500);
-    }, [opponentHealth, matchId, roomId, socket]);
+        // We reset isRunning after a short delay or when we receive the event
+        setTimeout(() => setIsRunning(false), 2000);
+    }, [code, language, matchId, roomId, socket]);
 
     useEffect(() => {
         if (socket && code) {
@@ -158,6 +226,12 @@ export default function LiveBattle() {
                             className="absolute inset-0 bg-red-500/5 rounded-full"
                         />
                     </div>
+                    
+                    {/* TIMER DISPLAY */}
+                    <div className={`text-xl font-mono font-bold ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-300'}`}>
+                        {formatTime(timeLeft)}
+                    </div>
+
                     <button
                         onClick={() => {
                             Swal.fire({
@@ -266,12 +340,43 @@ export default function LiveBattle() {
 
                     {/* Battle Logs */}
                     <Card variant="stone" className="flex-1 bg-slate-950 flex flex-col border-slate-800 overflow-hidden">
-                        <div className="p-3 border-b border-slate-800 text-[10px] text-slate-500 font-mono uppercase tracking-widest">
-                            Battle Logs
+                        <div className="p-3 border-b border-slate-800 text-[10px] text-slate-500 font-mono uppercase tracking-widest flex justify-between items-center">
+                            <span>Battle Logs</span>
+                            {testResults.length > 0 && (
+                                <span className="text-[9px] text-blue-400">
+                                    {testResults.filter(r => r.passed).length}/{testResults.length} Tests Passed
+                                </span>
+                            )}
                         </div>
                         <div className="flex-1 p-4 font-mono text-xs overflow-y-auto">
-                            {output && <div className="text-blue-400 mb-2">{output}</div>}
-                            <div className="text-slate-600 italic">Match started. Fight for your life!</div>
+                            {output && (
+                                <div className={`mb-4 pb-2 border-b border-white/5 ${output.includes('✨') ? 'text-green-400' : 'text-blue-400'}`}>
+                                    {output}
+                                </div>
+                            )}
+                            
+                            {/* Detailed Test Results */}
+                            <div className="space-y-2">
+                                {testResults.map((res, i) => (
+                                    <div key={i} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            {res.passed ? (
+                                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                            ) : (
+                                                <AlertTriangle className="w-3 h-3 text-red-500" />
+                                            )}
+                                            <span className="text-slate-300 truncate max-w-[150px]">{res.name}</span>
+                                        </div>
+                                        {!res.passed && (
+                                            <span className="text-[10px] text-red-400/50 italic">Failed</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {testResults.length === 0 && !output && (
+                                <div className="text-slate-600 italic">Match started. Fight for your life!</div>
+                            )}
                         </div>
                     </Card>
                 </div>
