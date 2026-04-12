@@ -19,13 +19,10 @@ exports.getMatchById = async (req, res) => {
 exports.getCurrentMatch = async (req, res) => {
     try {
         const userId = req.user.id;
-        // ONLY return matches created in the last 60 seconds
-        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000);
-        
+
         const match = await Match.findOne({
             "players.user": userId,
-            status: { $in: ["waiting", "live"] },
-            createdAt: { $gte: sixtySecondsAgo }
+            status: { $in: ["waiting", "live"] }
         }).sort({ createdAt: -1 });
 
         res.status(200).json({ match });

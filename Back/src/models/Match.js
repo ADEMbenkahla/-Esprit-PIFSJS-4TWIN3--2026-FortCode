@@ -7,7 +7,13 @@ const matchSchema = new mongoose.Schema({
         avatar: String,
         code: { type: String, default: "" },
         health: { type: Number, default: 100 },
-        isReady: { type: Boolean, default: false }
+        isReady: { type: Boolean, default: false },
+        mlDetection: {
+            prediction: { type: Number, enum: [0, 1, 2], default: null },
+            label: { type: String, default: "" }
+        },
+        finished: { type: Boolean, default: false },
+        socketId: { type: String }
     }],
     type: {
         type: String,
@@ -16,7 +22,7 @@ const matchSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["waiting", "active", "completed", "cancelled"],
+        enum: ["waiting", "active", "live", "completed", "cancelled"],
         default: "waiting"
     },
     winner: {

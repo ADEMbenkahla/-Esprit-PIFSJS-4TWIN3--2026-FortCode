@@ -8,6 +8,7 @@ const axios = require("axios");
 const sendEmail = require("../utils/sendEmail");
 const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
 const { runChallengeCode } = require("../utils/runChallengeCode");
+const { detectCodeOrigin } = require("../services/mlDetectionAgent");
 
 const getRecruiterId = (req) => req.user && (req.user.id || req.user._id);
 const getUserId = (req) => req.user && (req.user.id || req.user._id);
@@ -1003,6 +1004,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
       participantId,
       projectName: `${room.title || "battle-room"}-visitor-${participantId}`,
     });
+    const mlDetection = await detectCodeOrigin(code);
     const finalScore = computeFinalScore({
       qualityScore: analysis.qualityScore,
       correctnessScore: correctness.correctnessScore,
@@ -1043,6 +1045,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           qualityGrade: analysis.qualityGrade,
           correctnessScore: correctness.correctnessScore,
           finalScore,
+          mlDetection,
           offTopic,
           qualityIssues: analysis.qualityIssues,
           securityAlerts: analysis.securityAlerts,

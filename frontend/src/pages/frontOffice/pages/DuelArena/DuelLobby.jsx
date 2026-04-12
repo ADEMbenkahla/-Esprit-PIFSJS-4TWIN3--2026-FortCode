@@ -6,7 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
-const SOCKET_URL = "http://127.0.0.1:5000";
+const SOCKET_URL = window.location.hostname === 'localhost' ? "http://localhost:5000" : "http://127.0.0.1:5000";
 
 import { getCurrentMatch } from '../../../../services/api';
 
@@ -26,12 +26,17 @@ export default function DuelLobby() {
             return;
         }
 
+        console.log("Initializing Socket to:", SOCKET_URL);
         const newSocket = io(SOCKET_URL, {
             auth: { token }
         });
 
         newSocket.on("connect", () => {
-            console.log("Connected to Arena Socket");
+            console.log("✅ SUCCESS: Connected to Arena Socket with ID:", newSocket.id);
+        });
+
+        newSocket.on("connect_error", (err) => {
+            console.error("❌ SOCKET CONNECTION ERROR:", err.message);
         });
 
         newSocket.on("statsUpdate", ({ onlineCount }) => {
@@ -39,9 +44,18 @@ export default function DuelLobby() {
         });
 
         newSocket.on("matchFound", ({ matchId, roomId }) => {
+            console.log("🔥 Match found via direct socket!", matchId);
             setSearching(false);
-            // Forced refresh redirection to ensure clean battlefield state
             window.location.href = `/arena/battle/${matchId}?room=${roomId}`;
+        });
+
+        newSocket.on("matchFoundGlobal", ({ targetIds, matchId, roomId }) => {
+            const myId = JSON.parse(atob(token.split('.')[1])).id;
+            if (targetIds.includes(myId)) {
+                console.log("🌐 Match found via global broadcast!", matchId);
+                setSearching(false);
+                window.location.href = `/arena/battle/${matchId}?room=${roomId}`;
+            }
         });
 
         setSocket(newSocket);
@@ -50,18 +64,18 @@ export default function DuelLobby() {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             setUser(payload);
-            
+
             // Fetch full profile for level verification
             fetch('http://localhost:5000/api/auth/profile', {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.user) {
-                    setFullProfile(data.user);
-                }
-            })
-            .catch(console.error);
+                .then(res => res.json())
+                .then(data => {
+                    if (data.user) {
+                        setFullProfile(data.user);
+                    }
+                })
+                .catch(console.error);
 
         } catch (e) { }
 
@@ -75,7 +89,7 @@ export default function DuelLobby() {
             interval = setInterval(async () => {
                 try {
                     const { data } = await getCurrentMatch();
-                    if (data && data.match && data.match.status === "waiting") {
+                    if (data && data.match && (data.match.status === "waiting" || data.match.status === "live")) {
                         console.log("💎 Match found via fallback polling!");
                         setSearching(false);
                         window.location.href = `/arena/battle/${data.match._id}?room=match:${data.match._id}`;
@@ -91,8 +105,14 @@ export default function DuelLobby() {
     }, [searching]);
 
     const handleStartSearch = (type) => {
+        console.log("🚀 SEARCH INITIATED:", type);
+        if (!socket) {
+            console.error("❌ ERROR: Socket is NULL in handleStartSearch!");
+            return;
+        }
         setSearching(true);
         setSearchType(type);
+        console.log("📡 Emitting findMatch for:", type);
         socket.emit("findMatch", { type });
     };
 
@@ -151,13 +171,12 @@ export default function DuelLobby() {
                     </Card>
 
                     {/* Ranked Mode */}
-                    <Card 
-                        variant="glass" 
-                        className={`p-8 group border-purple-500/20 transition-all overflow-hidden relative ${
-                            (!fullProfile || (fullProfile?.gamification?.level || 1) < 20) 
-                              ? 'opacity-80 grayscale-[20%]' 
-                              : 'hover:border-purple-500/50 cursor-pointer'
-                        }`}
+                    <Card
+                        variant="glass"
+                        className={`p-8 group border-purple-500/20 transition-all overflow-hidden relative ${(!fullProfile || (fullProfile?.gamification?.level || 1) < 20)
+                            ? 'opacity-80 grayscale-[20%]'
+                            : 'hover:border-purple-500/50 cursor-pointer'
+                            }`}
                     >
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Trophy className="w-24 h-24 text-purple-400" />
@@ -178,7 +197,7 @@ export default function DuelLobby() {
                                 <li className="flex items-center gap-2"><Zap className="w-3 h-3 text-purple-500" /> Skill-based matchmaking</li>
                                 <li className="flex items-center gap-2"><Zap className="w-3 h-3 text-purple-500" /> Limited AI assistance</li>
                             </ul>
-                            
+
                             {(!fullProfile || (fullProfile?.gamification?.level || 1) < 20) ? (
                                 <div className="w-full py-4 px-4 bg-slate-900/80 border border-red-500/30 rounded-lg text-center flex flex-col items-center justify-center gap-2 text-slate-300">
                                     <Lock className="w-5 h-5 text-red-400" />

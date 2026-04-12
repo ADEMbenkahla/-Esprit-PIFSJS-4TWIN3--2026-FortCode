@@ -27,32 +27,36 @@ export default function LiveBattle() {
     const [output, setOutput] = useState("");
     const [testResults, setTestResults] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [isWaiting, setIsWaiting] = useState(false);
     const [winner, setWinner] = useState(null);
     const [timeLeft, setTimeLeft] = useState(210); // 3:30 in seconds
+    const [myId, setMyId] = useState("");
+    const [myRoomSocketId, setMyRoomSocketId] = useState("");
 
     const loadMatchData = useCallback(async () => {
         try {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+            const decoded = JSON.parse(atob(token.split('.')[1]));
+            const userId = decoded.id;
+            setMyId(userId);
+
             const { data } = await getDuelMatchDetails(matchId);
             if (data && data.match) {
                 console.log("🎮 Match data loaded via API:", data.match);
                 setMatch(data.match);
-                
-                // Calculate initial time left
-                if (data.match.startedAt) {
-                    const start = new Date(data.match.startedAt);
-                    const now = new Date();
+
+                // Initial timer setup
+                if (data.match.status === "completed") {
+                    setWinner(data.match.winner);
+                    setTimeLeft(0);
+                } else if (data.match.startedAt) {
+                    const start = new Date(data.match.startedAt).getTime();
+                    const now = Date.now();
                     const elapsed = Math.floor((now - start) / 1000);
-                    setTimeLeft(Math.max(0, 210 - elapsed));
+                    const remaining = Math.max(0, 210 - elapsed);
+                    setTimeLeft(remaining);
+                    console.log(`⏱️ Timer synced: ${remaining}s left`);
                 }
-                
-                const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-                const userId = JSON.parse(atob(token.split('.')[1])).id;
-                
-                const me = data.match.players.find(p => p.user._id === userId || p.user === userId);
-                const opp = data.match.players.find(p => p.user._id !== userId && p.user !== userId);
-                
-                if (me) setHealth(me.health);
-                if (opp) setOpponentHealth(opp.health);
 
                 if (data.match.challenge?.data?.[language]) {
                     setCode(data.match.challenge.data[language].starterCode);
@@ -60,21 +64,20 @@ export default function LiveBattle() {
             }
         } catch (error) {
             console.error("Failed to load match data", error);
-            Swal.fire({
-                icon: "error",
-                title: "Connection Error",
-                text: "Could not synchronize with the battlefield. Please try again.",
-                confirmButtonText: "Return to Arena"
-            }).then(() => navigate('/arena'));
         }
-    }, [matchId, language, navigate]);
+    }, [matchId, language]);
 
     useEffect(() => {
         loadMatchData();
 
         const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const userId = JSON.parse(atob(token.split('.')[1])).id;
         const newSocket = io(SOCKET_URL, { auth: { token } });
+
+        newSocket.on("connect", () => {
+            console.log("Connected as socket:", newSocket.id);
+            setMyRoomSocketId(newSocket.id);
+            newSocket.emit("joinMatch", { matchId, roomId });
+        });
 
         newSocket.on("matchFound", ({ match }) => {
             setMatch(match);
@@ -94,7 +97,7 @@ export default function LiveBattle() {
                     setOpponentHealth(data.newHealth);
                     setOutput(`✨ SPELL SUCCESSFUL: You dealt ${data.damage} DMG!`);
                 }
-                
+
                 if (data.results) {
                     setTestResults(data.results);
                 }
@@ -106,14 +109,52 @@ export default function LiveBattle() {
             }
         });
 
+        newSocket.on("waitingForOpponent", () => {
+            setIsWaiting(true);
+            Swal.fire({
+                title: "WAITING...",
+                text: "Your solution is valid. Waiting for your opponent to finish their work.",
+                icon: "info",
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: "#0f172a",
+                color: "#fff",
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+
+        newSocket.on("playerFinished", ({ username }) => {
+            console.log(`${username} has finished the duel.`);
+        });
+
         newSocket.on("matchEnded", ({ winnerId, match: endMatch }) => {
+            setIsWaiting(false);
+            Swal.close(); // Close the waiting modal
             setWinner(winnerId);
-            const isMe = winnerId === userId;
+            setMatch(endMatch); // Update match to get final ML results
+
+            const isMe = winnerId === myId;
+            // Use socketId to find MY specific player entry in the match
+            const myPlayer = endMatch.players.find(p => p.socketId === newSocket.id);
+            const mlFeedback = myPlayer?.mlDetection?.label || "Unknown";
+            const mlClass = myPlayer?.mlDetection?.prediction === 0 ? "text-green-400" : (myPlayer?.mlDetection?.prediction === 1 ? "text-yellow-400" : "text-red-400");
+
             Swal.fire({
                 title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
+                html: `
+                    <div class="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-2 font-mono">ML Origin Classification</div>
+                        <div class="text-2xl font-bold ${mlClass}">${mlFeedback}</div>
+                        <p class="text-[10px] text-slate-400 mt-2">The system analyzed your coding style and identified it as ${mlFeedback.toLowerCase()}.</p>
+                    </div>
+                `,
                 text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired. It's a draw." : "The recursion was too strong for you."),
                 icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
-                confirmButtonText: "Return to Arena"
+                confirmButtonText: "Return to Arena",
+                background: "#0f172a",
+                color: "#fff"
             }).then(() => navigate('/arena'));
         });
 
@@ -123,12 +164,12 @@ export default function LiveBattle() {
 
         setSocket(newSocket);
         return () => newSocket.disconnect();
-    }, [matchId, roomId, navigate, loadMatchData]);
+    }, [matchId, roomId, navigate, loadMatchData, myId]);
 
     // Timer Interval
     useEffect(() => {
         if (!match || winner) return;
-        
+
         const interval = setInterval(() => {
             setTimeLeft((prev) => {
                 if (prev <= 0) {
@@ -138,7 +179,7 @@ export default function LiveBattle() {
                 return prev - 1;
             });
         }, 1000);
-        
+
         return () => clearInterval(interval);
     }, [match, winner]);
 
@@ -153,15 +194,32 @@ export default function LiveBattle() {
         setIsRunning(true);
         setOutput("⚡ Channeling code magic...");
 
-        socket.emit("executeIncantation", { 
-            matchId, 
-            roomId, 
-            code, 
-            language 
+        socket.emit("executeIncantation", {
+            matchId,
+            roomId,
+            code,
+            language
         });
 
         // We reset isRunning after a short delay or when we receive the event
         setTimeout(() => setIsRunning(false), 2000);
+    }, [code, language, matchId, roomId, socket]);
+
+    const handleSubmit = useCallback(() => {
+        console.log("SUBMIT BUTTON CLICKED!");
+        if (!socket) return;
+
+        const confirmed = window.confirm("FINALIZE SUBMISSION? This will end the match and submit your final solution for analysis.");
+
+        if (confirmed) {
+            console.log("SUBMISSION CONFIRMED, EMITTING...");
+            socket.emit("submitMatch", {
+                matchId,
+                roomId,
+                code,
+                language
+            });
+        }
     }, [code, language, matchId, roomId, socket]);
 
     useEffect(() => {
@@ -177,21 +235,24 @@ export default function LiveBattle() {
         </div>
     );
 
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-    let userId = "";
-    try {
-        userId = JSON.parse(atob(token.split('.')[1])).id;
-    } catch (e) {
-        console.error("Token parsing error", e);
-    }
+    // UI Helper to find me/opponent accurately even in self-matching
+    const getPlayer = (isMe) => {
+        if (!match?.players) return null;
+        const target = match.players.find(p => {
+            const pId = (p.user?._id || p.user).toString();
+            const isMatch = pId === myId || p.socketId === myRoomSocketId;
+            return isMe ? isMatch : !isMatch;
+        });
+        return target;
+    };
 
-    const me = match?.players?.find(p => p.user.toString() === userId);
-    const opponent = match?.players?.find(p => p.user.toString() !== userId);
+    const me = getPlayer(true);
+    const opponent = getPlayer(false);
 
-    if (!me || !opponent) return (
+    if (!match || !me || !opponent) return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-mono">
             <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            Identifying Warriors...
+            Synchronizing Warriors...
         </div>
     );
 
@@ -226,7 +287,7 @@ export default function LiveBattle() {
                             className="absolute inset-0 bg-red-500/5 rounded-full"
                         />
                     </div>
-                    
+
                     {/* TIMER DISPLAY */}
                     <div className={`text-xl font-mono font-bold ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-300'}`}>
                         {formatTime(timeLeft)}
@@ -312,6 +373,15 @@ export default function LiveBattle() {
                             >
                                 {isRunning ? "Casting..." : "Cast Spell"}
                             </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 px-4 text-xs bg-green-600 hover:bg-green-500 border-none text-white"
+                                onClick={handleSubmit}
+                                disabled={isRunning}
+                            >
+                                Finish Duel
+                            </Button>
                         </div>
                     </div>
                     <div className="flex-1 relative font-mono text-sm">
@@ -320,6 +390,7 @@ export default function LiveBattle() {
                             onChange={(e) => setCode(e.target.value)}
                             className="w-full h-full bg-transparent text-slate-300 p-6 resize-none focus:outline-none scrollbar-hide"
                             spellCheck={false}
+                            readOnly={isWaiting}
                         />
                     </div>
                 </div>
@@ -354,7 +425,7 @@ export default function LiveBattle() {
                                     {output}
                                 </div>
                             )}
-                            
+
                             {/* Detailed Test Results */}
                             <div className="space-y-2">
                                 {testResults.map((res, i) => (
