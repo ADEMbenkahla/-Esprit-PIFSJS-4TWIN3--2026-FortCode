@@ -3,8 +3,16 @@ const Stage = require("../models/Stage");
 const Challenge = require("../models/Challenge");
 const UserStageProgress = require("../models/UserStageProgress");
 const { runChallengeCode } = require("../utils/runChallengeCode");
-const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
+const { fetchSonarStub, fetchAiFeedback, fetchExerciseHelp } = require("../utils/stageAnalysis");
 const gamificationService = require("../services/gamificationService");
+const { generateChallenges } = require("../services/aiStageGenerator");
+const { httpStatusForAiError } = require("../services/aiExerciseService");
+const { generateFallbackStageExercises } = require("../utils/fallbackStageExercises");
+const {
+  replaceStageChallenges,
+  detachChallengeFromStage,
+  clearStageIdForDeletedStage,
+} = require("../utils/stageChallengeSync");
 
 function toUserId(req) {
   return new mongoose.Types.ObjectId(String(req.user.id));
@@ -54,13 +62,84 @@ function recomputeProgressFields(progressDoc, stage) {
 exports.adminListStages = async (req, res) => {
   try {
     const stages = await Stage.find()
-      .sort({ category: 1, order: 1 })
+      .sort({ category: 1, level: 1, order: 1 })
       .populate("challenges", "title difficulty language")
       .populate("prerequisiteStageId", "title order");
     res.json(stages);
   } catch (err) {
     console.error(err);
+    if (err.code && String(err.code).startsWith("AI_")) {
+      return res.status(httpStatusForAiError(err)).json({
+        message: err.message,
+        code: err.code,
+        detail: err.detail || err.cause?.message,
+        helpUrl: err.helpUrl,
+      });
+    }
     res.status(500).json({ message: "Server error", detail: err.message });
+  }
+};
+
+/** Participant: request help (hint/explain/course) for a challenge */
+exports.getChallengeHelp = async (req, res) => {
+  try {
+    const { id: stageId, challengeId } = req.params;
+    const userId = toUserId(req);
+    const type = String(req.body?.type || "hint").trim().toLowerCase();
+
+    const HELP_COSTS = { hint: 5, explain: 10, course: 15 };
+    const xpCost = HELP_COSTS[type] ?? HELP_COSTS.hint;
+
+    const stage = await Stage.findById(stageId).populate("challenges");
+    if (!stage) return res.status(404).json({ message: "Stage not found" });
+
+    const access = await assertParticipantCanAccessStage(userId, stage);
+    if (!access.ok) {
+      return res.status(403).json({
+        message: "Stage locked",
+        prerequisiteTitle: access.prerequisiteTitle,
+      });
+    }
+
+    const challenge = (stage.challenges || []).find((c) => String(c?._id) === String(challengeId));
+    if (!challenge) {
+      return res.status(404).json({ message: "Challenge not found on this stage" });
+    }
+
+    let xp = null;
+    try {
+      xp = await gamificationService.spendXP(userId, xpCost);
+    } catch (e) {
+      if (e?.code === "INSUFFICIENT_XP") {
+        return res.status(400).json({
+          message: "Not enough XP",
+          code: "INSUFFICIENT_XP",
+          required: e.required,
+          current: e.current,
+        });
+      }
+      throw e;
+    }
+
+    const help = await fetchExerciseHelp({
+      type,
+      stageTitle: stage.title,
+      challengeTitle: challenge.title,
+      challengeDescription: challenge.description,
+      language: challenge.language,
+      starterCode: challenge.starterCode,
+      code: req.body?.code,
+    });
+
+    return res.json({
+      message: "Help generated",
+      help,
+      xp,
+      xpCost,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error", detail: err.message });
   }
 };
 
@@ -71,32 +150,86 @@ exports.createStage = async (req, res) => {
       title,
       description,
       difficulty,
+      level,
       order,
       category,
       prerequisiteStageId,
       challenges,
+      language = "javascript",
+      count = 5,
+      generateWithAi = false,
     } = req.body;
 
-    if (!title || order === undefined) {
-      return res.status(400).json({ message: "title and order are required" });
+    const normalizedLevel = Number(level ?? order);
+    if (!title || !Number.isFinite(normalizedLevel) || normalizedLevel < 1) {
+      return res.status(400).json({ message: "title and level (or order) are required" });
+    }
+
+    let prerequisite = null;
+    if (prerequisiteStageId) {
+      prerequisite = await Stage.findById(prerequisiteStageId).select("_id");
+      if (!prerequisite) {
+        return res.status(404).json({ message: "Prerequisite stage not found" });
+      }
     }
 
     const stage = new Stage({
       title,
       description: description || "",
       difficulty: difficulty || "easy",
-      order: Number(order),
+      level: normalizedLevel,
+      order: normalizedLevel,
       category: category || "training",
-      prerequisiteStageId: prerequisiteStageId || null,
-      challenges: Array.isArray(challenges) ? challenges : [],
+      prerequisiteStageId: prerequisite?._id || null,
+      challenges: [],
     });
     await stage.save();
+
+    if (Array.isArray(challenges) && challenges.length) await replaceStageChallenges(stage._id, challenges);
+
+    // AI generation is explicit (separate action in Admin UI), never forced by default.
+    if (generateWithAi) {
+      try {
+        const generated = await generateChallenges({
+          topic: title,
+          difficulty: difficulty || "easy",
+          language,
+          count: Number(count),
+        });
+
+        for (const g of generated) {
+          const ch = new Challenge({
+            title: g.title,
+            description: g.description || "",
+            difficulty: g.difficulty || difficulty || "easy",
+            type: "Stage",
+            stageId: stage._id,
+            language: g.language || language,
+            starterCode: g.starterCode || "",
+            testCases: Array.isArray(g.testCases) ? g.testCases : [],
+            category: g.category || "general",
+            constraints: g.constraints || "",
+            xpReward: g.xpReward ?? (difficulty === "easy" ? 50 : difficulty === "medium" ? 100 : 200),
+          });
+          await ch.save();
+          stage.challenges.push(ch._id);
+        }
+        await stage.save();
+      } catch (aiErr) {
+        console.error("AI generation failed (stage still created):", aiErr.message);
+      }
+    }
+
     const populated = await Stage.findById(stage._id)
       .populate("challenges")
       .populate("prerequisiteStageId", "title order");
     res.status(201).json(populated);
   } catch (err) {
     console.error(err);
+    if (["NOT_FOUND", "BAD_IDS", "DUPLICATE_IDS", "BATTLE_NOT_ALLOWED"].includes(err.code)) {
+      const status = err.code === "NOT_FOUND" ? 404 : 400;
+      return res.status(status).json({ message: err.message, code: err.code });
+    }
     res.status(500).json({ message: "Server error", detail: err.message });
   }
 };
@@ -106,16 +239,44 @@ exports.updateStage = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = { ...req.body };
-    if (updates.order !== undefined) updates.order = Number(updates.order);
+    const hasChallengesUpdate = Object.prototype.hasOwnProperty.call(updates, "challenges");
+    const challengeIds = hasChallengesUpdate ? updates.challenges : null;
+    const hasLevel = updates.level !== undefined;
+    const hasOrder = updates.order !== undefined;
+    if (hasLevel || hasOrder) {
+      const normalizedLevel = Number(hasLevel ? updates.level : updates.order);
+      if (!Number.isFinite(normalizedLevel) || normalizedLevel < 1) {
+        return res.status(400).json({ message: "level/order must be a number greater than 0" });
+      }
+      updates.level = normalizedLevel;
+      updates.order = normalizedLevel;
+    }
+    if (hasChallengesUpdate) delete updates.challenges;
     delete updates._id;
 
     const stage = await Stage.findByIdAndUpdate(id, { $set: updates }, { new: true })
       .populate("challenges")
       .populate("prerequisiteStageId", "title order");
     if (!stage) return res.status(404).json({ message: "Stage not found" });
+
+    if (hasChallengesUpdate) {
+      if (!Array.isArray(challengeIds)) {
+        return res.status(400).json({ message: "challenges must be an array of IDs" });
+      }
+      const synced = await replaceStageChallenges(id, challengeIds);
+      const populated = await Stage.findById(synced._id)
+        .populate("challenges")
+        .populate("prerequisiteStageId", "title order");
+      return res.json(populated);
+    }
+
     res.json(stage);
   } catch (err) {
     console.error(err);
+    if (["NOT_FOUND", "BAD_IDS", "DUPLICATE_IDS", "BATTLE_NOT_ALLOWED"].includes(err.code)) {
+      const status = err.code === "NOT_FOUND" ? 404 : 400;
+      return res.status(status).json({ message: err.message, code: err.code });
+    }
     res.status(500).json({ message: "Server error", detail: err.message });
   }
 };
@@ -126,6 +287,7 @@ exports.deleteStage = async (req, res) => {
     const { id } = req.params;
     const stage = await Stage.findByIdAndDelete(id);
     if (!stage) return res.status(404).json({ message: "Stage not found" });
+    await clearStageIdForDeletedStage(id);
     await UserStageProgress.deleteMany({ stageId: id });
     await Stage.updateMany({ prerequisiteStageId: id }, { $set: { prerequisiteStageId: null } });
     res.json({ message: "Stage deleted" });
@@ -143,22 +305,12 @@ exports.assignChallengesToStage = async (req, res) => {
     if (!Array.isArray(challengeIds)) {
       return res.status(400).json({ message: "challengeIds array required" });
     }
-    const stage = await Stage.findById(id);
-    if (!stage) return res.status(404).json({ message: "Stage not found" });
-
-    const ids = challengeIds.map((c) => new mongoose.Types.ObjectId(String(c)));
-    const count = await Challenge.countDocuments({ _id: { $in: ids } });
-    if (count !== ids.length) {
-      return res.status(400).json({ message: "One or more challenge IDs are invalid" });
-    }
-
-    stage.challenges = ids;
-    await stage.save();
+    const stage = await replaceStageChallenges(id, challengeIds);
 
     const progresses = await UserStageProgress.find({ stageId: id });
     for (const p of progresses) {
       p.completedChallenges = p.completedChallenges.filter((cid) =>
-        ids.some((i) => i.equals(cid))
+        stage.challenges.some((i) => i.equals(cid))
       );
       recomputeProgressFields(p, stage);
       await p.save();
@@ -168,6 +320,10 @@ exports.assignChallengesToStage = async (req, res) => {
     res.json(populated);
   } catch (err) {
     console.error(err);
+    if (err.code === "NOT_FOUND") return res.status(404).json({ message: err.message, code: err.code });
+    if (["BAD_IDS", "DUPLICATE_IDS", "BATTLE_NOT_ALLOWED"].includes(err.code)) {
+      return res.status(400).json({ message: err.message, code: err.code });
+    }
     res.status(500).json({ message: "Server error", detail: err.message });
   }
 };
@@ -179,6 +335,7 @@ exports.removeChallengeFromStage = async (req, res) => {
     const stage = await Stage.findById(id);
     if (!stage) return res.status(404).json({ message: "Stage not found" });
     const cid = new mongoose.Types.ObjectId(String(challengeId));
+    await detachChallengeFromStage(id, challengeId);
     stage.challenges = stage.challenges.filter((c) => !c.equals(cid));
     await stage.save();
 
@@ -209,7 +366,7 @@ exports.getMyStages = async (req, res) => {
     if (category) query.category = category;
 
     const stages = await Stage.find(query)
-      .sort({ order: 1 })
+      .sort({ level: 1, order: 1 })
       .populate("prerequisiteStageId", "title order")
       .populate("challenges", "title difficulty language");
 
@@ -403,19 +560,95 @@ exports.submitChallenge = async (req, res) => {
       fetchAiFeedback(code, challenge.title),
     ]);
 
-    if (!run.passed) {
-      return res.status(400).json({
-        message: "Tests did not pass",
-        testResults: run.testResults,
-        executionTimeMs: run.executionTimeMs,
-        sonar,
-        aiFeedback,
-      });
-    }
-
     let progress = await UserStageProgress.findOne({ userId, stageId });
     if (!progress) {
       progress = new UserStageProgress({ userId, stageId, completedChallenges: [], status: "available" });
+    }
+
+    if (!progress.failedAttemptsByChallenge) {
+      progress.failedAttemptsByChallenge = new Map();
+    }
+    if (!progress.lastCodeByChallenge) {
+      progress.lastCodeByChallenge = new Map();
+    }
+
+    const failKey = String(challenge._id);
+    const currentFails = Number(progress.failedAttemptsByChallenge.get(failKey) || 0);
+    const lastCode = progress.lastCodeByChallenge.get(failKey) || "";
+    const currentCode = String(code || "").trim();
+
+    // Check if code is meaningful (non-empty, not just whitespace)
+    const isMeaningfulCode = currentCode.length > 0;
+
+    // Check for duplicate submission to prevent spam
+    const isDuplicate = currentCode === lastCode;
+
+    if (!run.passed) {
+      // Only increment if code is meaningful and not a duplicate
+      if (isMeaningfulCode && !isDuplicate) {
+        const nextFails = currentFails + 1;
+        progress.failedAttemptsByChallenge.set(failKey, nextFails);
+        progress.lastCodeByChallenge.set(failKey, currentCode);
+        await progress.save();
+
+        // Calculate stuckLevel: 0=normal, 1=warning (3 fails), 2=struggling (5 fails), 3=critical (6+ fails)
+        let stuckLevel = 0;
+        if (nextFails >= 6) stuckLevel = 3;
+        else if (nextFails >= 5) stuckLevel = 2;
+        else if (nextFails >= 3) stuckLevel = 1;
+
+        // Backend decides if auto hint should trigger (stuckLevel >= 2 and meaningful code)
+        const autoHintTrigger = stuckLevel >= 2;
+        const submissionId = `${challengeId}-${Date.now()}`;
+
+        console.log("[STUCK DETECTOR] Failed submission - userId:", userId, "challengeId:", challengeId, "fails:", nextFails, "stuckLevel:", stuckLevel, "autoHintTrigger:", autoHintTrigger, "submissionId:", submissionId);
+
+        return res.status(400).json({
+          message: "Tests did not pass",
+          testResults: run.testResults,
+          executionTimeMs: run.executionTimeMs,
+          sonar,
+          aiFeedback,
+          isStuck: nextFails >= 3,
+          failedSubmissionsInRow: nextFails,
+          stuckLevel,
+          autoHintTrigger,
+          submissionId,
+        });
+      } else {
+        // Don't increment for empty or duplicate submissions
+        const nextFails = currentFails;
+        let stuckLevel = 0;
+        if (nextFails >= 6) stuckLevel = 3;
+        else if (nextFails >= 5) stuckLevel = 2;
+        else if (nextFails >= 3) stuckLevel = 1;
+
+        // Backend decides if auto hint should trigger (stuckLevel >= 2 and meaningful code)
+        const autoHintTrigger = stuckLevel >= 2;
+        const submissionId = `${challengeId}-${Date.now()}`;
+
+        console.log("[STUCK DETECTOR] Failed submission (no increment) - userId:", userId, "challengeId:", challengeId, "fails:", nextFails, "stuckLevel:", stuckLevel, "autoHintTrigger:", autoHintTrigger, "isDuplicate:", isDuplicate, "isMeaningfulCode:", isMeaningfulCode, "submissionId:", submissionId);
+
+        return res.status(400).json({
+          message: "Tests did not pass",
+          testResults: run.testResults,
+          executionTimeMs: run.executionTimeMs,
+          sonar,
+          aiFeedback,
+          isStuck: nextFails >= 3,
+          failedSubmissionsInRow: nextFails,
+          stuckLevel,
+          autoHintTrigger,
+          isDuplicate,
+          isMeaningfulCode,
+          submissionId,
+        });
+      }
+    }
+
+    // Passed: reset failure counter for this challenge.
+    if (currentFails > 0) {
+      progress.failedAttemptsByChallenge.set(failKey, 0);
     }
 
     const cidStr = challenge._id.toString();
@@ -449,6 +682,16 @@ exports.submitChallenge = async (req, res) => {
       nextStageUnlocked = next.length > 0;
     }
 
+    // Passed: reset failure counter and last code for this challenge.
+    if (currentFails > 0) {
+      progress.failedAttemptsByChallenge.set(failKey, 0);
+      progress.lastCodeByChallenge.set(failKey, currentCode);
+    }
+
+    console.log("[STUCK DETECTOR] Success submission - userId:", userId, "challengeId:", challengeId, "stuckLevel: 0", "autoHintTrigger: false");
+
+    const submissionId = `${challengeId}-${Date.now()}`;
+
     res.json({
       message: "Submission accepted",
       testResults: run.testResults,
@@ -456,13 +699,17 @@ exports.submitChallenge = async (req, res) => {
       output: run.outputSnapshot,
       sonar,
       aiFeedback,
+      isStuck: false,
+      failedSubmissionsInRow: 0,
+      stuckLevel: 0,
+      autoHintTrigger: false,
+      submissionId,
       progress: {
         status: progress.status,
         progressPercent: progress.progressPercent,
         completedChallenges: progress.completedChallenges,
         completedAt: progress.completedAt,
       },
-      stageCompleted: progress.status === "completed",
       stageCompleted: progress.status === "completed",
       xpReward: xpResult ? {
         xpAwarded: true,
@@ -518,6 +765,74 @@ exports.resetStageProgress = async (req, res) => {
     res.json({ message: "Stage progress reset" });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: "Server error", detail: err.message });
+  }
+};
+
+/** Admin: generate exercises for a stage using AI */
+exports.generateStageExercises = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+    const { id } = req.params;
+    const { count = 3, topic, difficulty = "easy", language = "javascript" } = req.body;
+
+    const stage = await Stage.findById(id);
+    if (!stage) return res.status(404).json({ message: "Stage not found" });
+
+    let generated = [];
+    let source = "ai";
+    let warning = null;
+    try {
+      generated = await generateChallenges({
+        topic: topic || stage.title,
+        difficulty,
+        language,
+        count: Number(count),
+      });
+    } catch (aiErr) {
+      generated = generateFallbackStageExercises({
+        topic: topic || stage.title,
+        difficulty,
+        language,
+        count: Number(count),
+      });
+      source = "fallback";
+      warning = aiErr.message || "AI generation failed; fallback drafts were generated.";
+    }
+
+    const created = [];
+    for (const g of generated) {
+      const ch = new Challenge({
+        title: g.title,
+        description: g.description || "",
+        difficulty: g.difficulty || difficulty,
+        type: "Stage",
+        stageId: stage._id,
+        language: g.language || language,
+        starterCode: g.starterCode || "",
+        testCases: Array.isArray(g.testCases) ? g.testCases : [],
+        category: g.category || "general",
+        constraints: g.constraints || "",
+        xpReward: g.xpReward || (difficulty === "easy" ? 50 : difficulty === "medium" ? 100 : 200),
+      });
+      await ch.save();
+      stage.challenges.push(ch._id);
+      created.push(ch);
+    }
+
+    await stage.save();
+    const populated = await Stage.findById(id).populate("challenges").populate("prerequisiteStageId", "title order");
+    res.status(201).json({ created, stage: populated, source, warning });
+  } catch (err) {
+    console.error(err);
+    if (err.code && String(err.code).startsWith("AI_")) {
+      return res.status(httpStatusForAiError(err)).json({
+        message: err.message,
+        code: err.code,
+        detail: err.detail || err.cause?.message,
+        helpUrl: err.helpUrl,
+      });
+    }
     res.status(500).json({ message: "Server error", detail: err.message });
   }
 };

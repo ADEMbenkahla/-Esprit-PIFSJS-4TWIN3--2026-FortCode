@@ -33,6 +33,18 @@ const userStageProgressSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    failedAttemptsByChallenge: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+
+    lastCodeByChallenge: {
+      type: Map,
+      of: String,
+      default: {},
+    },
   },
   { timestamps: true }
 );
