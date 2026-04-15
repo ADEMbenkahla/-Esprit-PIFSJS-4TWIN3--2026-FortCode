@@ -52,6 +52,10 @@ const challengeSchema = new mongoose.Schema(
     constraints: {
       type: String,
     },
+    xpReward: {
+      type: Number,
+      default: 100,
+    },
   },
   { timestamps: true }
 );

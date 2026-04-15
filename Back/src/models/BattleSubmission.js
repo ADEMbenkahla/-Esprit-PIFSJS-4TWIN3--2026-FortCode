@@ -82,6 +82,12 @@ const battleSubmissionSchema = new mongoose.Schema(
       totalTests: { type: Number, default: 0 },
     },
     submittedAt: { type: Date, default: null },
+    // Machine Learning Detection (User Story: human vs AI vs plagiarism)
+    mlDetection: {
+      prediction: { type: Number, enum: [0, 1, 2], default: null },
+      label: { type: String, default: "" }, // "Humain", "IA", "Plagiat"
+      confidence: { type: Number, default: null }
+    }
   },
   { timestamps: true }
 );

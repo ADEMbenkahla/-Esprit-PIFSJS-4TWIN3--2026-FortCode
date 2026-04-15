@@ -166,9 +166,9 @@ export default function RoleRequests() {
                   </div>
 
                   <div className="space-y-4">
-                    <div>
+                    <div className="w-full">
                       <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Justification:</span>
-                      <p className="text-gray-200 mt-1 leading-relaxed break-words">{request.justification}</p>
+                      <p className="text-gray-200 mt-1 leading-relaxed break-words whitespace-pre-wrap w-full">{request.justification}</p>
                     </div>
 
                     {request.proofDocument && (
@@ -192,7 +192,7 @@ export default function RoleRequests() {
                     {/* AI Scores Summary */}
                     {request.aiDecision && request.aiDecision !== 'NONE' && (
                       <div className="grid grid-cols-2 gap-4 p-4 bg-surface-dark/30 rounded-lg border border-purple-900/20">
-                        <div className="space-y-1">
+                        <div className="space-y-1 min-w-0">
                           <span className="text-xs text-gray-500 uppercase font-bold">Document Score</span>
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
@@ -220,12 +220,12 @@ export default function RoleRequests() {
                             </span>
                           </div>
                         </div>
-                        <div className="col-span-2 pt-2 border-t border-purple-900/10">
-                          <div className="flex items-start gap-2">
+                        <div className="col-span-2 pt-2 border-t border-purple-900/10 w-full min-w-0">
+                          <div className="flex items-start gap-2 w-full min-w-0">
                             <div className={`p-1 rounded flex-shrink-0 ${request.aiDecision === 'ACCEPT' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                               <Shield className="w-4 h-4" />
                             </div>
-                            <p className="text-sm text-gray-400 italic break-words overflow-hidden">
+                            <p className="text-sm text-gray-400 italic break-words flex-1 min-w-0">
                               AI Explanation: <span className="text-gray-200 not-italic">{request.aiExplanation}</span>
                             </p>
                           </div>
@@ -284,7 +284,7 @@ export default function RoleRequests() {
                           <MessageSquare className="w-4 h-4 text-primary" />
                           <span className="text-xs font-bold text-gray-400 uppercase">Decision Log:</span>
                         </div>
-                        <p className="text-sm text-gray-300 italic break-words overflow-hidden">{request.adminComment}</p>
+                        <p className="text-sm text-gray-300 italic break-words whitespace-pre-wrap w-full min-w-0">{request.adminComment}</p>
                       </div>
                     )}
                   </div>

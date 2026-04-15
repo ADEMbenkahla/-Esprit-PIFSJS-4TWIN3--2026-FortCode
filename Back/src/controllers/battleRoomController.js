@@ -8,6 +8,7 @@ const axios = require("axios");
 const sendEmail = require("../utils/sendEmail");
 const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
 const { runChallengeCode } = require("../utils/runChallengeCode");
+const { detectCodeOrigin } = require("../services/mlDetectionAgent");
 
 const getRecruiterId = (req) => req.user && (req.user.id || req.user._id);
 const getUserId = (req) => req.user && (req.user.id || req.user._id);
@@ -156,8 +157,9 @@ exports.generateExerciseDraft = async (req, res) => {
     const aiUrl = process.env.AI_EXERCISE_URL || "http://localhost:8000/generate-exercise";
 
     let draft = null;
+    let response = null;
     try {
-      const response = await axios.post(
+      response = await axios.post(
         aiUrl,
         { prompt, difficulty, language, expectedFunctions, criteria, randomize },
         { timeout: 20000, validateStatus: () => true }
@@ -174,11 +176,21 @@ exports.generateExerciseDraft = async (req, res) => {
       });
     }
 
+    if (!response || response.status < 200 || response.status >= 300) {
+      return res.status(502).json({
+        message: response?.data?.message || `AI service returned status ${response?.status}`,
+        source: "ai",
+        aiEndpoint: aiUrl,
+        details: response?.data || null,
+      });
+    }
+
     if (!draft || typeof draft !== "object") {
       return res.status(502).json({
         message: "AI returned no exercise draft",
         source: "ai",
         aiEndpoint: aiUrl,
+        details: response?.data || null,
       });
     }
 
@@ -275,12 +287,12 @@ exports.createBattleRoom = async (req, res) => {
 
     const participantsByEmail = normalizedInviteEmails.length
       ? await User.find({
-          email: { $in: normalizedInviteEmails },
-          role: "participant",
-          isActive: true,
-        })
-          .select("_id email")
-          .lean()
+        email: { $in: normalizedInviteEmails },
+        role: "participant",
+        isActive: true,
+      })
+        .select("_id email")
+        .lean()
       : [];
 
     const participantIdSet = new Set([
@@ -303,12 +315,12 @@ exports.createBattleRoom = async (req, res) => {
 
     const statementAttachment = req.file
       ? {
-          fileName: req.file.filename,
-          originalName: req.file.originalname,
-          mimeType: req.file.mimetype,
-          size: req.file.size,
-          url: `/uploads/battle-statements/${req.file.filename}`,
-        }
+        fileName: req.file.filename,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        url: `/uploads/battle-statements/${req.file.filename}`,
+      }
       : null;
 
     const room = await BattleRoom.create({
@@ -778,8 +790,8 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
     const refreshed = alreadyCounted
       ? room
       : await BattleRoom.findById(room._id)
-          .populate("recruiter", "username nickname")
-          .lean();
+        .populate("recruiter", "username nickname")
+        .lean();
 
     const submission = await BattleSubmission.findOne({
       battleRoom: refreshed._id,
@@ -992,6 +1004,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
       participantId,
       projectName: `${room.title || "battle-room"}-visitor-${participantId}`,
     });
+    const mlDetection = await detectCodeOrigin(code);
     const finalScore = computeFinalScore({
       qualityScore: analysis.qualityScore,
       correctnessScore: correctness.correctnessScore,
@@ -1032,6 +1045,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           qualityGrade: analysis.qualityGrade,
           correctnessScore: correctness.correctnessScore,
           finalScore,
+          mlDetection,
           offTopic,
           qualityIssues: analysis.qualityIssues,
           securityAlerts: analysis.securityAlerts,

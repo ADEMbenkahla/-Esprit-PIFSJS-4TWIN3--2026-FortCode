@@ -159,4 +159,12 @@ export const adminChallengesApi = {
     remove: (id: string) => api.delete(`/challenges/${id}`),
 };
 
+export const getDuelMatchDetails = (matchId: string) => {
+    return api.get(`/matches/${matchId}`);
+};
+
+export const getCurrentMatch = () => {
+    return api.get('/matches/current');
+};
+
 export default api;

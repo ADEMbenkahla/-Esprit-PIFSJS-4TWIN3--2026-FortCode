@@ -24,6 +24,12 @@ export function Home() {
         if (response.ok) {
           const data = await response.json();
           setUserRole(data.user?.role);
+        } else if (response.status === 401) {
+          console.warn("🔐 Session Invalid/Expired (401 at Home). Cleaning up...");
+          sessionStorage.removeItem("token");
+          localStorage.removeItem("token");
+          window.dispatchEvent(new Event('tokenChanged'));
+          // The FrontOfficeOnlyRoute guard in App.jsx will automatically redirect us since the token is now null
         }
       } catch (error) {
         console.error("Error fetching user role:", error);

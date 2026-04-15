@@ -6,9 +6,10 @@ import { io } from 'socket.io-client';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import Swal from 'sweetalert2';
-import { clearStoredAuth, decodeJwtPayload, getStoredToken, isTokenExpired } from '../../../../services/token';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
+
+import { getDuelMatchDetails } from '../../../../services/api';
 
 export default function LiveBattle() {
     const { matchId } = useParams();
@@ -24,26 +25,62 @@ export default function LiveBattle() {
     const [health, setHealth] = useState(100);
     const [opponentHealth, setOpponentHealth] = useState(100);
     const [output, setOutput] = useState("");
+    const [testResults, setTestResults] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
+    const [isWaiting, setIsWaiting] = useState(false);
     const [winner, setWinner] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(210); // 3:30 in seconds
+    const [myId, setMyId] = useState("");
+    const [myRoomSocketId, setMyRoomSocketId] = useState("");
+
+    const loadMatchData = useCallback(async () => {
+        try {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+            const decoded = JSON.parse(atob(token.split('.')[1]));
+            const userId = decoded.id;
+            setMyId(userId);
+
+            const { data } = await getDuelMatchDetails(matchId);
+            if (data && data.match) {
+                console.log("🎮 Match data loaded via API:", data.match);
+                setMatch(data.match);
+
+                // Initial timer setup
+                if (data.match.status === "completed") {
+                    setWinner(data.match.winner);
+                    setTimeLeft(0);
+                } else if (data.match.startedAt) {
+                    const start = new Date(data.match.startedAt).getTime();
+                    const now = Date.now();
+                    const elapsed = Math.floor((now - start) / 1000);
+                    const remaining = Math.max(0, 210 - elapsed);
+                    setTimeLeft(remaining);
+                    console.log(`⏱️ Timer synced: ${remaining}s left`);
+                }
+
+                if (data.match.challenge?.data?.[language]) {
+                    setCode(data.match.challenge.data[language].starterCode);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load match data", error);
+        }
+    }, [matchId, language]);
 
     useEffect(() => {
-        const token = getStoredToken();
-        if (!token || isTokenExpired(token)) {
-            clearStoredAuth();
-            navigate('/');
-            return;
-        }
+        loadMatchData();
 
-        const newSocket = io(SOCKET_URL, { auth: { token }, reconnection: false });
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const newSocket = io(SOCKET_URL, { auth: { token } });
 
-        // Register listeners FIRST
+        newSocket.on("connect", () => {
+            console.log("Connected as socket:", newSocket.id);
+            setMyRoomSocketId(newSocket.id);
+            newSocket.emit("joinMatch", { matchId, roomId });
+        });
+
         newSocket.on("matchFound", ({ match }) => {
-            console.log("🎮 Match data received:", match);
             setMatch(match);
-            if (match.challenge?.data?.[language]) {
-                setCode(match.challenge.data[language].starterCode);
-            }
         });
 
         newSocket.on("opponentCodeUpdate", ({ code }) => {
@@ -52,68 +89,138 @@ export default function LiveBattle() {
 
         newSocket.on("opponentBattleEvent", ({ event, data }) => {
             if (event === "damageTaken") {
-                setHealth(data.health);
-                setOutput(`⚠️ INCANTATION DETECTED: Opponent dealt damage!`);
+                // Update health based on who took damage
+                if (data.targetId === userId) {
+                    setHealth(data.newHealth);
+                    setOutput(`⚠️ INCANTATION DETECTED: Opponent struck you for ${data.damage} DMG!`);
+                } else {
+                    setOpponentHealth(data.newHealth);
+                    setOutput(`✨ SPELL SUCCESSFUL: You dealt ${data.damage} DMG!`);
+                }
+
+                if (data.results) {
+                    setTestResults(data.results);
+                }
+            } else if (event === "spellFizzled") {
+                setOutput(`❌ SPELL FIZZLED: Your incantation was architecturally unsound.`);
+                if (data.results) {
+                    setTestResults(data.results);
+                }
             }
+        });
+
+        newSocket.on("waitingForOpponent", () => {
+            setIsWaiting(true);
+            Swal.fire({
+                title: "WAITING...",
+                text: "Your solution is valid. Waiting for your opponent to finish their work.",
+                icon: "info",
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: "#0f172a",
+                color: "#fff",
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+
+        newSocket.on("playerFinished", ({ username }) => {
+            console.log(`${username} has finished the duel.`);
         });
 
         newSocket.on("matchEnded", ({ winnerId, match: endMatch }) => {
+            setIsWaiting(false);
+            Swal.close(); // Close the waiting modal
             setWinner(winnerId);
-            const payload = decodeJwtPayload(token);
-            const isMe = payload && winnerId === payload.id;
+            setMatch(endMatch); // Update match to get final ML results
+
+            const isMe = winnerId === myId;
+            // Use socketId to find MY specific player entry in the match
+            const myPlayer = endMatch.players.find(p => p.socketId === newSocket.id);
+            const mlFeedback = myPlayer?.mlDetection?.label || "Unknown";
+            const mlClass = myPlayer?.mlDetection?.prediction === 0 ? "text-green-400" : (myPlayer?.mlDetection?.prediction === 1 ? "text-yellow-400" : "text-red-400");
+
             Swal.fire({
-                title: isMe ? "GLORIOUS VICTORY!" : "DEFEAT...",
-                text: isMe ? "You have crushed your opponent!" : "The recursion was too strong for you.",
-                icon: isMe ? "success" : "error",
-                confirmButtonText: "Return to Arena"
+                title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
+                html: `
+                    <div class="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-2 font-mono">ML Origin Classification</div>
+                        <div class="text-2xl font-bold ${mlClass}">${mlFeedback}</div>
+                        <p class="text-[10px] text-slate-400 mt-2">The system analyzed your coding style and identified it as ${mlFeedback.toLowerCase()}.</p>
+                    </div>
+                `,
+                text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired. It's a draw." : "The recursion was too strong for you."),
+                icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
+                confirmButtonText: "Return to Arena",
+                background: "#0f172a",
+                color: "#fff"
             }).then(() => navigate('/arena'));
         });
 
-        newSocket.on("connect_error", (error) => {
-            const message = (error && error.message) || "Socket connection failed";
-            if (message.toLowerCase().includes("unauthorized")) {
-                clearStoredAuth();
-                navigate('/');
-            }
-        });
-
-        // Then handle connection
         newSocket.on("connect", () => {
-            console.log("🔌 Connected to socket, joining match...");
             newSocket.emit("joinMatch", { matchId, roomId });
         });
 
         setSocket(newSocket);
         return () => newSocket.disconnect();
-    }, [matchId, roomId, navigate]);
+    }, [matchId, roomId, navigate, loadMatchData, myId]);
+
+    // Timer Interval
+    useEffect(() => {
+        if (!match || winner) return;
+
+        const interval = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 0) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [match, winner]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleRun = useCallback(() => {
+        if (!socket) return;
         setIsRunning(true);
-        setOutput("⚡ Casting spell...");
+        setOutput("⚡ Channeling code magic...");
 
-        // Simple mock execution
-        setTimeout(() => {
-            const fakeSuccess = Math.random() > 0.3; // 70% chance of success for demo
-            if (fakeSuccess) {
-                const newOppHealth = Math.max(0, opponentHealth - 25);
-                setOpponentHealth(newOppHealth);
-                setOutput("✅ SPELL SUCCESSFUL!\n> Opponent took 25 damage.");
-                socket.emit("battleEvent", { roomId, event: "damageTaken", data: { health: newOppHealth } });
+        socket.emit("executeIncantation", {
+            matchId,
+            roomId,
+            code,
+            language
+        });
 
-                if (newOppHealth <= 0) {
-                    // I win
-                    const currentToken = getStoredToken();
-                    const payload = currentToken ? decodeJwtPayload(currentToken) : null;
-                    if (payload && payload.id) {
-                        socket.emit("matchResult", { roomId, matchId, winnerId: payload.id });
-                    }
-                }
-            } else {
-                setOutput("❌ SPELL FIZZLED.\n> Syntax error in your incantation.");
-            }
-            setIsRunning(false);
-        }, 1500);
-    }, [opponentHealth, matchId, roomId, socket]);
+        // We reset isRunning after a short delay or when we receive the event
+        setTimeout(() => setIsRunning(false), 2000);
+    }, [code, language, matchId, roomId, socket]);
+
+    const handleSubmit = useCallback(() => {
+        console.log("SUBMIT BUTTON CLICKED!");
+        if (!socket) return;
+
+        const confirmed = window.confirm("FINALIZE SUBMISSION? This will end the match and submit your final solution for analysis.");
+
+        if (confirmed) {
+            console.log("SUBMISSION CONFIRMED, EMITTING...");
+            socket.emit("submitMatch", {
+                matchId,
+                roomId,
+                code,
+                language
+            });
+        }
+    }, [code, language, matchId, roomId, socket]);
 
     useEffect(() => {
         if (socket && code) {
@@ -128,17 +235,24 @@ export default function LiveBattle() {
         </div>
     );
 
-    const token = getStoredToken();
-    const tokenPayload = token ? decodeJwtPayload(token) : null;
-    const userId = tokenPayload && tokenPayload.id ? String(tokenPayload.id) : "";
+    // UI Helper to find me/opponent accurately even in self-matching
+    const getPlayer = (isMe) => {
+        if (!match?.players) return null;
+        const target = match.players.find(p => {
+            const pId = (p.user?._id || p.user).toString();
+            const isMatch = pId === myId || p.socketId === myRoomSocketId;
+            return isMe ? isMatch : !isMatch;
+        });
+        return target;
+    };
 
-    const me = match?.players?.find(p => p.user.toString() === userId);
-    const opponent = match?.players?.find(p => p.user.toString() !== userId);
+    const me = getPlayer(true);
+    const opponent = getPlayer(false);
 
-    if (!me || !opponent) return (
+    if (!match || !me || !opponent) return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-mono">
             <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            Identifying Warriors...
+            Synchronizing Warriors...
         </div>
     );
 
@@ -173,6 +287,12 @@ export default function LiveBattle() {
                             className="absolute inset-0 bg-red-500/5 rounded-full"
                         />
                     </div>
+
+                    {/* TIMER DISPLAY */}
+                    <div className={`text-xl font-mono font-bold ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-300'}`}>
+                        {formatTime(timeLeft)}
+                    </div>
+
                     <button
                         onClick={() => {
                             Swal.fire({
@@ -253,6 +373,15 @@ export default function LiveBattle() {
                             >
                                 {isRunning ? "Casting..." : "Cast Spell"}
                             </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="h-8 px-4 text-xs bg-green-600 hover:bg-green-500 border-none text-white"
+                                onClick={handleSubmit}
+                                disabled={isRunning}
+                            >
+                                Finish Duel
+                            </Button>
                         </div>
                     </div>
                     <div className="flex-1 relative font-mono text-sm">
@@ -261,6 +390,7 @@ export default function LiveBattle() {
                             onChange={(e) => setCode(e.target.value)}
                             className="w-full h-full bg-transparent text-slate-300 p-6 resize-none focus:outline-none scrollbar-hide"
                             spellCheck={false}
+                            readOnly={isWaiting}
                         />
                     </div>
                 </div>
@@ -281,12 +411,43 @@ export default function LiveBattle() {
 
                     {/* Battle Logs */}
                     <Card variant="stone" className="flex-1 bg-slate-950 flex flex-col border-slate-800 overflow-hidden">
-                        <div className="p-3 border-b border-slate-800 text-[10px] text-slate-500 font-mono uppercase tracking-widest">
-                            Battle Logs
+                        <div className="p-3 border-b border-slate-800 text-[10px] text-slate-500 font-mono uppercase tracking-widest flex justify-between items-center">
+                            <span>Battle Logs</span>
+                            {testResults.length > 0 && (
+                                <span className="text-[9px] text-blue-400">
+                                    {testResults.filter(r => r.passed).length}/{testResults.length} Tests Passed
+                                </span>
+                            )}
                         </div>
                         <div className="flex-1 p-4 font-mono text-xs overflow-y-auto">
-                            {output && <div className="text-blue-400 mb-2">{output}</div>}
-                            <div className="text-slate-600 italic">Match started. Fight for your life!</div>
+                            {output && (
+                                <div className={`mb-4 pb-2 border-b border-white/5 ${output.includes('✨') ? 'text-green-400' : 'text-blue-400'}`}>
+                                    {output}
+                                </div>
+                            )}
+
+                            {/* Detailed Test Results */}
+                            <div className="space-y-2">
+                                {testResults.map((res, i) => (
+                                    <div key={i} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            {res.passed ? (
+                                                <CheckCircle className="w-3 h-3 text-green-500" />
+                                            ) : (
+                                                <AlertTriangle className="w-3 h-3 text-red-500" />
+                                            )}
+                                            <span className="text-slate-300 truncate max-w-[150px]">{res.name}</span>
+                                        </div>
+                                        {!res.passed && (
+                                            <span className="text-[10px] text-red-400/50 italic">Failed</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {testResults.length === 0 && !output && (
+                                <div className="text-slate-600 italic">Match started. Fight for your life!</div>
+                            )}
                         </div>
                     </Card>
                 </div>

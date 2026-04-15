@@ -100,7 +100,7 @@ export default function Armory() {
               className="w-32 h-32 rounded-full border-4 overflow-hidden"
               style={{ ...accentBorderStyle, ...accentShadowStyle }}
             >
-              <img src={avatar || "https://ui-avatars.com/api/?name=Commander&background=0f172a&color=3b82f6&size=128"} alt="Avatar" />
+              <img src={avatar || `https://ui-avatars.com/api/?name=${userData?.username || "Player"}&background=0f172a&color=3b82f6&size=128`} alt="Avatar" />
             </div>
             <div
               className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full border-4 border-slate-900 flex items-center justify-center text-slate-900 font-bold"
@@ -113,7 +113,7 @@ export default function Armory() {
           <div className="flex-1 w-full">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-4">
               <div>
-                <h1 className="text-4xl font-serif font-bold mb-2 text-white">Commander <span style={accentStyle}>{nickname || userData?.username || "Player"}</span></h1>
+                <h1 className="text-4xl font-serif font-bold mb-2 text-white"><span style={accentStyle}>{nickname || userData?.username || "Player"}</span></h1>
                 <p className="text-slate-400 font-mono flex items-center gap-2">
                   <Shield className="w-4 h-4" style={accentStyle} />
                   Member of the Royal Guard

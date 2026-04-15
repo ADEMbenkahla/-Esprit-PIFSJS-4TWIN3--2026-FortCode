@@ -110,12 +110,12 @@ function runSonarScanner({ cwd, env }) {
   return new Promise(async (resolve) => {
     const attempts = process.platform === "win32"
       ? [
-          () => runOne("cmd.exe", ["/d", "/s", "/c", "sonar-scanner"]),
-          () => runOne("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "sonar-scanner"]),
-        ]
+        () => runOne("cmd.exe", ["/d", "/s", "/c", "sonar-scanner"]),
+        () => runOne("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "sonar-scanner"]),
+      ]
       : [
-          () => runOne("sonar-scanner", []),
-        ];
+        () => runOne("sonar-scanner", []),
+      ];
 
     const errors = [];
     for (const attempt of attempts) {
@@ -241,8 +241,8 @@ async function fetchSonarCloudProjectAnalysis(projectKeyOverride) {
 async function fetchSonarStub(code, language, context = {}) {
   const { token, organization, branch, baseUrl, fallbackProjectKey } = getSonarConfig();
 
-  const dynamicProjectKey = context?.participantId && context?.roomId
-    ? safeSlug(`fortcode-${organization || "org"}-room-${context.roomId}-visitor-${context.participantId}`)
+  const dynamicProjectKey = context?.participantId && (context?.roomId || context?.stageId)
+    ? safeSlug(`fortcode-${organization || "org"}-${context.roomId ? 'room' : 'stage'}-${context.roomId || context.stageId}-visitor-${context.participantId}`)
     : null;
   const projectKey = dynamicProjectKey || fallbackProjectKey;
 
