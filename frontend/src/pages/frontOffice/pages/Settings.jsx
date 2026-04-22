@@ -456,7 +456,7 @@ export default function Settings() {
                         <img src={avatar} alt="Avatar preview" className="w-full h-full object-cover" />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-100">{username || 'Commander'}</p>
+                        <p className="font-semibold text-slate-100">{username || 'Player'}</p>
                         <p className="text-xs text-slate-400">Your display name</p>
                       </div>
                     </div>

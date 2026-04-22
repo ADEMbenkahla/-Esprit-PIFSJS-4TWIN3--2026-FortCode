@@ -45,6 +45,16 @@ const userStageProgressSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
+    starsByChallenge: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+    lastSubmissionReport: {
+      type: Map,
+      of: Object, // Stores { fullAiAnalysis, sonar, executionTimeMs, output, code }
+      default: {},
+    },
   },
   { timestamps: true }
 );

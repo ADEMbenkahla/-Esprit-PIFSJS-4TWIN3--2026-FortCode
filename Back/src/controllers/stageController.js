@@ -13,6 +13,7 @@ const {
   detachChallengeFromStage,
   clearStageIdForDeletedStage,
 } = require("../utils/stageChallengeSync");
+const aiAnalysisService = require("../services/aiAnalysisService");
 
 function toUserId(req) {
   return new mongoose.Types.ObjectId(String(req.user.id));
@@ -411,13 +412,24 @@ exports.getMyStages = async (req, res) => {
         progressPercent = prog.progressPercent;
       }
 
+      const stageObj = stage.toObject();
+      let totalStars = 0;
+      if (stageObj.challenges) {
+        stageObj.challenges = stageObj.challenges.map((c) => {
+          const stars = prog?.starsByChallenge?.get(c._id.toString()) || 0;
+          totalStars += stars;
+          return { ...c, stars };
+        });
+      }
+
       enriched.push({
-        ...stage.toObject(),
+        ...stageObj,
         progress: {
           status: participantStatus,
           progressPercent,
           completedChallenges,
           completedAt,
+          totalStars,
         },
         participantStatus,
         prerequisiteTitle: access.prerequisiteTitle,
@@ -462,27 +474,33 @@ exports.getStageDetail = async (req, res) => {
 
     const challenges = (stage.challenges || [])
       .filter(Boolean)
-      .map((c) => ({
-        ...c.toObject(),
-        completed: completedSet.has(c._id.toString()),
-      }));
+      .map((c) => {
+        const cid = c._id.toString();
+        const savedReport = progress?.lastSubmissionReport?.get(cid);
+        return {
+          ...c.toObject(),
+          completed: completedSet.has(cid),
+          stars: progress?.starsByChallenge?.get(cid) || 0,
+          savedReport: savedReport || null,
+        };
+      });
 
     res.json({
       ...stage.toObject(),
       challenges,
       progress: progress
         ? {
-            status: progress.status,
-            progressPercent: progress.progressPercent,
-            completedChallenges: progress.completedChallenges,
-            completedAt: progress.completedAt,
-          }
+          status: progress.status,
+          progressPercent: progress.progressPercent,
+          completedChallenges: progress.completedChallenges,
+          completedAt: progress.completedAt,
+        }
         : {
-            status: "available",
-            progressPercent: 0,
-            completedChallenges: [],
-            completedAt: null,
-          },
+          status: "available",
+          progressPercent: 0,
+          completedChallenges: [],
+          completedAt: null,
+        },
     });
   } catch (err) {
     console.error(err);
@@ -518,7 +536,7 @@ exports.runChallenge = async (req, res) => {
       passed: run.passed,
       testResults: run.testResults,
       executionTimeMs: run.executionTimeMs,
-      output: run.outputSnapshot,
+      outputSnapshot: run.outputSnapshot,
     });
   } catch (err) {
     console.error(err);
@@ -560,6 +578,9 @@ exports.submitChallenge = async (req, res) => {
       fetchAiFeedback(code, challenge.title),
     ]);
 
+    // Enhanced AI Analysis (Bugs, Explanation, Recommendations)
+    const fullAiAnalysis = await aiAnalysisService.performFullAnalysis(code, challenge.language, challenge.title);
+
     let progress = await UserStageProgress.findOne({ userId, stageId });
     if (!progress) {
       progress = new UserStageProgress({ userId, stageId, completedChallenges: [], status: "available" });
@@ -588,7 +609,16 @@ exports.submitChallenge = async (req, res) => {
       if (isMeaningfulCode && !isDuplicate) {
         const nextFails = currentFails + 1;
         progress.failedAttemptsByChallenge.set(failKey, nextFails);
-        progress.lastCodeByChallenge.set(failKey, currentCode);
+        const cidStr = challengeId.toString();
+        if (!progress.lastSubmissionReport) progress.lastSubmissionReport = new Map();
+        progress.lastSubmissionReport.set(cidStr, {
+          fullAiAnalysis,
+          sonar,
+          executionTimeMs: run.executionTimeMs,
+          output: run.outputSnapshot,
+          code: currentCode
+        });
+
         await progress.save();
 
         // Calculate stuckLevel: 0=normal, 1=warning (3 fails), 2=struggling (5 fails), 3=critical (6+ fails)
@@ -607,8 +637,10 @@ exports.submitChallenge = async (req, res) => {
           message: "Tests did not pass",
           testResults: run.testResults,
           executionTimeMs: run.executionTimeMs,
+          outputSnapshot: run.outputSnapshot,
           sonar,
           aiFeedback,
+          fullAiAnalysis,
           isStuck: nextFails >= 3,
           failedSubmissionsInRow: nextFails,
           stuckLevel,
@@ -635,6 +667,7 @@ exports.submitChallenge = async (req, res) => {
           executionTimeMs: run.executionTimeMs,
           sonar,
           aiFeedback,
+          fullAiAnalysis,
           isStuck: nextFails >= 3,
           failedSubmissionsInRow: nextFails,
           stuckLevel,
@@ -646,14 +679,33 @@ exports.submitChallenge = async (req, res) => {
       }
     }
 
-    // Passed: reset failure counter for this challenge.
-    if (currentFails > 0) {
-      progress.failedAttemptsByChallenge.set(failKey, 0);
-    }
-
+    // If we reach here, tests passed.
     const cidStr = challenge._id.toString();
     const isNewCompletion = !progress.completedChallenges.some((c) => c.toString() === cidStr);
-    
+
+    // Calculate stars based on total attempts (failed attempts before success + 1)
+    const totalAttempts = currentFails + 1;
+    let stars = 1;
+    if (totalAttempts === 1) stars = 3;
+    else if (totalAttempts <= 3) stars = 2;
+
+    // Save stars for this challenge (only if it's the first completion or better stars - though stars are usually fixed on first success in most systems, but here we update)
+    if (!progress.starsByChallenge) progress.starsByChallenge = new Map();
+    const existingStars = progress.starsByChallenge.get(cidStr) || 0;
+    if (stars > existingStars) {
+      progress.starsByChallenge.set(cidStr, stars);
+    }
+
+    // Save persistent report
+    if (!progress.lastSubmissionReport) progress.lastSubmissionReport = new Map();
+    progress.lastSubmissionReport.set(cidStr, {
+      fullAiAnalysis,
+      sonar,
+      executionTimeMs: run.executionTimeMs,
+      output: run.outputSnapshot,
+      code: currentCode
+    });
+
     if (isNewCompletion) {
       progress.completedChallenges.push(challenge._id);
     }
@@ -694,11 +746,15 @@ exports.submitChallenge = async (req, res) => {
 
     res.json({
       message: "Submission accepted",
+      passed: true,
+      xpAwarded: xpResult?.xpAdded || 0,
+      xpReward: challenge.xpReward || 100,
       testResults: run.testResults,
       executionTimeMs: run.executionTimeMs,
-      output: run.outputSnapshot,
+      outputSnapshot: run.outputSnapshot,
       sonar,
       aiFeedback,
+      fullAiAnalysis,
       isStuck: false,
       failedSubmissionsInRow: 0,
       stuckLevel: 0,
@@ -834,5 +890,25 @@ exports.generateStageExercises = async (req, res) => {
       });
     }
     res.status(500).json({ message: "Server error", detail: err.message });
+  }
+};
+
+/** Participant: get granular AI explanation for code */
+exports.getAiExplanation = async (req, res) => {
+  try {
+    const { code, language, level, challengeId } = req.body;
+    if (!code) return res.status(400).json({ message: "Code is required" });
+
+    let challengeDescription = "";
+    if (challengeId) {
+      const challenge = await Challenge.findById(challengeId);
+      if (challenge) challengeDescription = challenge.description;
+    }
+
+    const analysis = await aiAnalysisService.performFullAnalysis(code, language || "javascript", challengeDescription);
+    res.json(analysis);
+  } catch (err) {
+    console.error("AI Explanation Error:", err);
+    res.status(500).json({ message: "AI Analysis failed", detail: err.message });
   }
 };

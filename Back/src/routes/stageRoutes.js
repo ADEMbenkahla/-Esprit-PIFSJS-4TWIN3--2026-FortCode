@@ -22,6 +22,7 @@ router.post("/:id/challenges/:challengeId/submit", ...participant, stage.submitC
 router.post("/:id/challenges/:challengeId/complete", ...participant, stage.completeChallenge);
 router.post("/:id/reset", ...participant, stage.resetStageProgress);
 
+router.post("/ai/explain", ...participant, stage.getAiExplanation);
 router.get("/:id", authMiddleware, stage.getStageDetail);
 
 module.exports = router;

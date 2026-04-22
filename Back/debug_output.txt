@@ -1,0 +1,169 @@
+[dotenv@17.2.4] injecting env (16) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+Connected to DB
+CHALLENGES IN DB:
+- ID: 69dba5c16011029ab0778770 | Title: Sum of Two Numbers
+STAGES IN DB:
+- Stage: JavaScript Basics | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 1,
+  title: 'JS: Hello World',
+  description: "Create a function 'hello' that returns 'Hello World'.",
+  starterCode: 'function hello() {\n  // Your code here\n}',
+  tests: "return hello() === 'Hello World';",
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b0'),
+  testCases: []
+}, {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 2,
+  title: 'JS: Addition',
+  description: "Create a function 'add(a, b)' that returns a + b.",
+  starterCode: 'function add(a, b) {\n  // The sum of a and b\n}',
+  tests: 'return add(5, 10) === 15;',
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b1'),
+  testCases: []
+}
+- Stage: Python 101 | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 3,
+  title: 'PY: Hello Python',
+  description: "Create a function 'hello' that returns 'Python is cool'.",
+  starterCode: 'def hello():\n    # Your code here\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b3'),
+  testCases: []
+}, {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 4,
+  title: 'PY: Multiply',
+  description: "Create a function 'mult(a, b)' that returns a * b.",
+  starterCode: 'def mult(a, b):\n    # Return the product\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b4'),
+  testCases: []
+}
+- Stage: JS: Array Operations | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 5,
+  title: 'JS: Array Length',
+  description: "Create a function 'countElements(arr)' that returns the length of the array.",
+  starterCode: 'function countElements(arr) {\n  // return...? \n}',
+  tests: 'return countElements([1,2,3]) === 3;',
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b6'),
+  testCases: []
+}, {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 6,
+  title: 'JS: First Element',
+  description: "Create a function 'first(arr)' that returns the first element.",
+  starterCode: 'function first(arr) {\n  // Accessing index...\n}',
+  tests: 'return first([7, 8, 9]) === 7;',
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b7'),
+  testCases: []
+}
+- Stage: PY: Data Types | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 7,
+  title: 'PY: Addition',
+  description: "Create a function 'add(a, b)' that returns the sum of a and b.",
+  starterCode: 'def add(a, b):\n    # Python sum\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56b9'),
+  testCases: []
+}, {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 8,
+  title: 'PY: String Concatenation',
+  description: "Create a function 'greet(name)' that returns 'Hello ' + name.",
+  starterCode: 'def greet(name):\n    # Greeting logic\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56ba'),
+  testCases: []
+}
+- Stage: Blue Castle - Foundations | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 9,
+  title: 'JS: Array Architect',
+  description: "Create a function 'processData(arr)' that returns the sum of all EVEN numbers in the array.",
+  starterCode: 'function processData(arr) {\n  // Logic for the foundations\n}',
+  tests: 'return processData([1,2,3,4,6]) === 12;',
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56bc'),
+  testCases: []
+}
+- Stage: Red Castle - Intermediate | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 10,
+  title: 'PY: Square Number',
+  description: "Create a function 'square(n)' that returns the square of n.",
+  starterCode: 'def square(n):\n    # Perimeter calculation\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56be'),
+  testCases: []
+}
+- Stage: Brown Castle - Advanced | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 11,
+  title: 'PY: List Length',
+  description: "Create a function 'getLength(lst)' that returns the length of lst.",
+  starterCode: 'def getLength(lst):\n    # Measuring defenses\n    pass',
+  tests: '',
+  language: 'python',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56c0'),
+  testCases: []
+}
+- Stage: Purple Castle - Master | Linked IDs: {
+  difficulty: 'medium',
+  category: 'general',
+  type: 'Stage',
+  xpReward: 100,
+  id: 12,
+  title: 'JS: Performance Watcher',
+  description: "Create a function 'isPrime(n)' that returns true if n is prime.",
+  starterCode: 'function isPrime(n) {\n  // Optimize core loop\n}',
+  tests: 'return isPrime(7) === true && isPrime(10) === false;',
+  language: 'javascript',
+  _id: new ObjectId('69cfee8bf31d4a8f927a56c2'),
+  testCases: []
+}

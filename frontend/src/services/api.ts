@@ -142,6 +142,7 @@ export const stagesApi = {
     submit: (stageId: string, challengeId: string, code: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/submit`, { code }),
     complete: (stageId: string, challengeId: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/complete`),
     reset: (stageId: string) => api.post(`/stages/${stageId}/reset`),
+    explain: (code: string, language: string, level: string = 'simple', challengeId?: string) => api.post('/stages/ai/explain', { code, language, level, challengeId }),
 };
 
 export const adminStagesApi = {

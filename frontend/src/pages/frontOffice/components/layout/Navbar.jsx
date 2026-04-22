@@ -231,7 +231,7 @@ export function Navbar() {
         Swal.fire({
           icon: 'success',
           title: 'Logged Out',
-          text: 'See you soon, Commander!',
+          text: 'See you soon, Player!',
           timer: 1500,
           showConfirmButton: false,
           background: '#1a1a2e',
@@ -275,7 +275,7 @@ export function Navbar() {
           Swal.fire({
             icon: 'success',
             title: 'Progress Reset',
-            text: 'Your journey starts fresh, Commander!',
+            text: 'Your journey starts fresh, Player!',
             background: '#1a1a2e',
             color: '#fff',
             timer: 2000,
@@ -302,17 +302,17 @@ export function Navbar() {
 
       let htmlContent = '<div style="text-align: left; color: #fff;">';
       htmlContent += '<p style="margin-bottom: 15px; font-size: 16px;"><strong>✅ Your virtual room request has been approved!</strong></p>';
-      
+
       if (adminMessage) {
         htmlContent += `<p style="margin-bottom: 15px; color: #94a3b8;"><strong>Admin Message:</strong><br/>${adminMessage}</p>`;
       }
-      
+
       if (roomLink) {
         htmlContent += `<p style="margin-bottom: 15px;"><strong>Room:</strong><br/><span style="color: #94a3b8;">Join inside FortCode</span></p>`;
       } else {
         htmlContent += '<p style="margin-bottom: 15px; color: #fbbf24;">Room is being generated. Please try again in a moment.</p>';
       }
-      
+
       htmlContent += '</div>';
 
       const result = await Swal.fire({
@@ -434,7 +434,7 @@ export function Navbar() {
                 <span className="text-slate-100">FORT</span>
                 <span style={{ color: 'var(--accent-color)' }}>CODE</span>
               </span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest">Code Conqueror</span>
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest">Code Apprentice</span>
             </div>
           </NavLink>
         </div>
@@ -460,7 +460,7 @@ export function Navbar() {
                 onClick={handleResetLevels}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-600 text-rose-50 text-xs font-bold uppercase tracking-wide shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
               >
-                Reset Levels
+                Reset Progress
               </button>
               <Link
                 to="/castle"
@@ -473,91 +473,94 @@ export function Navbar() {
               <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-900/80 border border-slate-700 rounded-full">
                 <RankBadge rank={userData?.gamification?.rank || 'Iron'} level={userData?.gamification?.level || 1} size="sm" />
                 <span className="text-sm font-semibold text-slate-100">
-                  {nickname || 'Commander'}
+                  {nickname || 'Player'}
                 </span>
               </div>
 
               {/* Profile Dropdown - Desktop */}
               <div className="relative">
                 <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
-            >
-              <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
-            </button>
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
+                >
+                  <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                </button>
 
-            {showDropdown && (
-              <div className="absolute right-0 mt-3 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full border border-slate-700 overflow-hidden">
-                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
-                      {userData?.role === "recruiter" && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
-                          Recruiter
-                        </span>
-                      )}
-                      {userData?.role === "admin" && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
-                          Admin
-                        </span>
-                      )}
+                {showDropdown && (
+                  <div className="absolute right-0 mt-3 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-full border border-slate-700 overflow-hidden">
+                        <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-100 font-bold truncate">{nickname || 'Player'}</span>
+                          {userData?.role === "recruiter" && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
+                              Recruiter
+                            </span>
+                          )}
+                          {userData?.role === "admin" && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="text-slate-400 text-xs truncate">{userData?.email || 'user@fortcode.com'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
+
+                    <div className="bg-slate-950/50 rounded-lg p-2 mb-3 flex justify-center border border-slate-800">
+                      <RankBadge rank={userData?.gamification?.rank || 'Iron'} level={userData?.gamification?.level || 1} showLabel={true} size="md" />
+                    </div>
+
+                    <div className="h-px bg-slate-800 my-2" />
+
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          setProfileModalOpen(true);
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Update Profile</span>
+                      </button>
+                      <Link
+                        to="/settings"
+                        onClick={() => setShowDropdown(false)}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Settings</span>
+                      </Link>
+
+                      {userRole === "participant" && (
+                        <Link
+                          to="/request-recruiter"
+                          onClick={() => setShowDropdown(false)}
+                          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          <span>Become Recruiter</span>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="bg-slate-950/50 rounded-lg p-2 mb-3 flex justify-center border border-slate-800">
-                   <RankBadge rank={userData?.gamification?.rank || 'Iron'} level={userData?.gamification?.level || 1} showLabel={true} size="md" />
-                </div>
-
-                <div className="h-px bg-slate-800 my-2" />
-
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      setProfileModalOpen(true);
-                    }}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Update Profile</span>
-                  </button>
-                  <Link
-                    to="/settings"
-                    onClick={() => setShowDropdown(false)}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Settings</span>
-                  </Link>
-
-                  {userRole === "participant" && (
-                    <Link
-                      to="/request-recruiter"
-                      onClick={() => setShowDropdown(false)}
-                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>Become Recruiter</span>
-                    </Link>
-                  )}
-
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-          </div>
             </>
           ) : (
             <Link
@@ -575,8 +578,8 @@ export function Navbar() {
           {/* Profile Avatar - Mobile */}
           {userData && (
             <div className="w-8 h-8 rounded-full border-2 border-slate-700 overflow-hidden flex items-center justify-center bg-slate-800">
-              {userData?.avatar ? (
-                <img src={userData.avatar} alt="Profile" className="w-full h-full object-cover" />
+              {avatar ? (
+                <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <User className="w-4 h-4 text-slate-400" />
               )}
@@ -609,10 +612,13 @@ export function Navbar() {
               {/* User Info Section */}
               {userData ? (
                 <div className="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full border border-slate-700 overflow-hidden">
+                      <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    </div>
                     <div className="flex flex-col overflow-hidden">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-100 font-bold truncate">{nickname || 'Commander'}</span>
+                        <span className="text-slate-100 font-bold truncate">{nickname || 'Player'}</span>
                         {userData?.role === "recruiter" && (
                           <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded">
                             Recruiter
@@ -624,7 +630,7 @@ export function Navbar() {
                           </span>
                         )}
                       </div>
-                      <span className="text-slate-400 text-xs truncate">{userData?.email || 'commander@fortcode.com'}</span>
+                      <span className="text-slate-400 text-xs truncate">{userData?.email || 'user@fortcode.com'}</span>
                     </div>
                   </div>
                 </div>
@@ -641,7 +647,7 @@ export function Navbar() {
                 </div>
               )}
 
-              {/* Navigation Links — same core journey as participants; recruiters/admins get Dashboard first */}
+              {/* Navigation Links */}
               <div className="space-y-2 mb-4">
                 {(userData?.role === "recruiter" || userData?.role === "admin") && (
                   <MobileNavItem
@@ -669,7 +675,7 @@ export function Navbar() {
                   label="Arena"
                   onClick={handleMobileMenuClose}
                 />
-                
+
                 {userData && (
                   <MobileNavItem
                     to="/armory"
@@ -678,7 +684,7 @@ export function Navbar() {
                     onClick={handleMobileMenuClose}
                   />
                 )}
-                
+
                 <MobileNavItem
                   to="/settings"
                   icon={<Settings className="w-5 h-5" />}
@@ -705,30 +711,13 @@ export function Navbar() {
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-rose-600 text-rose-50 font-semibold shadow-[0_0_12px_rgba(244,63,94,0.45)] hover:bg-rose-500 transition-colors"
                 >
                   <Shield className="w-5 h-5" />
-                  <span>Reset Levels</span>
+                  <span>Reset Progress</span>
                 </button>
               </div>
-
-              <div className="space-y-2 mb-4">
-                {userRole === "participant" && (
-                  <Link
-                    to="/request-recruiter"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-colors"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    <span>Become Recruiter</span>
-                  </Link>
-                )}
-
-              </div>
-
-              <div className="h-px bg-slate-800 my-4" />
 
               {/* Profile Actions */}
               {userData && (
                 <div className="space-y-2">
-
                   <button
                     onClick={() => {
                       setProfileModalOpen(true);
@@ -736,7 +725,7 @@ export function Navbar() {
                     }}
                     className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-colors"
                   >
-                    <Settings className="w-5 h-5" />
+                    <User className="w-5 h-5" />
                     <span>Update Profile</span>
                   </button>
                   <button

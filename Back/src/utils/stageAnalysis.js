@@ -305,11 +305,12 @@ async function fetchSonarStub(code, language, context = {}) {
     bugs: 0,
     vulnerabilities: alerts.length > 0 ? 1 : 0,
     code_smells: Math.max(0, Math.ceil(lines / 20)),
-    security_rating: alerts.length > 0 ? 4 : 2,
-    reliability_rating: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "") ? 4 : 2,
-    sqale_rating: lines > 80 ? 4 : lines > 30 ? 3 : 2,
+    security_rating: alerts.length > 0 ? 4 : 1, // 1 is A
+    reliability_rating: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "") ? 4 : 1, // 1 is A
+    sqale_rating: lines > 80 ? 4 : lines > 30 ? 3 : 1, // 1 is A for short clean code
     security_hotspots_reviewed: 0,
     duplicated_lines_density: 0,
+    coverage: 100, // Small snippets assumed fully covered
   };
   const score = computeCompositeScore(heuristicMetrics);
 

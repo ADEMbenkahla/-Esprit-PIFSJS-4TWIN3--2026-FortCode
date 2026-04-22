@@ -30,13 +30,14 @@ import StageDetail from "./pages/frontOffice/pages/StageDetail";
 import ChallengeEditor from "./pages/frontOffice/pages/ChallengeEditor";
 import DuelLobby from "./pages/frontOffice/pages/DuelArena/DuelLobby";
 import LiveBattle from "./pages/frontOffice/pages/DuelArena/LiveBattle";
-import CommanderDashboard from "./pages/frontOffice/pages/CommanderDashboard";
+import UserDashboard from "./pages/frontOffice/pages/CommanderDashboard";
 import Armory from "./pages/frontOffice/pages/Armory";
 import Settings from "./pages/frontOffice/pages/Settings";
 import { UnityCastlePage } from "./pages/frontOffice/pages/UnityCastlePage";
 import VirtualRoom from "./pages/frontOffice/pages/VirtualRoom";
 import RequestRecruiterRole from "./pages/frontOffice/pages/RequestRecruiterRole";
 import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
+import { TrainingLevel } from "./pages/frontOffice/pages/TrainingLevel";
 import { Footer } from "./pages/frontOffice/components/layout/Footer";
 import { SidebarProvider } from "./context/SidebarContext";
 import { SettingsProvider, useSettings } from "./context/SettingsContext";
@@ -92,12 +93,12 @@ function AppContent() {
         <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />
         <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap /></FrontOfficeOnlyRoute>} />
         <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
-        <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><ChallengeEditor /></FrontOfficeOnlyRoute>} />
+        <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
         <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
         <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
         <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
         <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />
-        <Route path="/dashboard" element={<FrontOfficeOnlyRoute><CommanderDashboard /></FrontOfficeOnlyRoute>} />
+        <Route path="/dashboard" element={<FrontOfficeOnlyRoute><UserDashboard /></FrontOfficeOnlyRoute>} />
         <Route path="/armory" element={<FrontOfficeOnlyRoute><Armory /></FrontOfficeOnlyRoute>} />
         <Route path="/settings" element={<FrontOfficeOnlyRoute><Settings /></FrontOfficeOnlyRoute>} />
         <Route path="/castle" element={<FrontOfficeOnlyRoute><UnityCastlePage /></FrontOfficeOnlyRoute>} />
