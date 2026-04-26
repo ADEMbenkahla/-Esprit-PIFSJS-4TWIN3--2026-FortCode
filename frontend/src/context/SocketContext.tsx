@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { clearStoredAuth, getStoredToken, isTokenExpired } from '../services/token';
 
 interface SocketContextType {
     socket: Socket | null;
@@ -23,12 +24,23 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const socketRef = useRef<Socket | null>(null);
 
     const connect = useCallback((token: string) => {
+        if (!token || isTokenExpired(token)) {
+            clearStoredAuth();
+            setIsConnected(false);
+            setSocket(null);
+            if (window.location.pathname !== '/') {
+                window.location.href = '/';
+            }
+            return;
+        }
+
         if (socketRef.current) {
             socketRef.current.disconnect();
         }
 
         const newSocket = io('http://localhost:5000', {
-            auth: { token }
+            auth: { token },
+            reconnection: false,
         });
 
         newSocket.on('connect', () => {
@@ -39,6 +51,17 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         newSocket.on('disconnect', () => {
             console.log('Global Socket disconnected');
             setIsConnected(false);
+        });
+
+        newSocket.on('connect_error', (error) => {
+            const message = (error && error.message) || 'Socket connection failed';
+            console.error('Global socket connect error:', message);
+            if (message.toLowerCase().includes('unauthorized')) {
+                clearStoredAuth();
+                if (window.location.pathname !== '/') {
+                    window.location.href = '/';
+                }
+            }
         });
 
         socketRef.current = newSocket;
@@ -55,7 +78,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, []);
 
     useEffect(() => {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const token = getStoredToken();
         if (token) {
             connect(token);
         }

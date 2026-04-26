@@ -5,10 +5,11 @@ import FaceAuthModal from "../components/FaceAuthModal";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { getUserRole } from "../guards/RouteGuards";
+import { decodeJwtPayload } from "../services/token";
 
 import Swal from "sweetalert2";
 
-function Login({ onSwitchToRegister }) {
+function Login() {
   const { connect } = useSocket();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -132,12 +133,15 @@ function Login({ onSwitchToRegister }) {
       localStorage.setItem("token", data.token);
 
       // ✅ Décoder le rôle et l'ID (si envoyé)
-      const payload = JSON.parse(atob(data.token.split(".")[1]));
+      const payload = decodeJwtPayload(data.token);
+      if (!payload || !payload.id || !payload.role) {
+        throw new Error("Invalid login token payload");
+      }
       console.log("🎫 Login Token Payload:", payload);
 
       // ✅ Stocker aussi l'ID et le rôle dans sessionStorage
-      sessionStorage.setItem("userId", payload.id);
-      sessionStorage.setItem("userRole", payload.role);
+      sessionStorage.setItem("userId", String(payload.id));
+      sessionStorage.setItem("userRole", String(payload.role));
 
       // Notifier les autres composants du changement de token
       window.dispatchEvent(new Event('tokenChanged'));
@@ -169,7 +173,7 @@ function Login({ onSwitchToRegister }) {
         color: '#fff'
       });
 
-    } catch (error) {
+    } catch {
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -196,9 +200,12 @@ function Login({ onSwitchToRegister }) {
       if (data.success) {
         sessionStorage.setItem("token", data.token);
         localStorage.setItem("token", data.token);
-        const payload = JSON.parse(atob(data.token.split(".")[1]));
-        sessionStorage.setItem("userId", payload.id);
-        sessionStorage.setItem("userRole", payload.role);
+        const payload = decodeJwtPayload(data.token);
+        if (!payload || !payload.id || !payload.role) {
+          throw new Error("Invalid login token payload");
+        }
+        sessionStorage.setItem("userId", String(payload.id));
+        sessionStorage.setItem("userRole", String(payload.role));
         window.dispatchEvent(new Event('tokenChanged'));
         connect(data.token);
 
@@ -277,7 +284,10 @@ function Login({ onSwitchToRegister }) {
       connect(data.token);
 
       // ✅ Décoder le rôle (si envoyé)
-      const payload = JSON.parse(atob(data.token.split(".")[1]));
+      const payload = decodeJwtPayload(data.token);
+      if (!payload || !payload.role) {
+        throw new Error("Invalid login token payload");
+      }
       console.log("🎫 2FA Token Payload:", payload);
 
       setTwoFactorRequired(false);
@@ -310,7 +320,7 @@ function Login({ onSwitchToRegister }) {
         background: '#1a1a2e',
         color: '#fff'
       });
-    } catch (error) {
+    } catch {
       Swal.fire({
         icon: 'error',
         title: 'Error',
