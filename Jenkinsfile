@@ -1,6 +1,6 @@
 pipeline {
     agent any
-    
+
     environment {
         DOCKER_CREDS = credentials('docker-hub')
         BACKEND_IMAGE = "docker.io/${DOCKER_CREDS_USR}/backend:latest"
