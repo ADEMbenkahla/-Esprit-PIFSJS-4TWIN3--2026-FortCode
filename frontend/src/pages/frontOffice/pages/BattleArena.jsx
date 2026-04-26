@@ -109,7 +109,7 @@ export default function BattleArena() {
 
            {/* Editor Area */}
            <div className="flex-1 relative">
-             <div className="absolute left-0 top-0 bottom-0 w-12 bg-slate-900 border-r border-slate-800 flex flex-col items-end py-4 pr-2 text-slate-600 font-mono text-sm select-none">
+             <div className="absolute left-0 top-0 bottom-0 w-12 bg-slate-900 border-r border-slate-800 flex flex-col items-end py-4 pr-2 text-slate-400 font-mono text-sm select-none">
                {code.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
              </div>
              <textarea
@@ -133,7 +133,7 @@ export default function BattleArena() {
               {output ? (
                 <div className="text-green-400 whitespace-pre-wrap animate-pulse">{output}</div>
               ) : (
-                <div className="text-slate-600 italic">Waiting for spell cast...</div>
+                <div className="text-slate-400 italic">Waiting for spell cast...</div>
               )}
             </div>
           </div>

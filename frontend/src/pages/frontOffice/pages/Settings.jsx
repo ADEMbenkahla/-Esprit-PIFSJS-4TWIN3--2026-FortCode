@@ -228,7 +228,7 @@ export default function Settings() {
 
             {/* Theme Mode */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">Theme Mode</label>
+              <label className="block text-sm font-semibold text-slate-300 mb-3" htmlFor="thememodel_66944">Theme Mode</label>
               <div className="flex gap-3">
                 <button
                   onClick={() => handleThemeChange('dark')}
@@ -456,7 +456,7 @@ export default function Settings() {
                         <img src={avatar} alt="Avatar preview" className="w-full h-full object-cover" />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-100">{username || 'Commander'}</p>
+                        <p className="font-semibold text-slate-100">{username || 'Player'}</p>
                         <p className="text-xs text-slate-400">Your display name</p>
                       </div>
                     </div>
@@ -552,7 +552,7 @@ export default function Settings() {
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-300 mb-2">Verification Code</label>
-                    <input
+<input id="thememodel_66944" 
                       type="text"
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value)}
@@ -711,10 +711,10 @@ export default function Settings() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="pleasetype_41665">
                     Please type <span className="font-mono text-red-400 font-bold">{username}/delete-account</span> to confirm.
                   </label>
-                  <input
+<input id="pleasetype_41665" 
                     type="text"
                     value={deleteConfirmation}
                     onChange={(e) => {

@@ -10,8 +10,8 @@ interface ActivityTableProps {
 const ActivityTable: React.FC<ActivityTableProps> = ({ logs, onViewDetails }) => {
     if (!logs.length) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2 p-10">
-                <span className="material-icons-outlined text-4xl">history_toggle_off</span>
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2 p-10">
+                <span aria-hidden="true" className="material-icons-outlined text-4xl">history_toggle_off</span>
                 <p>No activity logs found.</p>
             </div>
         );
@@ -23,12 +23,12 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ logs, onViewDetails }) =>
                 <table className="w-full text-left border-collapse min-w-[800px]">
                     <thead>
                         <tr className="bg-surface-dark/80 border-b border-purple-900/20 sticky top-0 z-10 backdrop-blur-md">
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Date/Time</th>
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">User</th>
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Action</th>
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Browser/OS</th>
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">IP</th>
-                            <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest text-right">Details</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Date/Time</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">User</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Action</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Browser/OS</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">IP</th>
+                            <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest text-right">Details</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-purple-900/10">
@@ -42,10 +42,10 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ logs, onViewDetails }) =>
                                         {log.user ? (
                                             <div className="text-sm">
                                                 <div className="font-bold text-white">{log.user.name || log.user.username || 'System'}</div>
-                                                <div className="text-xs text-gray-500">{log.user.email}</div>
+                                                <div className="text-xs text-gray-400">{log.user.email}</div>
                                             </div>
                                         ) : (
-                                            <span className="text-gray-500 italic text-sm">Guest / Unknown</span>
+                                            <span className="text-gray-400 italic text-sm">Guest / Unknown</span>
                                         )}
                                     </div>
                                 </td>
@@ -66,7 +66,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ logs, onViewDetails }) =>
                                 <td className="p-4 text-sm text-gray-400">
                                     <div className="flex flex-col">
                                         <span>{log.browser}</span>
-                                        <span className="text-xs text-gray-600">{log.os} • {log.device}</span>
+                                        <span className="text-xs text-gray-400">{log.os} • {log.device}</span>
                                     </div>
                                 </td>
                                 <td className="p-4 text-sm text-purple-300 font-mono">
@@ -78,7 +78,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({ logs, onViewDetails }) =>
                                         className="p-2 hover:bg-primary/20 text-gray-400 hover:text-primary rounded-lg transition-all"
                                         title="View Details"
                                     >
-                                        <span className="material-icons-outlined">visibility</span>
+                                        <span aria-hidden="true" className="material-icons-outlined">visibility</span>
                                     </button>
                                 </td>
                             </tr>

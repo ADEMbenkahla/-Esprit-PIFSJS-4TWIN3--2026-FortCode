@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Lock, CheckCircle2, Play, Loader2, BookOpen } from "lucide-react";
+import { Lock, CheckCircle2, Play, Loader2, BookOpen, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { stagesApi } from "../../../services/api";
 
@@ -77,11 +77,10 @@ export default function StageList({ category = "training", title, subtitle }) {
               transition={{ delay: index * 0.06 }}
             >
               <div
-                className={`relative h-full p-6 rounded-xl border transition-all duration-300 flex flex-col ${
-                  locked
+                className={`relative h-full p-6 rounded-xl border transition-all duration-300 flex flex-col ${locked
                     ? "bg-slate-900/40 border-slate-800 opacity-70"
                     : "bg-slate-900/60 border-slate-700 hover:border-blue-500/40"
-                }`}
+                  }`}
               >
                 {locked && (
                   <div className="absolute top-4 right-4 text-slate-500">
@@ -114,7 +113,13 @@ export default function StageList({ category = "training", title, subtitle }) {
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-[10px] uppercase text-slate-500 font-bold">
-                    <span>Progress</span>
+                    <div className="flex items-center gap-4">
+                      <span>Progress</span>
+                      <div className="flex items-center gap-1 text-amber-500">
+                        <Star className="w-2.5 h-2.5 fill-current" />
+                        <span>{stage.progress?.totalStars || 0}</span>
+                      </div>
+                    </div>
                     <span>{pct}%</span>
                   </div>
                   <div className="h-2 bg-slate-800 rounded-full overflow-hidden">

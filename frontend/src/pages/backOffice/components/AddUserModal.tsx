@@ -106,7 +106,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                         onClick={onClose}
                         className="text-gray-400 hover:text-white transition-colors"
                     >
-                        <span className="material-icons-outlined">close</span>
+                        <span aria-hidden="true" className="material-icons-outlined">close</span>
                     </button>
                 </div>
 
@@ -114,8 +114,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="username_14773">Username</label>
+<input id="username_14773" 
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -125,8 +125,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="email_80972">Email</label>
+<input id="email_80972" 
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -136,8 +136,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Password</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="password_17826">Password</label>
+<input id="password_17826" 
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -147,8 +147,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
-                                <select
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="role_50708">Role</label>
+<select id="role_50708" 
                                     value={role}
                                     onChange={(e) => setRole(e.target.value)}
                                     className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"

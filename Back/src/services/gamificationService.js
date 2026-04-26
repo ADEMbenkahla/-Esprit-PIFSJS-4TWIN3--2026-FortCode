@@ -83,6 +83,42 @@ exports.addXP = async (userId, xpAmount) => {
 };
 
 /**
+ * Deduct XP points from a user (used for paid actions like hints).
+ * Throws an Error with code INSUFFICIENT_XP when balance is too low.
+ */
+exports.spendXP = async (userId, xpCost) => {
+  const cost = Math.max(0, Number(xpCost) || 0);
+  let user = typeof userId === 'string' || userId instanceof Buffer || typeof userId === 'object' && !userId.save
+    ? await User.findById(userId)
+    : userId;
+
+  if (!user) throw new Error("Utilisateur introuvable pour la gamification.");
+  if (!user.gamification) {
+    user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+  }
+
+  const current = Number(user.gamification.points) || 0;
+  if (current < cost) {
+    const err = new Error("Not enough XP");
+    err.code = "INSUFFICIENT_XP";
+    err.required = cost;
+    err.current = current;
+    throw err;
+  }
+
+  user.gamification.points = current - cost;
+  user.gamification.level = Math.floor(user.gamification.points / 500) + 1;
+  if (user.gamification.level < 1) user.gamification.level = 1;
+
+  await user.save();
+  return {
+    points: user.gamification.points,
+    level: user.gamification.level,
+    spentXP: cost,
+  };
+};
+
+/**
  * Fonction publique pour ajouter/retirer du Ranked Rating (Impacte le RANK uniquement).
  */
 exports.addRankedRating = async (userId, rrAmount) => {

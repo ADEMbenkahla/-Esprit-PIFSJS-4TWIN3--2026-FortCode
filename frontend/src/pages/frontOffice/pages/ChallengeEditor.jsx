@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Editor from "@monaco-editor/react";
 import { ArrowLeft, Loader2, Play, Send, CheckCircle2, XCircle, Lightbulb, BookOpen, HelpCircle, X } from "lucide-react";
 import Swal from "sweetalert2";
 import { stagesApi } from "../../../services/api";
-import { LevelUpModal } from "../components/Gamification/LevelUpModal";
+
+const LevelUpModal = lazy(() => import("../components/Gamification/LevelUpModal").then(m => ({ default: m.LevelUpModal })));
 
 const LANGS = ["javascript", "python", "typescript", "java", "cpp", "csharp", "go", "rust"];
 
@@ -189,7 +190,7 @@ export default function ChallengeEditor() {
   // Auto-fetch hint preview directly from API response (not via useEffect)
   const fetchAutoHint = async () => {
     console.log("fetchAutoHint called - checking guard");
-    
+
     // Guard: only trigger once per submission response
     if (autoHintTriggeredRef.current) {
       console.log("AUTO HINT SKIPPED (already triggered for this submission)");
@@ -243,7 +244,7 @@ export default function ChallengeEditor() {
         : data.nextStageUnlocked
           ? "Next stage is now available."
           : "";
-      
+
       // 🏆 Trigger Level Up Modal
       if (data.xpReward?.levelUp) {
         console.log("✨ Level Up detected! New level:", data.xpReward.newLevel);
@@ -449,7 +450,7 @@ export default function ChallengeEditor() {
                 {submitResult.xpReward && submitResult.xpReward.xpAwarded && (
                   <div className="rounded-lg border border-purple-800 p-3 bg-purple-900/30">
                     <p className="text-[10px] uppercase text-purple-400 mb-1 flex items-center gap-1">
-                      <span className="material-icons-outlined text-xs">auto_awesome</span> Rewards
+                      <span aria-hidden="true" className="material-icons-outlined text-xs">auto_awesome</span> Rewards
                     </p>
                     <p className="text-xl font-bold text-amber-400">+{submitResult.xpReward.xpAmount} XP</p>
                     <p className="text-xs text-purple-300">Total: {submitResult.xpReward.newPoints} XP (Level {submitResult.xpReward.newLevel})</p>
@@ -643,17 +644,19 @@ export default function ChallengeEditor() {
             )}
 
             {!runResult && !submitResult && (
-              <p className="text-slate-600 text-sm italic">Run or submit to see output.</p>
+              <p className="text-slate-400 text-sm italic">Run or submit to see output.</p>
             )}
           </div>
         </div>
       </div>
 
-      <LevelUpModal 
-        isOpen={showLevelUp} 
-        level={newLevel} 
-        onClose={() => setShowLevelUp(false)} 
-      />
+      <Suspense fallback={null}>
+        <LevelUpModal
+          isOpen={showLevelUp}
+          level={newLevel}
+          onClose={() => setShowLevelUp(false)}
+        />
+      </Suspense>
 
       {helpOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">

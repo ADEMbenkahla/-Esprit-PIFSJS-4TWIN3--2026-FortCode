@@ -93,8 +93,8 @@ export default function RoleRequests() {
           {/* Message */}
           {message.text && (
             <div className={`mb-6 p-4 rounded-lg border ${message.type === 'success'
-                ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                : 'bg-red-500/10 border-red-500/30 text-red-400'
+              ? 'bg-green-500/10 border-green-500/30 text-green-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
               }`}>
               {message.text}
             </div>
@@ -102,7 +102,7 @@ export default function RoleRequests() {
 
           {/* Filters */}
           <div className="mb-6 flex items-center gap-4 bg-surface-dark/50 p-4 rounded-lg border border-purple-900/30 flex-wrap overflow-x-hidden">
-            <Filter className="w-5 h-5 text-gray-500" />
+            <Filter className="w-5 h-5 text-gray-400" />
             <div className="flex gap-2 flex-wrap">
               {[
                 { value: 'all', label: 'All' },
@@ -114,8 +114,8 @@ export default function RoleRequests() {
                   key={filter.value}
                   onClick={() => setStatusFilter(filter.value)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === filter.value
-                      ? 'bg-primary text-white'
-                      : 'bg-background-dark/50 text-gray-400 hover:bg-background-dark/70 border border-purple-900/20'
+                    ? 'bg-primary text-white'
+                    : 'bg-background-dark/50 text-gray-400 hover:bg-background-dark/70 border border-purple-900/20'
                     }`}
                 >
                   {filter.label}
@@ -136,8 +136,8 @@ export default function RoleRequests() {
             </div>
           ) : requests.length === 0 ? (
             <div className="text-center py-12 bg-background-dark/50 rounded-lg border border-purple-900/30">
-              <Shield className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-500">No requests found</p>
+              <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-400">No requests found</p>
             </div>
           ) : (
             <div className="grid gap-4">
@@ -150,14 +150,15 @@ export default function RoleRequests() {
                     <div className="flex items-center gap-3">
                       <img
                         src={request.userId?.avatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=default'}
-                        alt={request.userId?.username}
+                        alt={request.userId?.username || "Requester Avatar"}
+                        loading="lazy"
                         className="w-12 h-12 rounded-full border-2 border-purple-900/50"
                       />
                       <div>
                         <h3 className="text-lg font-semibold text-white">
                           {request.userId?.nickname || request.userId?.username || 'Unknown user'}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-400">
                           @{request.userId?.username} • {request.userId?.email}
                         </p>
                       </div>
@@ -167,7 +168,7 @@ export default function RoleRequests() {
 
                   <div className="space-y-4">
                     <div className="w-full">
-                      <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Justification:</span>
+                      <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Justification:</span>
                       <p className="text-gray-200 mt-1 leading-relaxed break-words whitespace-pre-wrap w-full">{request.justification}</p>
                     </div>
 
@@ -193,7 +194,7 @@ export default function RoleRequests() {
                     {request.aiDecision && request.aiDecision !== 'NONE' && (
                       <div className="grid grid-cols-2 gap-4 p-4 bg-surface-dark/30 rounded-lg border border-purple-900/20">
                         <div className="space-y-1 min-w-0">
-                          <span className="text-xs text-gray-500 uppercase font-bold">Document Score</span>
+                          <span className="text-xs text-gray-400 uppercase font-bold">Document Score</span>
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
                               <div
@@ -207,7 +208,7 @@ export default function RoleRequests() {
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-xs text-gray-500 uppercase font-bold">Text Score</span>
+                          <span className="text-xs text-gray-400 uppercase font-bold">Text Score</span>
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
                               <div
@@ -233,7 +234,7 @@ export default function RoleRequests() {
                       </div>
                     )}
 
-                    <div className="flex gap-4 text-xs text-gray-600">
+                    <div className="flex gap-4 text-xs text-gray-400">
                       <span>Created: {new Date(request.createdAt).toLocaleString()}</span>
                       {request.reviewedAt && (
                         <span>Analyzed: {new Date(request.reviewedAt).toLocaleString()}</span>
@@ -246,7 +247,7 @@ export default function RoleRequests() {
                         <button
                           onClick={() => handleAIReview(request._id)}
                           disabled={processing}
-                          className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
+                          className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-400 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
                         >
                           {processing ? (
                             <Loader2 className="w-6 h-6 animate-spin" />
@@ -257,7 +258,7 @@ export default function RoleRequests() {
                             </>
                           )}
                         </button>
-                        
+
                         <div className="flex gap-4">
                           <button
                             onClick={() => handleDecision(request._id, 'approve')}

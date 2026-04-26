@@ -105,7 +105,7 @@ const ActivityLogs: React.FC = () => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-white font-display">Activity Logs</h2>
-                            <p className="text-sm text-gray-500">Monitor user actions and system events</p>
+                            <p className="text-sm text-gray-400">Monitor user actions and system events</p>
                         </div>
                         <button
                             onClick={handleClearFilters}
@@ -119,29 +119,33 @@ const ActivityLogs: React.FC = () => {
                     <div className="bg-surface-dark p-4 rounded-xl border border-purple-900/20 grid grid-cols-1 md:grid-cols-4 gap-3">
                         <input
                             type="text"
+                            aria-label="Filter by Route"
                             placeholder="Route (e.g. /api/auth)"
                             value={route}
                             onChange={(e) => setRoute(e.target.value)}
-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
+                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                         />
                         <input
                             type="text"
+                            aria-label="Filter by IP Address"
                             placeholder="IP Address"
                             value={ip}
                             onChange={(e) => setIp(e.target.value)}
-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
+                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                         />
                         <input
                             type="date"
+                            aria-label="Filter Start Date"
                             value={dateFrom}
                             onChange={(e) => setDateFrom(e.target.value)}
-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:border-primary transition-colors"
+                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                         />
                         <input
                             type="date"
+                            aria-label="Filter End Date"
                             value={dateTo}
                             onChange={(e) => setDateTo(e.target.value)}
-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:border-primary transition-colors"
+                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                         />
                     </div>
 
@@ -158,14 +162,14 @@ const ActivityLogs: React.FC = () => {
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
                         ) : logs.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2">
-                                <span className="material-icons-outlined text-4xl">history_toggle_off</span>
+                            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
+                                <span className="material-icons-outlined text-4xl" aria-hidden="true">history_toggle_off</span>
                                 <p>No activity logs found matching your filters.</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto flex-1">
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-500 font-bold tracking-wider">
+                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-400 font-bold tracking-wider">
                                         <tr>
                                             <th className="p-4 border-b border-purple-900/20">Date/Time</th>
                                             <th className="p-4 border-b border-purple-900/20">User</th>
@@ -186,10 +190,10 @@ const ActivityLogs: React.FC = () => {
                                                         {log.user ? (
                                                             <div className="text-sm">
                                                                 <div className="font-bold text-white">{log.user.name || log.user.username || 'System'}</div>
-                                                                <div className="text-xs text-gray-500">{log.user.email}</div>
+                                                                <div className="text-xs text-gray-400">{log.user.email}</div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-gray-500 italic text-sm">Guest / Unknown</span>
+                                                            <span className="text-gray-400 italic text-sm">Guest / Unknown</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -210,7 +214,7 @@ const ActivityLogs: React.FC = () => {
                                                 <td className="p-4 text-sm text-gray-400">
                                                     <div className="flex flex-col">
                                                         <span>{log.browser}</span>
-                                                        <span className="text-xs text-gray-600">{log.os} • {log.device}</span>
+                                                        <span className="text-xs text-gray-400">{log.os} • {log.device}</span>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-sm text-purple-300 font-mono">
@@ -222,7 +226,7 @@ const ActivityLogs: React.FC = () => {
                                                         className="p-2 hover:bg-primary/20 text-gray-400 hover:text-primary rounded-lg transition-all"
                                                         title="View Details"
                                                     >
-                                                        <span className="material-icons-outlined">visibility</span>
+                                                        <span aria-hidden="true" className="material-icons-outlined">visibility</span>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -234,7 +238,7 @@ const ActivityLogs: React.FC = () => {
 
                         {/* Pagination Footer */}
                         <div className="p-4 border-t border-purple-900/20 flex items-center justify-between bg-background-dark/30">
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-400">
                                 Page <span className="text-white font-bold">{page}</span> of <span className="text-white font-bold">{totalPages}</span>
                                 <span className="mx-2">•</span>
                                 Total: {totallogs} logs
@@ -242,15 +246,17 @@ const ActivityLogs: React.FC = () => {
                             <div className="flex gap-2">
                                 <button
                                     disabled={page === 1}
+                                    aria-label="Previous Page"
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                                 >
                                     Previous
                                 </button>
                                 <button
                                     disabled={page === totalPages}
+                                    aria-label="Next Page"
                                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary"
                                 >
                                     Next
                                 </button>

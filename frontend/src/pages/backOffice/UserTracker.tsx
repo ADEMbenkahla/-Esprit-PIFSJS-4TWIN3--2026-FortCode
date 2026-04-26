@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, Suspense, lazy } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import UserTable from "./components/UserTable";
 import UserDetails from "./components/UserDetails";
-import AddUserModal from "./components/AddUserModal";
-import EditUserModal from "./components/EditUserModal";
+const AddUserModal = lazy(() => import("./components/AddUserModal"));
+const EditUserModal = lazy(() => import("./components/EditUserModal"));
 import { User } from "./types";
 import { useSocket } from "../../context/SocketContext";
 import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
@@ -113,7 +113,7 @@ const UserTracker: React.FC = () => {
   }, [totalPages]);
 
 
-  const selectedUser = users.find((u) => u._id === selectedUserId);
+  const selectedUser = useMemo(() => users.find((u) => u._id === selectedUserId), [users, selectedUserId]);
 
   const handleEditUser = (user: User) => {
     setUserToEdit(user);
@@ -159,7 +159,7 @@ const UserTracker: React.FC = () => {
               <button
                 onClick={() => setIsAddUserModalOpen(true)}
                 className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-primary-hover transition-all shadow-glow">
-                <span className="material-icons-outlined text-lg">add</span>
+                <span className="material-icons-outlined text-lg" aria-hidden="true">add</span>
                 Add User
               </button>
             </div>
@@ -175,7 +175,7 @@ const UserTracker: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between text-xs text-gray-500 px-1 mt-auto">
+            <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-auto">
               <span>
                 Showing{" "}
                 <span className="text-white font-medium">
@@ -196,9 +196,10 @@ const UserTracker: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-white hover:bg-purple-900/20 disabled:opacity-30 transition-colors"
+                  aria-label="Previous Page"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-purple-900/20 disabled:opacity-30 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                 >
-                  <span className="material-icons-outlined text-sm">chevron_left</span>
+                  <span className="material-icons-outlined text-sm" aria-hidden="true">chevron_left</span>
                 </button>
 
                 {(() => {
@@ -224,7 +225,7 @@ const UserTracker: React.FC = () => {
                         1
                       </button>
                     );
-                    if (start > 2) pages.push(<span key="start-dots" className="text-gray-600 px-1">…</span>);
+                    if (start > 2) pages.push(<span key="start-dots" className="text-gray-400 px-1">…</span>);
                   }
 
                   for (let i = start; i <= end; i++) {
@@ -243,7 +244,7 @@ const UserTracker: React.FC = () => {
                   }
 
                   if (end < totalPages) {
-                    if (end < totalPages - 1) pages.push(<span key="end-dots" className="text-gray-600 px-1">…</span>);
+                    if (end < totalPages - 1) pages.push(<span key="end-dots" className="text-gray-400 px-1">…</span>);
                     pages.push(
                       <button
                         key={totalPages}
@@ -264,9 +265,10 @@ const UserTracker: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-white hover:bg-purple-900/20 disabled:opacity-30 transition-colors"
+                  aria-label="Next Page"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-purple-900/20 disabled:opacity-30 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                 >
-                  <span className="material-icons-outlined text-sm">chevron_right</span>
+                  <span className="material-icons-outlined text-sm" aria-hidden="true">chevron_right</span>
                 </button>
               </div>
             </div>
@@ -284,23 +286,27 @@ const UserTracker: React.FC = () => {
       </main>
 
       {/* Add User Modal */}
-      {isAddUserModalOpen && (
-        <AddUserModal
-          isOpen={isAddUserModalOpen}
-          onClose={() => setIsAddUserModalOpen(false)}
-          onUserCreated={fetchUsers}
-        />
-      )}
+      <Suspense fallback={null}>
+        {isAddUserModalOpen && (
+          <AddUserModal
+            isOpen={isAddUserModalOpen}
+            onClose={() => setIsAddUserModalOpen(false)}
+            onUserCreated={fetchUsers}
+          />
+        )}
+      </Suspense>
 
       {/* Edit User Modal */}
-      {isEditUserModalOpen && userToEdit && (
-        <EditUserModal
-          isOpen={isEditUserModalOpen}
-          onClose={() => setIsEditUserModalOpen(false)}
-          onUserUpdated={fetchUsers}
-          user={userToEdit}
-        />
-      )}
+      <Suspense fallback={null}>
+        {isEditUserModalOpen && userToEdit && (
+          <EditUserModal
+            isOpen={isEditUserModalOpen}
+            onClose={() => setIsEditUserModalOpen(false)}
+            onUserUpdated={fetchUsers}
+            user={userToEdit}
+          />
+        )}
+      </Suspense>
       <ScrollButton />
     </div>
   );

@@ -10,11 +10,11 @@ const AccessibilityMenu = () => {
         updateHighContrast,
         readingGuide,
         updateReadingGuide,
+        readOnHover,
+        updateReadOnHover,
         monochrome,
         updateMonochrome
     } = useSettings();
-
-    const [isSpeaking, setIsSpeaking] = useState(false);
     const [position, setPosition] = useState(() => {
         const fallback = {
             x: 20,
@@ -44,6 +44,8 @@ const AccessibilityMenu = () => {
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0, moved: false });
     const menuRef = useRef(null);
+    const lastReadRef = useRef(null);
+    const speechTimeoutRef = useRef(null);
 
     // Pre-fetch voices to ensure they are ready when needed
     useEffect(() => {
@@ -62,36 +64,6 @@ const AccessibilityMenu = () => {
             setIsOpen(prev => !prev);
         }
     }, []);
-
-    const handleSpeech = () => {
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-            setIsSpeaking(false);
-            return;
-        }
-
-        window.speechSynthesis.cancel();
-        const text = "Welcome to FortCode. This platform is designed for learning and mastering programming through interactive challenges, battle arenas, and collaborative coding rooms. Use this accessibility menu to customize your reading and navigation experience.";
-        const utterance = new SpeechSynthesisUtterance(text);
-
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(v => v.lang.startsWith('en'));
-        if (englishVoice) {
-            utterance.voice = englishVoice;
-        } else {
-            utterance.lang = 'en-US';
-        }
-
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-
-        window.speechSynthesis.speak(utterance);
-    };
 
     const fontSizes = ['small', 'medium', 'large', 'xlarge'];
     const cycleFontSize = () => {
@@ -156,12 +128,57 @@ const AccessibilityMenu = () => {
         };
     }, [isDragging, handleMove, handleEnd]);
 
+    // READ ON HOVER LOGIC
+    useEffect(() => {
+        if (!readOnHover) {
+            window.speechSynthesis.cancel();
+            return;
+        }
+
+        const handleMouseMove = (e) => {
+            const element = document.elementFromPoint(e.clientX, e.clientY);
+            if (!element) return;
+
+            // Only read certain elements to avoid noise
+            const validTags = ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'SPAN', 'BUTTON', 'LI', 'LABEL', 'A', 'CODE'];
+            const target = element.closest(validTags.join(','));
+
+            if (target && target.innerText && target !== lastReadRef.current) {
+                const text = target.innerText.trim();
+                if (text && text.length > 1) {
+                    clearTimeout(speechTimeoutRef.current);
+                    speechTimeoutRef.current = setTimeout(() => {
+                        window.speechSynthesis.cancel();
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.rate = 1.1;
+                        utterance.pitch = 1;
+
+                        const voices = window.speechSynthesis.getVoices();
+                        const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                        if (englishVoice) utterance.voice = englishVoice;
+
+                        window.speechSynthesis.speak(utterance);
+                        lastReadRef.current = target;
+                    }, 150); // Small delay to avoid staccato while moving fast
+                }
+            } else if (!target) {
+                lastReadRef.current = null;
+            }
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            clearTimeout(speechTimeoutRef.current);
+        };
+    }, [readOnHover]);
+
     const menuItems = [
         { icon: 'format_size', label: `Text Size (${fontSize})`, onClick: cycleFontSize, active: fontSize !== 'medium' },
         { icon: 'straighten', label: 'Reading Guide', onClick: () => updateReadingGuide(!readingGuide), active: readingGuide },
         { icon: 'contrast', label: 'High Contrast', onClick: () => updateHighContrast(!highContrast), active: highContrast },
         { icon: 'filter_b_and_w', label: 'Monochrome', onClick: () => updateMonochrome(!monochrome), active: monochrome },
-        { icon: isSpeaking ? 'volume_off' : 'record_voice_over', label: isSpeaking ? 'Stop Description' : 'Audio Description', onClick: handleSpeech, active: isSpeaking },
+        { icon: readOnHover ? 'volume_off' : 'record_voice_over', label: readOnHover ? 'Stop Description' : 'Audio Description', onClick: () => updateReadOnHover(!readOnHover), active: readOnHover },
     ];
 
     return (
@@ -179,7 +196,7 @@ const AccessibilityMenu = () => {
                     }`}
                 title="Hold to drag, click to open"
             >
-                <span className="material-icons-outlined text-3xl pointer-events-none">
+                <span aria-hidden="true" className="material-icons-outlined text-3xl pointer-events-none">
                     {isOpen ? 'close' : 'accessibility_new'}
                 </span>
             </button>
@@ -197,7 +214,7 @@ const AccessibilityMenu = () => {
                                 }`}
                             title={item.label}
                         >
-                            <span className="material-icons-outlined">{item.icon}</span>
+                            <span aria-hidden="true" className="material-icons-outlined">{item.icon}</span>
                         </button>
                         <span className="px-3 py-1 bg-surface-dark text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-sm border border-gray-700">
                             {item.label}

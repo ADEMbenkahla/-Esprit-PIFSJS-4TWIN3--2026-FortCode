@@ -12,6 +12,10 @@ export default defineConfig({
         port: 5173,
         strictPort: true,
     },
+    preview: {
+        port: 5173,
+        strictPort: true,
+    },
     plugins: [
         // The React and Tailwind plugins are both required for Make, even if
         // Tailwind is not being actively used – do not remove them
@@ -23,6 +27,17 @@ export default defineConfig({
             // Alias @ to the src directory
             '@': path.resolve(__dirname, './src'),
         },
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    three: ['three'],
+                    ui: ['lucide-react']
+                }
+            }
+        }
     },
 
     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.

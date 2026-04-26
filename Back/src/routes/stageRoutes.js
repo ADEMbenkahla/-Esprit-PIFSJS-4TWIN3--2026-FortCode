@@ -16,12 +16,15 @@ router.put("/:id", ...adminOnly, stage.updateStage);
 router.delete("/:id", ...adminOnly, stage.deleteStage);
 router.post("/:id/challenges", ...adminOnly, stage.assignChallengesToStage);
 router.delete("/:id/challenges/:challengeId", ...adminOnly, stage.removeChallengeFromStage);
+router.post("/:id/generate", ...adminOnly, stage.generateStageExercises);
 
 router.post("/:id/challenges/:challengeId/run", ...participant, stage.runChallenge);
 router.post("/:id/challenges/:challengeId/submit", ...participant, stage.submitChallenge);
 router.post("/:id/challenges/:challengeId/complete", ...participant, stage.completeChallenge);
+router.post("/:id/challenges/:challengeId/help", ...participant, stage.getChallengeHelp);
 router.post("/:id/reset", ...participant, stage.resetStageProgress);
 
+router.post("/ai/explain", ...participant, stage.getAiExplanation);
 router.get("/:id", authMiddleware, stage.getStageDetail);
 
 module.exports = router;

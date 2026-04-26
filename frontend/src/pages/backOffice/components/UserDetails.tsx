@@ -46,9 +46,10 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
         <h2 className="font-display font-bold text-lg text-white">User Details</h2>
         <button
           onClick={onClose}
-          className="text-gray-500 hover:text-white transition-colors"
+          aria-label="Close user details"
+          className="text-gray-400 hover:text-white transition-colors"
         >
-          <span className="material-icons-outlined">close</span>
+          <span aria-hidden="true" className="material-icons-outlined">close</span>
         </button>
       </div>
 
@@ -60,6 +61,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
             <img
               src={user.avatar || `https://i.pravatar.cc/150?u=${user._id}`}
               alt={user.username}
+              loading="lazy"
               className="w-full h-full rounded-full object-cover border-4 border-surface-dark"
             />
             <div
@@ -67,12 +69,12 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
             ></div>
           </div>
           <h3 className="font-display font-bold text-xl text-white">{user.username}</h3>
-          <p className="text-sm text-gray-500">@{user.username} • {user.role}</p>
+          <p className="text-sm text-gray-400">@{user.username} • {user.role}</p>
 
           <div className="flex flex-col gap-2 w-full mt-5">
             <div className="flex gap-2">
               <button className="flex-1 px-4 py-2 bg-primary text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-primary-hover transition-all shadow-glow flex items-center justify-center gap-2">
-                <span className="material-icons-outlined text-sm">mail</span> Email
+                <span aria-hidden="true" className="material-icons-outlined text-sm">mail</span> Email
               </button>
               <button
                 onClick={handleToggleStatus}
@@ -89,7 +91,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
               onClick={handleViewLogs}
               className="w-full px-4 py-2 bg-purple-900/40 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-purple-900/60 transition-all flex items-center justify-center gap-2"
             >
-              <span className="material-icons-outlined text-sm">history</span> View Activity Logs
+              <span aria-hidden="true" className="material-icons-outlined text-sm">history</span> View Activity Logs
             </button>
           </div>
         </div>
@@ -103,7 +105,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
             { label: 'Reports', value: reports.toString(), color: reports > 0 ? 'text-red-500' : 'text-green-500' },
           ].map((stat) => (
             <div key={stat.label} className="p-4 rounded-xl bg-background-dark/50 border border-purple-900/20">
-              <div className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">{stat.label}</div>
+              <div className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">{stat.label}</div>
               {stat.isTags ? (
                 <div className="flex gap-1.5 mt-1 flex-wrap">
                   {languages.length > 0 ? languages.map(lang => (
@@ -111,7 +113,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
                       {lang}
                     </span>
                   )) : (
-                    <span className="text-xs text-gray-600 italic">—</span>
+                    <span className="text-xs text-gray-400 italic">—</span>
                   )}
                 </div>
               ) : (
@@ -126,7 +128,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
           <div className="pt-4 border-t border-purple-900/20">
             <h4 className="font-bold text-xs text-white uppercase tracking-widest mb-3">Account Flags</h4>
             <div className="bg-yellow-900/10 border border-yellow-700/30 rounded-lg p-3 flex items-start gap-3">
-              <span className="material-icons-outlined text-yellow-500 text-sm">warning</span>
+              <span aria-hidden="true" className="material-icons-outlined text-yellow-500 text-sm">warning</span>
               <div>
                 <p className="text-xs font-bold text-yellow-500">Alert Detected</p>
                 <p className="text-[10px] text-yellow-500/80 mt-1 leading-relaxed">{flags[0]}</p>

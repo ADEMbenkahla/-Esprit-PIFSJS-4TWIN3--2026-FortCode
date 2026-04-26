@@ -305,11 +305,12 @@ async function fetchSonarStub(code, language, context = {}) {
     bugs: 0,
     vulnerabilities: alerts.length > 0 ? 1 : 0,
     code_smells: Math.max(0, Math.ceil(lines / 20)),
-    security_rating: alerts.length > 0 ? 4 : 2,
-    reliability_rating: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "") ? 4 : 2,
-    sqale_rating: lines > 80 ? 4 : lines > 30 ? 3 : 2,
+    security_rating: alerts.length > 0 ? 4 : 1, // 1 is A
+    reliability_rating: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "") ? 4 : 1, // 1 is A
+    sqale_rating: lines > 80 ? 4 : lines > 30 ? 3 : 1, // 1 is A for short clean code
     security_hotspots_reviewed: 0,
     duplicated_lines_density: 0,
+    coverage: 100, // Small snippets assumed fully covered
   };
   const score = computeCompositeScore(heuristicMetrics);
 
@@ -349,4 +350,63 @@ async function fetchAiFeedback(code, challengeTitle) {
   };
 }
 
-module.exports = { fetchSonarStub, fetchAiFeedback, ratingToLetter };
+async function fetchExerciseHelp({
+  type,
+  stageTitle,
+  challengeTitle,
+  challengeDescription,
+  language,
+  starterCode,
+  code,
+}) {
+  const url = process.env.AI_HELP_URL || "http://localhost:8000/exercise-help";
+  const normalizedType = ["hint", "explain", "course"].includes(String(type)) ? String(type) : "hint";
+
+  try {
+    const res = await axios.post(
+      url,
+      {
+        type: normalizedType,
+        stageTitle,
+        challengeTitle,
+        challengeDescription,
+        language,
+        starterCode,
+        code,
+      },
+      { timeout: 20000, validateStatus: () => true }
+    );
+    if (res.status >= 200 && res.status < 300 && res.data) {
+      return res.data;
+    }
+  } catch (_) {
+    /* optional service */
+  }
+
+  const generic = {
+    hint: {
+      title: "Hint",
+      content: "Re-read the task, identify inputs/outputs, and start with the simplest case. Then handle edge cases.",
+      keyPoints: ["Define the function signature", "Handle edge cases", "Return the expected output type"],
+    },
+    explain: {
+      title: "Explanation",
+      content: "Break the problem into small steps: parse input, apply the required logic, and return the result. Write small helper variables for clarity.",
+      keyPoints: ["What the function should do", "How to transform input to output", "How to validate with examples"],
+    },
+    course: {
+      title: "Mini course",
+      content: "1) Understand the requirement. 2) Write a simple solution. 3) Add edge cases. 4) Optimize if needed. 5) Re-run tests.",
+      keyPoints: ["Start simple", "Test edge cases", "Refactor for readability"],
+      resources: ["Focus on fundamentals: loops/conditions/functions", "Use small examples to debug"],
+    },
+  };
+
+  return {
+    type: normalizedType,
+    ...generic[normalizedType],
+    source: "fallback",
+  };
+}
+
+module.exports = { fetchSonarStub, fetchAiFeedback, fetchExerciseHelp, ratingToLetter };

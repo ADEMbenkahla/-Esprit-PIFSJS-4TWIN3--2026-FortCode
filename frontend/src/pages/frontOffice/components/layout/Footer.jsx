@@ -67,10 +67,10 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             © {currentYear} FortCode. All rights reserved.
           </p>
-          <p className="text-gray-500 text-sm flex items-center gap-1">
+          <p className="text-gray-400 text-sm flex items-center gap-1">
             Made with <Heart className="w-4 h-4 text-red-500 fill-current" /> by the FortCode Team
           </p>
         </div>

@@ -214,7 +214,7 @@ export default function Armory() {
                            leader.rank === 3 ? <span className="text-orange-600 drop-shadow-sm">🥉</span> : leader.rank}
                         </td>
                         <td className="px-6 py-4 font-bold">{leader.name}</td>
-                        <td className="px-6 py-4 font-mono text-xs uppercase tracking-wide text-slate-600">{leader.faction}</td>
+                        <td className="px-6 py-4 font-mono text-xs uppercase tracking-wide text-slate-400">{leader.faction}</td>
                         <td className="px-6 py-4 text-right font-mono font-bold" style={accentStyle}>{leader.score.toLocaleString()}</td>
                       </tr>
                     ))}

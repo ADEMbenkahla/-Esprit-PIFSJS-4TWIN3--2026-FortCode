@@ -14,93 +14,107 @@ const seedStages = async () => {
     await Stage.deleteMany({});
 
     const challengeDocs = await Challenge.insertMany([
+      // --- TRAINING (BASICS) ---
       {
-        title: "JS: Hello World",
-        description: "Create a function 'hello' that returns 'Hello World'.",
+        title: "JS: Greet Function",
+        description: "Create a function 'greet' that returns 'Hello World'.",
         difficulty: "easy",
         language: "javascript",
         category: "training",
         type: "Stage",
-        starterCode: "function hello() {\n  // Your code here\n}",
-        testCases: [{ name: "returns greeting", assertion: "hello() === 'Hello World'" }],
+        starterCode: "function greet() {\n  // Your code here\n}",
+        testCases: [{ name: "returns greeting", assertion: "greet() === 'Hello World'" }],
       },
       {
-        title: "JS: Addition",
-        description: "Create a function 'add(a, b)' that returns a + b.",
+        title: "JS: Sum Function",
+        description: "Create a function 'sum(a, b)' that returns the sum of a and b.",
         difficulty: "easy",
         language: "javascript",
         category: "training",
         type: "Stage",
-        starterCode: "function add(a, b) {\n  // The sum of a and b\n}",
-        testCases: [{ name: "sum", assertion: "add(5, 10) === 15" }],
+        starterCode: "function sum(a, b) {\n  // Your code here\n}",
+        testCases: [{ name: "sum valid", assertion: "sum(5, 10) === 15" }],
       },
       {
-        title: "JS: Array Length",
-        description: "Create a function 'countElements(arr)' that returns the length of the array.",
+        title: "PY: Hello Python",
+        description: "Create a function 'hello' that returns 'Python is cool'.",
         difficulty: "easy",
-        language: "javascript",
+        language: "python",
         category: "training",
         type: "Stage",
-        starterCode: "function countElements(arr) {\n  // return...? \n}",
-        testCases: [{ name: "length", assertion: "countElements([1,2,3]) === 3" }],
+        starterCode: "def hello():\n    # Your code here\n    pass",
+        testCases: [{ name: "hello check", assertion: "hello() == 'Python is cool'" }],
       },
       {
-        title: "JS: First Element",
-        description: "Create a function 'first(arr)' that returns the first element.",
+        title: "PY: Square Number",
+        description: "Create a function 'square(n)' that returns n * n.",
         difficulty: "easy",
-        language: "javascript",
+        language: "python",
         category: "training",
         type: "Stage",
-        starterCode: "function first(arr) {\n  // Accessing index...\n}",
-        testCases: [{ name: "first", assertion: "first([7, 8, 9]) === 7" }],
+        starterCode: "def square(n):\n    # Your code here\n    pass",
+        testCases: [{ name: "square valid", assertion: "square(4) == 16" }],
       },
+
+      // --- MISSIONS (STAGES/MAP) ---
       {
-        title: "JS: Array Architect",
-        description: "Create a function 'processData(arr)' that returns the sum of all EVEN numbers in the array.",
+        title: "JS: Array Processor",
+        description: "Filter even numbers and return their sum.\n\nExample Output:\n[1,2,3,4,6] => 12",
         difficulty: "medium",
         language: "javascript",
         category: "mission",
         type: "Stage",
-        starterCode: "function processData(arr) {\n  // Logic for the foundations\n}",
-        testCases: [{ name: "evens", assertion: "processData([1,2,3,4,6]) === 12" }],
+        starterCode: "function processData(arr) {\n  // Your code here\n}",
+        testCases: [{ name: "evens sum", assertion: "processData([1,2,3,4,6]) === 12" }],
       },
       {
-        title: "JS: Performance Watcher",
-        description: "Create a function 'isPrime(n)' that returns true if n is prime.",
+        title: "PY: Deep Square",
+        description: "Implement a square function for the Red Castle defenses.",
+        difficulty: "medium",
+        language: "python",
+        category: "mission",
+        type: "Stage",
+        starterCode: "def square(n):\n    # Your code here\n    pass",
+        testCases: [{ name: "square mission", assertion: "square(10) == 100" }],
+      },
+      {
+        title: "JS: Prime Sentinel",
+        description: "Verify if a number is prime using optimized algorithms.",
         difficulty: "hard",
         language: "javascript",
         category: "mission",
         type: "Stage",
-        starterCode: "function isPrime(n) {\n  // Optimize core loop\n}",
+        starterCode: "function isPrime(n) {\n  // Your code here\n}",
         testCases: [
           { name: "prime 7", assertion: "isPrime(7) === true" },
-          { name: "not 10", assertion: "isPrime(10) === false" },
+          { name: "not prime 10", assertion: "isPrime(10) === false" }
         ],
       },
     ]);
 
-    const [c1, c2, c3, c4, c5, c6] = challengeDocs;
+    const [c1, c2, c3, c4, c5, c6, c7] = challengeDocs;
 
-    const s1 = await Stage.create({
+    // --- TRAINING STAGES ---
+    const t1 = await Stage.create({
       title: "JavaScript Basics",
-      description: "Master the fundamental syntax of JavaScript.",
+      description: "Fundamental syntax of JavaScript.",
       category: "training",
       order: 1,
       difficulty: "easy",
-      prerequisiteStageId: null,
       challenges: [c1._id, c2._id],
     });
 
-    await Stage.create({
-      title: "JS: Array Operations",
-      description: "Learn how to manipulate arrays in JS.",
+    const t2 = await Stage.create({
+      title: "Python 101",
+      description: "Introduction to Python programming.",
       category: "training",
       order: 2,
       difficulty: "easy",
-      prerequisiteStageId: s1._id,
+      prerequisiteStageId: t1._id,
       challenges: [c3._id, c4._id],
     });
 
+    // --- MISSION STAGES (MAP) ---
     const m1 = await Stage.create({
       title: "Blue Castle - Foundations",
       description: "Building the base logic of the fortress.",
@@ -111,14 +125,24 @@ const seedStages = async () => {
       challenges: [c5._id],
     });
 
-    await Stage.create({
-      title: "Purple Castle - Master",
-      description: "Final fortress optimization.",
+    const m2 = await Stage.create({
+      title: "Red Castle - Intermediate",
+      description: "Intermediate challenges for brave souls.",
       category: "mission",
       order: 2,
-      difficulty: "expert",
+      difficulty: "medium",
       prerequisiteStageId: m1._id,
       challenges: [c6._id],
+    });
+
+    await Stage.create({
+      title: "Purple Castle - Master",
+      description: "Final fortress optimization and prime verification.",
+      category: "mission",
+      order: 3,
+      difficulty: "hard",
+      prerequisiteStageId: m2._id,
+      challenges: [c7._id],
     });
 
     console.log("Stages and challenges seeded successfully.");

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Loader2, Lock, Star } from "lucide-react";
 import { stagesApi } from "../../../services/api";
 
 const diffBadge = (d) => {
@@ -78,11 +78,11 @@ export default function StageDetail() {
     <div className="min-h-screen bg-slate-950 text-slate-200 pt-20 pb-12 px-6 max-w-4xl mx-auto">
       <button
         type="button"
-        onClick={() => navigate("/training")}
+        onClick={() => navigate(stage.category === "mission" ? "/map" : "/training")}
         className="flex items-center gap-2 text-slate-400 hover:text-white mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
-        Learning path
+        {stage.category === "mission" ? "Strategic Map" : "Learning path"}
       </button>
 
       <header className="mb-10">
@@ -111,10 +111,19 @@ export default function StageDetail() {
                 {c.completed ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 ) : (
-                  <Circle className="w-5 h-5 text-slate-600 shrink-0" />
+                  <Circle className="w-5 h-5 text-slate-400 shrink-0" />
                 )}
                 <div>
-                  <p className="font-semibold text-slate-100">{c.title}</p>
+                  <p className="font-semibold text-slate-100 flex items-center gap-2">
+                    {c.title}
+                    {c.completed && (
+                      <div className="flex gap-0.5 ml-2">
+                        {[...Array(3)].map((_, i) => (
+                          <Star key={i} className={`w-3 h-3 ${i < (c.stars || 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-700'}`} />
+                        ))}
+                      </div>
+                    )}
+                  </p>
                   <p className="text-xs text-slate-500 line-clamp-1">{c.description}</p>
                 </div>
               </div>

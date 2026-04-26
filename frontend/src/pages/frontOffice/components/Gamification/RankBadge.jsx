@@ -3,7 +3,7 @@ import { Shield, Target, Zap, Crown, Award, Star, Flame, Diamond, Hexagon } from
 import { motion } from 'framer-motion';
 
 export const RANK_CONFIG = {
-  Iron: { icon: Shield, color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/30', glow: '' },
+  Iron: { icon: Shield, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/30', glow: '' },
   Bronze: { icon: Target, color: 'text-amber-700', bg: 'bg-amber-700/10', border: 'border-amber-700/30', glow: '' },
   Silver: { icon: Award, color: 'text-slate-300', bg: 'bg-slate-300/10', border: 'border-slate-300/30', glow: 'drop-shadow-[0_0_5px_rgba(203,213,225,0.5)]' },
   Gold: { icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30', glow: 'drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]' },

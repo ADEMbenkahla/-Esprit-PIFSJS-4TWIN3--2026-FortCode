@@ -170,10 +170,10 @@ export default function RequestRecruiterRole() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="justificat_34846">
                 Justification *
               </label>
-              <textarea
+<textarea id="justificat_34846" 
                 value={justification}
                 onChange={(e) => setJustification(e.target.value)}
                 placeholder="Explain why you want to become a recruiter (minimum 20 characters). For example: I am a computer science teacher with 5 years of experience..."

@@ -87,16 +87,14 @@ export default function WorldMap() {
               >
                 <motion.div
                   whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}}
-                  className={`relative group flex items-center gap-6 p-6 rounded-xl border backdrop-blur-md transition-all duration-300 w-[500px] ${
-                    isLocked
+                  className={`relative group flex items-center gap-6 p-6 rounded-xl border backdrop-blur-md transition-all duration-300 w-[500px] ${isLocked
                       ? "bg-slate-900/80 border-slate-800 opacity-60 grayscale"
                       : "bg-slate-900/90 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.2)] hover:border-blue-400 hover:shadow-[0_0_50px_rgba(59,130,246,0.4)]"
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`relative w-16 h-16 rounded-full flex items-center justify-center border-2 ${
-                      isLocked ? "bg-slate-800 border-slate-700" : "bg-slate-800 border-blue-500/50 shadow-inner"
-                    }`}
+                    className={`relative w-16 h-16 rounded-full flex items-center justify-center border-2 ${isLocked ? "bg-slate-800 border-slate-700" : "bg-slate-800 border-blue-500/50 shadow-inner"
+                      }`}
                   >
                     {isLocked ? <Lock className="w-6 h-6 text-slate-500" /> : getIcon(stage.order)}
 
@@ -107,11 +105,10 @@ export default function WorldMap() {
 
                   <div className="flex-1">
                     <h3
-                      className={`text-xl font-serif font-bold tracking-wide ${
-                        isLocked ? "text-slate-500" : "text-slate-100 group-hover:text-blue-300"
-                      }`}
+                      className={`text-xl font-serif font-bold tracking-wide ${isLocked ? "text-slate-500" : "text-slate-100 group-hover:text-blue-300"
+                        }`}
                     >
-                      Order {stage.order}
+                      Stage {stage.order}
                     </h3>
                     <p className="text-sm text-slate-400 font-mono mt-1">{stage.title}</p>
                     {isLocked && stage.prerequisiteTitle && (
@@ -125,9 +122,8 @@ export default function WorldMap() {
                   </div>
 
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${
-                      isLocked ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg"
-                    }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${isLocked ? "bg-slate-800 text-slate-400" : "bg-blue-600 text-white shadow-lg"
+                      }`}
                   >
                     {isLocked ? <Lock className="w-4 h-4" /> : <ChevronRight className="w-5 h-5" />}
                   </div>

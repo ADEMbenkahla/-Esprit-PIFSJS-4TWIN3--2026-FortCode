@@ -6,6 +6,7 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 
 const staff = [authMiddleware, roleMiddleware("admin", "recruiter")];
 
+router.post("/generate", ...staff, challengeController.generateChallengeDraft);
 router.post("/", ...staff, challengeController.createChallenge);
 router.get("/", ...staff, challengeController.getAllChallenges);
 router.get("/:id", ...staff, challengeController.getChallengeById);

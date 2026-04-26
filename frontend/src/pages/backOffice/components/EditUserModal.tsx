@@ -117,7 +117,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                         onClick={onClose}
                         className="text-gray-400 hover:text-white transition-colors"
                     >
-                        <span className="material-icons-outlined">close</span>
+                        <span aria-hidden="true" className="material-icons-outlined">close</span>
                     </button>
                 </div>
 
@@ -125,8 +125,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Username</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="username_16294">Username</label>
+<input id="username_16294" 
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -136,8 +136,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Email</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="email_76092">Email</label>
+<input id="email_76092" 
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -147,8 +147,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Password (leave empty to keep current)</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="passwordle_41365">Password (leave empty to keep current)</label>
+<input id="passwordle_41365" 
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -158,8 +158,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Role</label>
-                                <select
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="role_62648">Role</label>
+<select id="role_62648" 
                                     value={role}
                                     onChange={(e) => setRole(e.target.value)}
                                     className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors"
@@ -171,8 +171,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Rank (Gamification)</label>
-                                <select
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="rankgamifi_41341">Rank (Gamification)</label>
+<select id="rankgamifi_41341" 
                                     value={rank}
                                     onChange={(e) => setRank(e.target.value)}
                                     className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-4 py-2 text-white font-bold focus:outline-none focus:border-yellow-400 transition-colors"
@@ -190,8 +190,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Level (Max 80)</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="levelmax_14008">Level (Max 80)</label>
+<input id="levelmax_14008" 
                                     type="number"
                                     min="1"
                                     max="80"
@@ -202,8 +202,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">XP (Points)</label>
-                                <input
+                                <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="xppoints_54525">XP (Points)</label>
+<input id="xppoints_54525" 
                                     type="number"
                                     min="0"
                                     value={points}

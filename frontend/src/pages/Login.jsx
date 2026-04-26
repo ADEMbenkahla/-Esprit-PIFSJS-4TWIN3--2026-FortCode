@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import logoImg from "../assets/logo.png";
 import "./pages.css";
-import FaceAuthModal from "../components/FaceAuthModal";
+const FaceAuthModal = lazy(() => import("../components/FaceAuthModal"));
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { getUserRole } from "../guards/RouteGuards";
@@ -338,22 +338,24 @@ function Login() {
     <div className="auth-container">
       <div className="card">
         <div className="logo-card login">
-          <img src={logoImg} alt="FortCode Logo" />
+          <img src={logoImg} alt="FortCode Logo" fetchPriority="high" width="240" height="80" style={{ objectFit: "contain" }} />
         </div>
 
         {!twoFactorRequired && (
           <>
-            <label>Username or Email Address</label>
+            <label htmlFor="identifier">Username or Email Address</label>
             <input
+              id="identifier"
               type="text"
               placeholder="user@fortcode.com or username"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
             />
 
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
             <div className="password-container">
               <input
+                id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -393,18 +395,23 @@ function Login() {
           </>
         )}
 
-        <FaceAuthModal
-          isOpen={isFaceModalOpen}
-          onClose={() => setIsFaceModalOpen(false)}
-          mode="login"
-          email={identifier}
-          onCapture={handleFaceLogin}
-        />
+        <Suspense fallback={null}>
+          {isFaceModalOpen && (
+            <FaceAuthModal
+              isOpen={isFaceModalOpen}
+              onClose={() => setIsFaceModalOpen(false)}
+              mode="login"
+              email={identifier}
+              onCapture={handleFaceLogin}
+            />
+          )}
+        </Suspense>
 
         {twoFactorRequired && (
           <>
-            <label>2FA Code</label>
+            <label htmlFor="twoFactorCode">2FA Code</label>
             <input
+              id="twoFactorCode"
               type="text"
               placeholder={twoFactorMethod === 'email' ? 'Enter code from email' : 'Enter code from app'}
               value={twoFactorCode}

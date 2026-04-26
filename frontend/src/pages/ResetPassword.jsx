@@ -87,9 +87,9 @@ function ResetPassword() {
                     <img src={logoImg} alt="FortCode Logo" />
                 </div>
 
-                <label>New Password</label>
-                <div className="password-container">
-                    <input
+                <label htmlFor="newpasswor_67737">New Password</label>
+<div className="password-container">
+<input id="newpasswor_67737" 
                         type="password"
                         placeholder="••••••••"
                         value={password}
@@ -97,9 +97,9 @@ function ResetPassword() {
                     />
                 </div>
 
-                <label>Confirm Password</label>
-                <div className="password-container">
-                    <input
+                <label htmlFor="confirmpas_5032">Confirm Password</label>
+<div className="password-container">
+<input id="confirmpas_5032" 
                         type="password"
                         placeholder="••••••••"
                         value={confirmPassword}

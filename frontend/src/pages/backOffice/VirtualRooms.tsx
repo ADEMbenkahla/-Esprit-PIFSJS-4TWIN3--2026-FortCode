@@ -94,7 +94,7 @@ const VirtualRooms: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-dark rounded-2xl border border-white/10 p-4">
             <div>
               <p className="text-sm font-semibold text-white">Filters</p>
-              <p className="text-xs text-gray-500">Filter by request status</p>
+              <p className="text-xs text-gray-400">Filter by request status</p>
             </div>
             <div className="flex gap-2">
               {["all", "pending", "approved", "rejected"].map((s) => (
@@ -123,10 +123,10 @@ const VirtualRooms: React.FC = () => {
           <div className="bg-surface-dark rounded-2xl border border-white/10 overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="material-icons-outlined text-primary text-lg">video_camera_front</span>
+                <span aria-hidden="true" className="material-icons-outlined text-primary text-lg">video_camera_front</span>
                 Virtual Room Requests
               </h3>
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">
+              <span className="text-[10px] text-gray-400 uppercase tracking-widest">
                 {loading ? "Loading..." : `${requests.length} request(s)`}
               </span>
             </div>
@@ -158,7 +158,7 @@ const VirtualRooms: React.FC = () => {
                 <tbody className="divide-y divide-white/5">
                   {!loading && requests.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500 text-sm">
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">
                         No virtual room requests found.
                       </td>
                     </tr>
@@ -171,7 +171,7 @@ const VirtualRooms: React.FC = () => {
                           <span className="font-semibold text-white">
                             {req.recruiter?.username || "Unknown"}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             {req.recruiter?.email}
                           </span>
                         </div>
@@ -198,10 +198,10 @@ const VirtualRooms: React.FC = () => {
                               {req.roomLink}
                             </a>
                           ) : (
-                            <span className="text-xs text-gray-500">Generating…</span>
+                            <span className="text-xs text-gray-400">Generating…</span>
                           )
                         ) : (
-                          <span className="text-xs text-gray-500">—</span>
+                          <span className="text-xs text-gray-400">—</span>
                         )}
                       </td>
 
@@ -221,7 +221,7 @@ const VirtualRooms: React.FC = () => {
                         />
                       </td>
 
-                      <td className="px-4 py-3 align-top text-xs text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 align-top text-xs text-gray-400 whitespace-nowrap">
                         {new Date(req.createdAt).toLocaleString()}
                       </td>
 

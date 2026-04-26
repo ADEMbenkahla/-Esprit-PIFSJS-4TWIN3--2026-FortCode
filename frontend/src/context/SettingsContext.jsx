@@ -30,6 +30,7 @@ export const SettingsProvider = ({ children }) => {
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('reduceMotion') === 'true');
   const [monochrome, setMonochrome] = useState(localStorage.getItem('monochrome') === 'true');
   const [readingGuide, setReadingGuide] = useState(localStorage.getItem('readingGuide') === 'true');
+  const [readOnHover, setReadOnHover] = useState(localStorage.getItem('readOnHover') === 'true');
   const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('soundEnabled') !== 'false');
   const [avatar, setAvatar] = useState(localStorage.getItem('avatar') || defaultAvatar);
   const [username, setUsername] = useState(localStorage.getItem('username') || defaultUsername);
@@ -91,6 +92,7 @@ export const SettingsProvider = ({ children }) => {
           setSoundEnabled(user.settings.soundEnabled !== false);
           setMonochrome(user.settings.monochrome || false);
           setReadingGuide(user.settings.readingGuide || false);
+          setReadOnHover(user.settings.readOnHover || false);
 
           if (user.settings.twoFactor) {
             setTwoFactorEnabled(!!user.settings.twoFactor.enabled);
@@ -110,6 +112,7 @@ export const SettingsProvider = ({ children }) => {
           localStorage.setItem('soundEnabled', user.settings.soundEnabled !== false);
           localStorage.setItem('monochrome', user.settings.monochrome || false);
           localStorage.setItem('readingGuide', user.settings.readingGuide || false);
+          localStorage.setItem('readOnHover', user.settings.readOnHover || false);
         }
 
         // Load avatar and username (USER-SPECIFIC)
@@ -272,6 +275,12 @@ export const SettingsProvider = ({ children }) => {
     setReadingGuide(value);
     localStorage.setItem('readingGuide', value);
     syncWithBackend({ readingGuide: value });
+  }, [syncWithBackend]);
+
+  const updateReadOnHover = useCallback((value) => {
+    setReadOnHover(value);
+    localStorage.setItem('readOnHover', value);
+    syncWithBackend({ readOnHover: value });
   }, [syncWithBackend]);
 
   const updateSoundEnabled = useCallback((value) => {
@@ -464,6 +473,7 @@ export const SettingsProvider = ({ children }) => {
     reduceMotion,
     monochrome,
     readingGuide,
+    readOnHover,
     avatar,
     username,
     nickname: username, // Backward compatibility
@@ -480,6 +490,7 @@ export const SettingsProvider = ({ children }) => {
     updateReduceMotion,
     updateMonochrome,
     updateReadingGuide,
+    updateReadOnHover,
     updateSoundEnabled,
     setupTwoFactor,
     verifyTwoFactorSetup,

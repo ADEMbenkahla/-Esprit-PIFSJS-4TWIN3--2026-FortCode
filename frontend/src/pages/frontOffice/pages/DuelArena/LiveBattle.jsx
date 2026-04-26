@@ -446,7 +446,7 @@ export default function LiveBattle() {
                             </div>
 
                             {testResults.length === 0 && !output && (
-                                <div className="text-slate-600 italic">Match started. Fight for your life!</div>
+                                <div className="text-slate-400 italic">Match started. Fight for your life!</div>
                             )}
                         </div>
                     </Card>

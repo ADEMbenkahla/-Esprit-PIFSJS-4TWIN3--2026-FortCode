@@ -145,4 +145,7 @@ const userSchema = new mongoose.Schema({
   faceRegistered: { type: Boolean, default: false }
 }, { timestamps: true });
 
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1, isActive: 1 });
+
 module.exports = mongoose.model("User", userSchema);

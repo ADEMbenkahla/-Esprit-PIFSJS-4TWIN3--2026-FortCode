@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { Camera, User, Sparkles, ShieldCheck } from 'lucide-react';
 import { AvatarPicker } from './components/AvatarPicker';
 import { useSettings } from '../../context/SettingsContext';
-import FaceAuthModal from '../../components/FaceAuthModal';
+const FaceAuthModal = lazy(() => import('../../components/FaceAuthModal'));
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import Swal from 'sweetalert2';
 
@@ -71,23 +71,23 @@ const Settings: React.FC = () => {
                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500" />
 
                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                                <span className="material-icons-outlined text-primary text-lg">person</span>
+                                <span aria-hidden="true" className="material-icons-outlined text-primary text-lg">person</span>
                                 Profile Information
                             </h3>
 
                             <div className="grid md:grid-cols-2 gap-8">
                                 {/* Avatar Selection */}
                                 <div className="space-y-4">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Choose Avatar</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1" htmlFor="chooseavat_88894">Choose Avatar</label>
                                     <AvatarPicker currentAvatar={avatar} onSelect={handleAvatarSelect} />
                                 </div>
 
                                 {/* Username Section */}
                                 <div className="space-y-6">
                                     <div className="space-y-4">
-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Username</label>
-                                        <div className="relative group/input">
-                                            <input
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Username</label>
+<div className="relative group/input">
+<input id="chooseavat_88894" 
                                                 type="text"
                                                 value={tempUsername}
                                                 onChange={(e) => setTempUsername(e.target.value)}
@@ -114,7 +114,7 @@ const Settings: React.FC = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-white">{username}</p>
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Display Identity</p>
+                                            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Display Identity</p>
                                         </div>
                                     </div>
                                 </div>
@@ -126,7 +126,7 @@ const Settings: React.FC = () => {
                             <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-accent-purple/10 rounded-full blur-3xl group-hover:bg-accent-purple/20 transition-colors duration-500" />
 
                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                                <span className="material-icons-outlined text-primary text-lg">security</span>
+                                <span aria-hidden="true" className="material-icons-outlined text-primary text-lg">security</span>
                                 Security & Authentication
                             </h3>
 
@@ -137,7 +137,7 @@ const Settings: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-white font-bold">Facial Recognition (Face ID)</h4>
-                                        <p className="text-xs text-gray-500 max-w-md mt-1">
+                                        <p className="text-xs text-gray-400 max-w-md mt-1">
                                             Enhance your account security using software-based facial recognition. This allows you to login using your webcam.
                                         </p>
                                         <div className="flex items-center gap-2 mt-3">
@@ -153,7 +153,7 @@ const Settings: React.FC = () => {
                                     onClick={() => setIsFaceModalOpen(true)}
                                     className="px-8 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary text-white text-sm font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2"
                                 >
-                                    <span className="material-icons-outlined text-lg">{faceRegistered ? 'refresh' : 'add_a_photo'}</span>
+                                    <span aria-hidden="true" className="material-icons-outlined text-lg">{faceRegistered ? 'refresh' : 'add_a_photo'}</span>
                                     {faceRegistered ? 'Update Face Scan' : 'Register My Face'}
                                 </button>
                             </div>
@@ -164,7 +164,7 @@ const Settings: React.FC = () => {
                                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
                                         <p className="text-xs font-bold text-gray-300">Biometric Security</p>
                                     </div>
-                                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                                    <p className="text-[10px] text-gray-400 leading-relaxed">
                                         Your facial biometric data is processed locally as vectors (descriptors) and stored securely on our servers for authentication matching.
                                     </p>
                                 </div>
@@ -173,7 +173,7 @@ const Settings: React.FC = () => {
                                         <Sparkles className="w-4 h-4 text-primary" />
                                         <p className="text-xs font-bold text-gray-300">Fast Access</p>
                                     </div>
-                                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                                    <p className="text-[10px] text-gray-400 leading-relaxed">
                                         Once registered, you can bypass traditional password entry by simply looking at your camera during the login process.
                                     </p>
                                 </div>
@@ -181,43 +181,47 @@ const Settings: React.FC = () => {
                         </section>
 
                         <div className="pt-6 flex justify-center">
-                            <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em] font-bold">FortCode Security Systems • v2.0</p>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-bold">FortCode Security Systems • v2.0</p>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <FaceAuthModal
-                isOpen={isFaceModalOpen}
-                onClose={() => setIsFaceModalOpen(false)}
-                mode="register"
-                onCapture={async (descriptor) => {
-                    try {
-                        setLoading(true);
-                        await registerFace(descriptor);
-                        playSuccess();
-                        Swal.fire({
-                            title: 'Registered!',
-                            text: 'Your face has been successfully linked to your account.',
-                            icon: 'success',
-                            background: '#1a1a2e',
-                            color: '#fff',
-                            confirmButtonColor: '#7c3aed'
-                        });
-                        setIsFaceModalOpen(false);
-                    } catch (err: any) {
-                        Swal.fire({
-                            title: 'Error',
-                            text: err.message || 'Face registration failed',
-                            icon: 'error',
-                            background: '#1a1a2e',
-                            color: '#fff'
-                        });
-                    } finally {
-                        setLoading(false);
-                    }
-                }}
-            />
+            <Suspense fallback={null}>
+                {isFaceModalOpen && (
+                    <FaceAuthModal
+                        isOpen={isFaceModalOpen}
+                        onClose={() => setIsFaceModalOpen(false)}
+                        mode="register"
+                        onCapture={async (descriptor) => {
+                            try {
+                                setLoading(true);
+                                await registerFace(descriptor);
+                                playSuccess();
+                                Swal.fire({
+                                    title: 'Registered!',
+                                    text: 'Your face has been successfully linked to your account.',
+                                    icon: 'success',
+                                    background: '#1a1a2e',
+                                    color: '#fff',
+                                    confirmButtonColor: '#7c3aed'
+                                });
+                                setIsFaceModalOpen(false);
+                            } catch (err: any) {
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: err.message || 'Face registration failed',
+                                    icon: 'error',
+                                    background: '#1a1a2e',
+                                    color: '#fff'
+                                });
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };

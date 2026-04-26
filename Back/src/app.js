@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const session = require("express-session");
 const passport = require("./config/passport");
 const connectDB = require("./config/db");
@@ -10,8 +11,9 @@ connectDB();
 
 const app = express();
 
+app.use(compression());
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://127.0.0.1:4173'],
     credentials: true
 }));
 app.use(express.json());
