@@ -49,6 +49,11 @@ const challengeSchema = new mongoose.Schema(
       enum: ["Stage", "Battle"],
       default: "Stage",
     },
+    stageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Stage",
+      default: null,
+    },
     constraints: {
       type: String,
     },
