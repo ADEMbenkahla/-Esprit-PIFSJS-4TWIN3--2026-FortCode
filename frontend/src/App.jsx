@@ -24,7 +24,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import { Home } from "./pages/frontOffice/pages/Home";
-import WorldMap from "./pages/frontOffice/pages/WorldMap";
+import WorldMap3D from "./pages/frontOffice/pages/WorldMap3D";
 import TrainingGrounds from "./pages/frontOffice/pages/TrainingGrounds";
 import StageDetail from "./pages/frontOffice/pages/StageDetail";
 import ChallengeEditor from "./pages/frontOffice/pages/ChallengeEditor";
@@ -91,7 +91,7 @@ function AppContent() {
 
         {/* Front Office Routes — only participants & recruiters; admin is redirected to back office */}
         <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />
-        <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap /></FrontOfficeOnlyRoute>} />
+        <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap3D /></FrontOfficeOnlyRoute>} />
         <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
         <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
         <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />

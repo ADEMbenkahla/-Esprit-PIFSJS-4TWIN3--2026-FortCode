@@ -127,12 +127,12 @@ function runPythonTests(userCode, testCases) {
 }
 
 function runChallengeCode(language, userCode, testCases) {
-  const lang = String(language || "").toLowerCase();
-  if (lang === "javascript" || lang === "js") {
-    return runJavaScriptTests(userCode, testCases);
+  const lang = String(language || "javascript").toLowerCase();
+  if (lang === "javascript" || lang === "js" || lang === "typescript") {
+    return runJavaScriptTests(userCode || "", Array.isArray(testCases) ? testCases : []);
   }
   if (lang === "python" || lang === "py") {
-    return runPythonTests(userCode, testCases);
+    return runPythonTests(userCode || "", Array.isArray(testCases) ? testCases : []);
   }
   return runMockValidator(language, userCode);
 }

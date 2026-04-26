@@ -119,6 +119,121 @@ class CodeFeedbackRequest(BaseModel):
     code: str = ""
     challengeTitle: str = "Coding Challenge"
 
+
+class ExerciseHelpRequest(BaseModel):
+    type: str = "hint"  # hint | explain | course
+    stageTitle: str = ""
+    challengeTitle: str = "Coding Challenge"
+    challengeDescription: str = ""
+    language: str = "javascript"
+    starterCode: str = ""
+    code: str = ""
+
+
+def _fallback_exercise_help(help_type: str) -> Dict[str, Any]:
+    t = (help_type or "hint").strip().lower()
+    if t not in {"hint", "explain", "course"}:
+        t = "hint"
+    if t == "hint":
+        return {
+            "type": t,
+            "title": "Hint",
+            "content": "Start from the simplest case. Write down the expected input and output, then implement step-by-step.",
+            "keyPoints": ["Identify inputs/outputs", "Handle edge cases", "Return the right type"],
+            "resources": [],
+            "source": "fallback",
+        }
+    if t == "explain":
+        return {
+            "type": t,
+            "title": "Explanation",
+            "content": "Break the problem into small steps: parse input, apply the required logic, and return the result.",
+            "keyPoints": ["What to compute", "How to transform input", "How to validate with examples"],
+            "resources": [],
+            "source": "fallback",
+        }
+    return {
+        "type": t,
+        "title": "Mini course",
+        "content": "1) Read the statement. 2) Write a naive solution. 3) Add edge cases. 4) Refactor for clarity. 5) Re-run tests.",
+        "keyPoints": ["Start simple", "Test edge cases", "Refactor"],
+        "resources": ["Use console logs to inspect intermediate values", "Try small inputs manually"],
+        "source": "fallback",
+    }
+
+
+async def generate_exercise_help_with_gemini(payload: ExerciseHelpRequest) -> Dict[str, Any]:
+    help_type = (payload.type or "hint").strip().lower()
+    if help_type not in {"hint", "explain", "course"}:
+        help_type = "hint"
+
+    # Resilient fallback when Gemini unavailable.
+    if TEST_MODE or not GEMINI_API_KEY or "your_gemini_api_key" in GEMINI_API_KEY:
+        return _fallback_exercise_help(help_type)
+
+    prompt = f"""
+You are a friendly programming mentor.
+You must help a student understand an exercise WITHOUT giving the full final solution.
+
+Return ONLY valid JSON with this exact shape:
+{{
+  "type": "{help_type}",
+  "title": "string",
+  "content": "string",
+  "keyPoints": ["string"],
+  "resources": ["string"]
+}}
+
+Rules:
+- Do NOT provide the complete final code solution.
+- It is allowed to provide small snippets or pseudo-code.
+- Keep lists short (max 5 items).
+- No markdown, no code fences.
+
+Context:
+- Stage: {payload.stageTitle}
+- Challenge: {payload.challengeTitle}
+- Language: {payload.language}
+
+Challenge description:
+{payload.challengeDescription}
+
+Starter code:
+{payload.starterCode}
+
+Student current code (may be empty):
+{payload.code}
+"""
+
+    last_error = ""
+    for model_name in _yield_prioritized_models():
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            raw_text = ""
+            try:
+                raw_text = getattr(response, "text", "") or ""
+            except Exception:
+                raw_text = ""
+
+            parsed = _parse_json_payload(raw_text)
+            if isinstance(parsed, dict) and parsed.get("content"):
+                parsed["type"] = help_type
+                parsed.setdefault("resources", [])
+                parsed.setdefault("keyPoints", [])
+                return parsed
+        except core_exceptions.ResourceExhausted:
+            last_error = "Rate limit exceeded."
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    fallback = _fallback_exercise_help(help_type)
+    fallback["summary"] = "AI help service unavailable; showing fallback guidance."
+    fallback["detail"] = last_error
+    return fallback
+
 def perform_ocr(file_bytes: bytes) -> str:
     """Extract text from image using Tesseract."""
     try:
@@ -528,6 +643,12 @@ async def generate_exercise(req: ExerciseRequest):
 async def code_feedback(req: CodeFeedbackRequest):
     feedback = await generate_code_feedback_with_gemini(req)
     return feedback
+
+
+@app.post("/exercise-help")
+async def exercise_help(req: ExerciseHelpRequest):
+    help_payload = await generate_exercise_help_with_gemini(req)
+    return help_payload
 
 if __name__ == "__main__":
     import uvicorn

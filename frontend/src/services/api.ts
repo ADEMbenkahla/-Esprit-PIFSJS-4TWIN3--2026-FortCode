@@ -141,6 +141,7 @@ export const stagesApi = {
     run: (stageId: string, challengeId: string, code: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/run`, { code }),
     submit: (stageId: string, challengeId: string, code: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/submit`, { code }),
     complete: (stageId: string, challengeId: string) => api.post(`/stages/${stageId}/challenges/${challengeId}/complete`),
+    help: (stageId: string, challengeId: string, payload: ApiPayload) => api.post(`/stages/${stageId}/challenges/${challengeId}/help`, payload),
     reset: (stageId: string) => api.post(`/stages/${stageId}/reset`),
     explain: (code: string, language: string, level: string = 'simple', challengeId?: string) => api.post('/stages/ai/explain', { code, language, level, challengeId }),
 };
@@ -155,6 +156,7 @@ export const adminStagesApi = {
 
 export const adminChallengesApi = {
     list: () => api.get('/challenges'),
+    generateDraft: (payload: ApiPayload) => api.post('/challenges/generate', payload, { timeout: 60000 }),
     create: (payload: ApiPayload) => api.post('/challenges', payload),
     update: (id: string, payload: ApiPayload) => api.put(`/challenges/${id}`, payload),
     remove: (id: string) => api.delete(`/challenges/${id}`),

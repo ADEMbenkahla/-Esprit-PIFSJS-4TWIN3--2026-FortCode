@@ -198,11 +198,16 @@ export const TrainingLevel = () => {
         background: '#1a1a2e',
         color: '#fff',
         timer: data.stageCompleted ? undefined : 3000,
-        showConfirmButton: data.stageCompleted,
-        confirmButtonText: 'View Dashboard',
+        showConfirmButton: !!data.stageCompleted,
+        confirmButtonText: data.stageCompleted ? 'Return to Map' : undefined,
       }).then((result) => {
-        if (data.stageCompleted && result.isConfirmed) {
-          navigate(`/training/${stageId}`);
+        if (data.stageCompleted) {
+          setShowReport(false);
+          if (result.isConfirmed) {
+            navigate('/map');
+          } else {
+            navigate(`/training/${stageId}`);
+          }
         }
       });
     } catch (err) {

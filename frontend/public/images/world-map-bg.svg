@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Sky gradient -->
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a6fa5"/>
+      <stop offset="50%" stop-color="#2e4a7d"/>
+      <stop offset="100%" stop-color="#1a1f35"/>
+    </linearGradient>
+    
+    <!-- Land base -->
+    <radialGradient id="landBase" cx="50%" cy="70%" r="80%">
+      <stop offset="0%" stop-color="#8b7355"/>
+      <stop offset="100%" stop-color="#3d2817"/>
+    </radialGradient>
+    
+    <!-- Forest gradient -->
+    <linearGradient id="forestGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d5016"/>
+      <stop offset="100%" stop-color="#1a2d0f"/>
+    </linearGradient>
+    
+    <!-- River gradient -->
+    <linearGradient id="riverGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4a90e2"/>
+      <stop offset="50%" stop-color="#7bb3f0"/>
+      <stop offset="100%" stop-color="#4a90e2"/>
+    </linearGradient>
+    
+    <!-- Mountain gradient -->
+    <linearGradient id="mountainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6b7280"/>
+      <stop offset="100%" stop-color="#374151"/>
+    </linearGradient>
+    
+    <!-- Castle gradient -->
+    <linearGradient id="castleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d3748"/>
+      <stop offset="100%" stop-color="#1a202c"/>
+    </linearGradient>
+    
+    <!-- Golden path -->
+    <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    
+    <!-- Fog filter -->
+    <filter id="fogFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.3 0"/>
+    </filter>
+    
+    <!-- Shadow filter -->
+    <filter id="shadowFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="10" dy="15" stdDeviation="8" flood-color="rgba(0,0,0,0.4)"/>
+    </filter>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="1920" height="1080" fill="url(#skyGradient)"/>
+  
+  <!-- Distant mountains silhouette -->
+  <path d="M0 400 Q200 350 400 380 Q600 420 800 390 Q1000 360 1200 400 Q1400 440 1600 410 Q1800 380 1920 420 L1920 1080 L0 1080 Z" fill="#2d3748" opacity="0.6"/>
+  
+  <!-- Main land mass -->
+  <path d="M0 600 Q200 550 400 580 Q600 620 800 590 Q1000 560 1200 600 Q1400 640 1600 610 Q1800 580 1920 620 L1920 1080 L0 1080 Z" fill="url(#landBase)"/>
+  
+  <!-- Forest zones -->
+  <g opacity="0.9">
+    <!-- Dense forest left -->
+    <path d="M0 700 Q100 650 200 680 Q300 720 400 690 Q500 660 600 700 Q700 740 800 710 Q900 680 1000 720 L1000 1080 L0 1080 Z" fill="url(#forestGradient)"/>
+    
+    <!-- Forest trees -->
+    <g fill="#1a4d1a" opacity="0.8">
+      <!-- Tree clusters -->
+      <ellipse cx="150" cy="750" rx="40" ry="80"/>
+      <ellipse cx="180" cy="730" rx="35" ry="70"/>
+      <ellipse cx="220" cy="760" rx="45" ry="90"/>
+      <ellipse cx="250" cy="740" rx="30" ry="60"/>
+      <ellipse cx="300" cy="770" rx="50" ry="100"/>
+      <ellipse cx="330" cy="750" rx="35" ry="70"/>
+      <ellipse cx="380" cy="780" rx="40" ry="80"/>
+      <ellipse cx="420" cy="760" rx="45" ry="90"/>
+      <ellipse cx="470" cy="790" rx="35" ry="70"/>
+      <ellipse cx="520" cy="770" rx="50" ry="100"/>
+      <ellipse cx="570" cy="800" rx="40" ry="80"/>
+      <ellipse cx="620" cy="780" rx="35" ry="70"/>
+      <ellipse cx="670" cy="810" rx="45" ry="90"/>
+      <ellipse cx="720" cy="790" rx="30" ry="60"/>
+      <ellipse cx="770" cy="820" rx="50" ry="100"/>
+      <ellipse cx="820" cy="800" rx="35" ry="70"/>
+      <ellipse cx="870" cy="830" rx="40" ry="80"/>
+      <ellipse cx="920" cy="810" rx="45" ry="90"/>
+    </g>
+  </g>
+  
+  <!-- Plains transition -->
+  <path d="M800 720 Q900 700 1000 730 Q1100 760 1200 740 Q1300 720 1400 750 L1400 1080 L800 1080 Z" fill="#a78b5a" opacity="0.7"/>
+  
+  <!-- River -->
+  <g>
+    <path d="M800 750 Q850 720 900 740 Q950 760 1000 730 Q1050 700 1100 720 Q1150 740 1200 710 Q1250 680 1300 700 Q1350 720 1400 690 Q1450 660 1500 680 Q1550 700 1600 670 Q1650 640 1700 660 Q1750 680 1800 650 Q1850 620 1900 640 Q1920 650 1920 650 L1920 1080 L1400 1080 Z" fill="url(#riverGradient)" opacity="0.8"/>
+    
+    <!-- River reflections -->
+    <path d="M800 750 Q850 720 900 740 Q950 760 1000 730 Q1050 700 1100 720 Q1150 740 1200 710 Q1250 680 1300 700 Q1350 720 1400 690 Q1450 660 1500 680 Q1550 700 1600 670 Q1650 640 1700 660 Q1750 680 1800 650 Q1850 620 1900 640 Q1920 650 1920 650" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" opacity="0.5"/>
+  </g>
+  
+  <!-- Wooden bridge -->
+  <g opacity="0.9">
+    <rect x="1180" y="705" width="40" height="10" fill="#8b4513"/>
+    <rect x="1150" y="695" width="120" height="5" fill="#654321"/>
+    <rect x="1140" y="690" width="10" height="20" fill="#8b4513"/>
+    <rect x="1270" y="690" width="10" height="20" fill="#8b4513"/>
+  </g>
+  
+  <!-- Mountain range -->
+  <g filter="url(#shadowFilter)">
+    <path d="M1400 400 Q1450 350 1500 380 Q1550 420 1600 390 Q1650 360 1700 400 Q1750 440 1800 410 Q1850 380 1900 420 Q1920 440 1920 440 L1920 1080 L1400 1080 Z" fill="url(#mountainGradient)"/>
+    
+    <!-- Mountain peaks -->
+    <polygon points="1450,400 1470,320 1490,400" fill="#9ca3af"/>
+    <polygon points="1550,380 1570,300 1590,380" fill="#9ca3af"/>
+    <polygon points="1650,410 1670,330 1690,410" fill="#9ca3af"/>
+    <polygon points="1750,390 1770,310 1790,390" fill="#9ca3af"/>
+    <polygon points="1850,420 1870,340 1890,420" fill="#9ca3af"/>
+  </g>
+  
+  <!-- Golden path -->
+  <path d="M200 850 Q300 800 400 820 Q500 840 600 810 Q700 780 800 800 Q900 820 1000 790 Q1100 760 1200 780 Q1300 800 1400 770 Q1500 740 1600 760 Q1700 780 1800 750 Q1900 720 1920 740" fill="none" stroke="url(#pathGradient)" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Castle -->
+  <g filter="url(#shadowFilter)">
+    <rect x="1750" y="200" width="120" height="80" fill="url(#castleGradient)"/>
+    <polygon points="1750,200 1810,150 1870,200" fill="url(#castleGradient)"/>
+    <rect x="1760" y="170" width="20" height="30" fill="#4b5563"/>
+    <rect x="1790" y="170" width="20" height="30" fill="#4b5563"/>
+    <rect x="1820" y="170" width="20" height="30" fill="#4b5563"/>
+    <rect x="1780" y="250" width="40" height="30" fill="#2d3748"/>
+  </g>
+  
+  <!-- Subtle villages/ruins -->
+  <g opacity="0.6">
+    <rect x="450" y="780" width="30" height="20" fill="#8b7355"/>
+    <rect x="850" y="750" width="25" height="15" fill="#654321"/>
+    <rect x="1350" y="720" width="35" height="25" fill="#4a4a4a"/>
+  </g>
+  
+  <!-- Fog overlay -->
+  <rect x="0" y="600" width="1920" height="480" fill="rgba(255,255,255,0.1)" filter="url(#fogFilter)"/>
+  
+  <!-- Atmospheric highlights -->
+  <ellipse cx="400" cy="300" rx="200" ry="100" fill="rgba(255,215,0,0.1)"/>
+  <ellipse cx="1200" cy="250" rx="150" ry="75" fill="rgba(255,215,0,0.08)"/>
+</svg>
