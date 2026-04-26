@@ -4,11 +4,11 @@ const User = require("../models/User");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-const axios = require("axios");
 const sendEmail = require("../utils/sendEmail");
 const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
 const { runChallengeCode } = require("../utils/runChallengeCode");
 const { detectCodeOrigin } = require("../services/mlDetectionAgent");
+const { generateExercises, httpStatusForAiError } = require("../services/aiExerciseService");
 
 const getRecruiterId = (req) => req.user && (req.user.id || req.user._id);
 const getUserId = (req) => req.user && (req.user.id || req.user._id);
@@ -151,78 +151,75 @@ exports.generateExerciseDraft = async (req, res) => {
     const prompt = String(req.body?.prompt || "").trim();
     const difficulty = String(req.body?.difficulty || "medium").trim().toLowerCase();
     const language = String(req.body?.language || "javascript").trim().toLowerCase();
+    const locale = req.body?.locale;
     const criteria = normalizeCriteria(req.body?.criteria || []);
     const randomize = req.body?.randomize !== false;
     const expectedFunctions = normalizeExpectedFunctions(req.body?.expectedFunctions);
-    const aiUrl = process.env.AI_EXERCISE_URL || "http://localhost:8000/generate-exercise";
+    const functionName = expectedFunctions[0] || "solve";
 
-    let draft = null;
-    let response = null;
+    if (!prompt) {
+      return res.status(400).json({ message: "Prompt is required" });
+    }
+
+    const extraHints = [
+      criteria.length ? `Focus: ${criteria.join(", ")}.` : "",
+      randomize ? "Prefer varied structure and naming within the constraints." : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    let items;
     try {
-      response = await axios.post(
-        aiUrl,
-        { prompt, difficulty, language, expectedFunctions, criteria, randomize },
-        { timeout: 20000, validateStatus: () => true }
-      );
-      if (response.status >= 200 && response.status < 300 && response.data) {
-        draft = response.data.exercise || response.data;
-      }
-    } catch (error) {
-      return res.status(502).json({
-        message: "AI exercise generation failed",
-        source: "ai",
-        aiEndpoint: aiUrl,
-        error: error.message,
+      items = await generateExercises({
+        topic: prompt,
+        difficulty,
+        language,
+        count: 1,
+        functionName,
+        locale,
+        extraHints,
       });
+    } catch (e) {
+      const code = e.code || "AI_GENERATION_FAILED";
+      const status = httpStatusForAiError(e);
+      const body = {
+        message: e.message || "AI exercise generation failed",
+        code,
+      };
+      if (e.helpUrl) body.helpUrl = e.helpUrl;
+      if (e.detail) body.detail = e.detail;
+      return res.status(status).json(body);
     }
 
-    if (!response || response.status < 200 || response.status >= 300) {
-      return res.status(502).json({
-        message: response?.data?.message || `AI service returned status ${response?.status}`,
-        source: "ai",
-        aiEndpoint: aiUrl,
-        details: response?.data || null,
-      });
-    }
-
-    if (!draft || typeof draft !== "object") {
-      return res.status(502).json({
-        message: "AI returned no exercise draft",
-        source: "ai",
-        aiEndpoint: aiUrl,
-        details: response?.data || null,
-      });
+    const raw = items[0];
+    if (!raw) {
+      return res.status(502).json({ message: "AI returned no exercise", code: "AI_GENERATION_FAILED" });
     }
 
     const exercise = {
-      title: String(draft?.title || "").trim(),
-      description: String(draft?.description || "").trim(),
-      language: String(draft?.language || language).toLowerCase().trim(),
-      expectedFunctions: normalizeExpectedFunctions(draft?.expectedFunctions || expectedFunctions),
-      testCases: normalizeChallengeTests(draft?.testCases),
+      title: String(raw.title || "").trim(),
+      description: String(raw.description || "").trim(),
+      language: String(raw.language || language).toLowerCase().trim(),
+      starterCode: String(raw.starterCode || "").trim(),
+      expectedFunctions: normalizeExpectedFunctions(expectedFunctions),
+      testCases: normalizeChallengeTests(raw.testCases),
+      constraints: String(raw.constraints || "").trim(),
+      xpReward: Number.isFinite(Number(raw.xpReward)) ? Number(raw.xpReward) : 100,
     };
 
-    if (!exercise.title || !exercise.description || !exercise.language) {
+    if (!exercise.title || !exercise.description || !exercise.testCases.length) {
       return res.status(502).json({
         message: "AI returned an incomplete exercise",
-        source: "ai",
-        aiEndpoint: aiUrl,
-      });
-    }
-
-    if (!exercise.testCases.length) {
-      return res.status(502).json({
-        message: "AI returned no valid test cases",
-        source: "ai",
-        aiEndpoint: aiUrl,
+        code: "AI_INCOMPLETE",
       });
     }
 
     return res.json({
       message: "Exercise generated with AI",
       exercise,
-      source: "ai",
-      aiEndpoint: aiUrl,
+      source: "openai",
+      provider: "openai",
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
     });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error: error.message });

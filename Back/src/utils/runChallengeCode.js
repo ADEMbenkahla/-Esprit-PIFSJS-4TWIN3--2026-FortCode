@@ -91,7 +91,10 @@ function runMockValidator(language, userCode) {
 }
 
 function runChallengeCode(language, userCode, testCases) {
-  // Always use mock validator for now to ensure matchmaking stability
+  const lang = String(language || "javascript").toLowerCase();
+  if (lang === "javascript" || lang === "typescript") {
+    return runJavaScriptTests(userCode || "", Array.isArray(testCases) ? testCases : []);
+  }
   return runMockValidator(language, userCode);
 }
 

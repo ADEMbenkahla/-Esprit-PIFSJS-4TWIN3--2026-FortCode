@@ -150,8 +150,14 @@ export const TrainingLevel = () => {
         text: `Results analyzed. Quality Score: ${data.sonar?.qualityScore || 0}/100`,
         background: '#1a1a2e',
         color: '#fff',
-        timer: 3000,
-        showConfirmButton: false
+        timer: data.stageCompleted ? undefined : 3000,
+        showConfirmButton: !!data.stageCompleted,
+        confirmButtonText: data.stageCompleted ? 'Return to Map' : undefined,
+      }).then(() => {
+        if (data.stageCompleted) {
+          setShowReport(false);
+          navigate('/map');
+        }
       });
     } catch (err) {
       console.error("Submit error:", err);

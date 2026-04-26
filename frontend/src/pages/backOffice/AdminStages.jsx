@@ -194,9 +194,9 @@ export default function AdminStages() {
                     <tr key={st._id} className="hover:bg-white/5">
                       <td className="p-4">
                         <p className="font-medium text-white">{st.title}</p>
-                        <p className="text-xs text-gray-500">{st.category}</p>
+                        <p className="text-sm text-gray-400 truncate max-w-xs mt-1">{st.description || "No description provided."}</p>
                       </td>
-                      <td className="p-4 capitalize text-gray-300">{st.difficulty}</td>
+                      <td className="p-4 capitalize text-gray-300">{st.difficulty || "easy"}</td>
                       <td className="p-4 text-gray-300">{st.challenges?.length ?? 0}</td>
                       <td className="p-4 text-gray-300">{st.order}</td>
                       <td className="p-4 text-right space-x-2">
@@ -337,9 +337,12 @@ export default function AdminStages() {
                       key={c._id}
                       type="button"
                       onClick={() => toggleChallenge(c._id)}
-                      className={`w-full text-left px-2 py-1.5 rounded text-sm mb-1 ${on ? "bg-blue-600/30" : "hover:bg-white/5"}`}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm mb-2 transition ${on ? "bg-blue-600/30 text-blue-100" : "hover:bg-white/5 text-gray-200"}`}
                     >
-                      {c.title} <span className="text-gray-500 text-xs">({c.language})</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>{c.title}</span>
+                        <span className="text-xs text-slate-400">{c.language}</span>
+                      </div>
                     </button>
                   );
                 })}

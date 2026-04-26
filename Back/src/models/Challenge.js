@@ -49,6 +49,12 @@ const challengeSchema = new mongoose.Schema(
       enum: ["Stage", "Battle"],
       default: "Stage",
     },
+    /** Training stage that owns this challenge (Stage type). Null = pool / not assigned. Battle challenges stay null. */
+    stageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Stage",
+      default: null,
+    },
     constraints: {
       type: String,
     },
@@ -59,5 +65,8 @@ const challengeSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+challengeSchema.index({ type: 1, stageId: 1 });
+challengeSchema.index({ stageId: 1 });
 
 module.exports = mongoose.model("Challenge", challengeSchema);
