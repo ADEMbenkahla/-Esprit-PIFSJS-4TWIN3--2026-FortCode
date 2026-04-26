@@ -47,8 +47,8 @@ const UserTable: React.FC<UserTableProps> = ({
 
   if (!users.length) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2 p-10">
-        <span className="material-icons-outlined text-4xl">person_off</span>
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2 p-10">
+        <span aria-hidden="true" className="material-icons-outlined text-4xl">person_off</span>
         <p>Users not found</p>
       </div>
     );
@@ -61,11 +61,11 @@ const UserTable: React.FC<UserTableProps> = ({
           <thead>
             <tr className="bg-surface-dark/80 border-b border-purple-900/20 sticky top-0 z-10 backdrop-blur-md">
               <th className="p-4 w-12 text-center"></th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">User</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Role</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">XP / Level</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</th>
-              <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">User</th>
+              <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Role</th>
+              <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">XP / Level</th>
+              <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">Status</th>
+              <th className="p-4 text-xs font-semibold text-gray-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
 
@@ -94,6 +94,7 @@ const UserTable: React.FC<UserTableProps> = ({
                       <img
                         src={user.avatar || "/default-avatar.png"}
                         alt={user.username}
+                        loading="lazy"
                         className="w-9 h-9 rounded-full border border-purple-900/50"
                       />
                       {user.isOnline && (
@@ -104,7 +105,7 @@ const UserTable: React.FC<UserTableProps> = ({
                       <div className="font-medium text-white">
                         {user.username}
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {user.email}
                       </div>
                     </div>
@@ -134,7 +135,7 @@ const UserTable: React.FC<UserTableProps> = ({
                         }}
                       ></div>
                     </div>
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-[10px] text-gray-400">
                       Lvl {user.gamification?.level || 1}
                     </span>
                   </div>
@@ -163,13 +164,14 @@ const UserTable: React.FC<UserTableProps> = ({
                         e.stopPropagation();
                         if (onEditUser) onEditUser(user);
                       }}
+                      aria-label={`Edit ${user.username}`}
                       className="text-primary hover:text-primary-hover p-1.5 rounded hover:bg-primary/10 transition-colors">
-                      <span className="material-icons-outlined text-lg">
+                      <span aria-hidden="true" className="material-icons-outlined text-lg">
                         edit
                       </span>
                     </button>
-                    <button className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-700 transition-colors">
-                      <span className="material-icons-outlined text-lg">
+                    <button aria-label={`View ${user.username}`} className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-700 transition-colors">
+                      <span aria-hidden="true" className="material-icons-outlined text-lg">
                         visibility
                       </span>
                     </button>
@@ -184,4 +186,4 @@ const UserTable: React.FC<UserTableProps> = ({
   );
 };
 
-export default UserTable;
+export default React.memo(UserTable);

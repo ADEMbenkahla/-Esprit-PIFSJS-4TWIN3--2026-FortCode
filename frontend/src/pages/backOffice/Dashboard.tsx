@@ -90,10 +90,10 @@ const Dashboard: React.FC = () => {
                                     >
                                         <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${card.gradient} opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-500`} />
                                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center mb-3 shadow-lg`}>
-                                            <span className="material-icons-outlined text-white text-xl">{card.icon}</span>
+                                            <span className="material-icons-outlined text-white text-xl" aria-hidden="true">{card.icon}</span>
                                         </div>
                                         <p className="text-3xl font-black text-white tracking-tight">{card.value}</p>
-                                        <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wider">{card.label}</p>
+                                        <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">{card.label}</p>
                                     </div>
                                 ))}
                             </div>
@@ -103,10 +103,10 @@ const Dashboard: React.FC = () => {
 
                                 {/* Role Distribution */}
                                 <div className="bg-surface-dark rounded-2xl border border-white/10 p-6">
-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
-                                        <span className="material-icons-outlined text-primary text-lg">pie_chart</span>
+                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
+                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">pie_chart</span>
                                         Role Distribution
-                                    </h3>
+                                    </h2>
                                     <div className="space-y-4">
                                         {[
                                             { label: "Participants", count: stats.participants, color: "bg-blue-500", pct: stats.totalUsers ? Math.round((stats.participants / stats.totalUsers) * 100) : 0 },
@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
                                             <div key={role.label}>
                                                 <div className="flex justify-between text-sm mb-1.5">
                                                     <span className="text-gray-400 font-medium">{role.label}</span>
-                                                    <span className="text-white font-bold">{role.count} <span className="text-gray-600 font-normal">({role.pct}%)</span></span>
+                                                    <span className="text-white font-bold">{role.count} <span className="text-gray-400 font-normal">({role.pct}%)</span></span>
                                                 </div>
                                                 <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
                                                     <div
@@ -134,14 +134,14 @@ const Dashboard: React.FC = () => {
                                             <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
                                             <div>
                                                 <p className="text-white font-bold text-lg">{stats.activeUsers}</p>
-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Active</p>
+                                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Active</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <div className="w-3 h-3 rounded-full bg-red-400" />
                                             <div>
                                                 <p className="text-white font-bold text-lg">{stats.inactiveUsers}</p>
-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Inactive</p>
+                                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Inactive</p>
                                             </div>
                                         </div>
                                     </div>
@@ -149,10 +149,10 @@ const Dashboard: React.FC = () => {
 
                                 {/* Activity Chart (last 7 days) */}
                                 <div className="bg-surface-dark rounded-2xl border border-white/10 p-6">
-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
-                                        <span className="material-icons-outlined text-primary text-lg">bar_chart</span>
+                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
+                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">bar_chart</span>
                                         Activity (Last 7 Days)
-                                    </h3>
+                                    </h2>
                                     <div className="flex items-end gap-2 h-40">
                                         {stats.activityPerDay.map((day) => {
                                             const heightPct = (day.count / maxActivity) * 100;
@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
                                                             style={{ height: `${Math.max(heightPct, 4)}%` }}
                                                         />
                                                     </div>
-                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">{dayLabel}</span>
+                                                    <span className="text-[10px] text-gray-400 uppercase font-bold">{dayLabel}</span>
                                                 </div>
                                             );
                                         })}
@@ -175,10 +175,10 @@ const Dashboard: React.FC = () => {
                                     <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
                                         <div>
                                             <p className="text-2xl font-black text-white">{stats.totalLogs.toLocaleString()}</p>
-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Total Logs</p>
+                                            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Total Logs</p>
                                         </div>
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-                                            <span className="material-icons-outlined text-primary text-sm">speed</span>
+                                            <span className="material-icons-outlined text-primary text-sm" aria-hidden="true">speed</span>
                                             <span className="text-xs text-primary font-bold">
                                                 {stats.activityPerDay.length > 0 ? Math.round(stats.activityPerDay.reduce((s, d) => s + d.count, 0) / stats.activityPerDay.length) : 0}/day avg
                                             </span>
@@ -190,11 +190,11 @@ const Dashboard: React.FC = () => {
                             {/* === RECENT ACTIVITY FEED === */}
                             <div className="bg-surface-dark rounded-2xl border border-white/10 overflow-hidden">
                                 <div className="p-5 border-b border-white/5 flex items-center justify-between">
-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                                        <span className="material-icons-outlined text-primary text-lg">timeline</span>
+                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">timeline</span>
                                         Recent Activity
-                                    </h3>
-                                    <span className="text-[10px] text-gray-600 uppercase tracking-widest">Live Feed</span>
+                                    </h2>
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-widest">Live Feed</span>
                                 </div>
                                 <div className="divide-y divide-white/5">
                                     {stats.recentActivity.map((log) => (
@@ -204,7 +204,8 @@ const Dashboard: React.FC = () => {
                                                 <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
                                                     <img
                                                         src={log.user?.avatar || `https://ui-avatars.com/api/?name=${log.user?.username || "U"}&background=random&size=36`}
-                                                        alt=""
+                                                        alt={`${log.user?.username || "User"} avatar`}
+                                                        loading="lazy"
                                                         className="w-full h-full object-cover"
                                                     />
                                                 </div>
@@ -219,20 +220,20 @@ const Dashboard: React.FC = () => {
                                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${methodColor(log.method)}`}>
                                                         {log.method}
                                                     </span>
-                                                    <span className="text-xs text-gray-500 font-mono truncate">{log.route}</span>
+                                                    <span className="text-xs text-gray-400 font-mono truncate">{log.route}</span>
                                                 </div>
-                                                <p className="text-[11px] text-gray-600 mt-0.5">{log.ip}</p>
+                                                <p className="text-[11px] text-gray-400 mt-0.5">{log.ip}</p>
                                             </div>
 
                                             {/* Time */}
-                                            <span className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">
+                                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
                                                 {format(new Date(log.timestamp), "HH:mm:ss")}
                                             </span>
                                         </div>
                                     ))}
 
                                     {stats.recentActivity.length === 0 && (
-                                        <div className="p-8 text-center text-gray-600 text-sm">
+                                        <div className="p-8 text-center text-gray-400 text-sm">
                                             No recent activity recorded.
                                         </div>
                                     )}
@@ -240,7 +241,7 @@ const Dashboard: React.FC = () => {
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-gray-500">
+                        <div className="flex-1 flex items-center justify-center text-gray-400">
                             <p>Failed to load dashboard data.</p>
                         </div>
                     )}

@@ -85,7 +85,7 @@ const MyActivity: React.FC = () => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-white font-display">My Activity History</h2>
-                            <p className="text-sm text-gray-500">View your recent actions and sessions</p>
+                            <p className="text-sm text-gray-400">View your recent actions and sessions</p>
                         </div>
                         <button
                             onClick={handleClearFilters}
@@ -136,14 +136,14 @@ const MyActivity: React.FC = () => {
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
                         ) : logs.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2">
-                                <span className="material-icons-outlined text-4xl">history_toggle_off</span>
+                            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
+                                <span aria-hidden="true" className="material-icons-outlined text-4xl">history_toggle_off</span>
                                 <p>No activity logs found matching your filters.</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto flex-1">
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-500 font-bold tracking-wider">
+                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-400 font-bold tracking-wider">
                                         <tr>
                                             <th className="p-4 border-b border-purple-900/20">Date/Time</th>
                                             <th className="p-4 border-b border-purple-900/20">Action</th>
@@ -174,7 +174,7 @@ const MyActivity: React.FC = () => {
                                                 <td className="p-4 text-sm text-gray-400">
                                                     <div className="flex flex-col">
                                                         <span>{log.browser}</span>
-                                                        <span className="text-xs text-gray-600">{log.os} • {log.device}</span>
+                                                        <span className="text-xs text-gray-400">{log.os} • {log.device}</span>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-sm text-purple-300 font-mono">
@@ -188,7 +188,7 @@ const MyActivity: React.FC = () => {
                         )}
 
                         <div className="p-4 border-t border-purple-900/20 flex items-center justify-between bg-background-dark/30">
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-400">
                                 Page <span className="text-white font-bold">{page}</span> of <span className="text-white font-bold">{totalPages}</span>
                                 <span className="mx-2">•</span>
                                 Total: {totallogs} logs

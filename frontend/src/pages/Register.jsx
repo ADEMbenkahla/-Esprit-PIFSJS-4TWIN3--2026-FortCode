@@ -140,26 +140,28 @@ function Register() {
     <div className="auth-container">
       <div className="card">
         <div className="logo-card register">
-          <img src={logoImg} alt="FortCode Logo" />
+          <img src={logoImg} alt="FortCode Logo" fetchPriority="high" width="240" height="80" style={{ objectFit: "contain" }} />
         </div>
 
         <div className="avatar-preview-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
           <div className="avatar-preview" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid #7c3aed', overflow: 'hidden', marginBottom: '10px', background: '#1a1a2e' }}>
-            <img src={avatar} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={avatar} alt="Avatar Preview" decoding="async" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <p style={{ fontSize: '12px', color: '#94a3b8' }}>This will be your initial avatar</p>
         </div>
 
-        <label>Username</label>
+        <label htmlFor="username">Username</label>
         <input
+          id="username"
           type="text"
           placeholder="Your username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
 
-        <label>Email Address</label>
+        <label htmlFor="email">Email Address</label>
         <input
+          id="email"
           type="email"
           placeholder="you@fortcode.com"
           value={email}
@@ -167,16 +169,18 @@ function Register() {
           disabled={isGoogleUser}
         />
 
-        <label>Password</label>
+        <label htmlFor="password">Password</label>
         <input
+          id="password"
           type="password"
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <label>Confirm Password</label>
+        <label htmlFor="confirmPassword">Confirm Password</label>
         <input
+          id="confirmPassword"
           type="password"
           placeholder="••••••••"
           value={confirmPassword}

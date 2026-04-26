@@ -111,7 +111,7 @@ export default function StageDetail() {
                 {c.completed ? (
                   <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 ) : (
-                  <Circle className="w-5 h-5 text-slate-600 shrink-0" />
+                  <Circle className="w-5 h-5 text-slate-400 shrink-0" />
                 )}
                 <div>
                   <p className="font-semibold text-slate-100 flex items-center gap-2">

@@ -475,7 +475,7 @@ export const TrainingLevel = () => {
               {output ? (
                 <div className={`${output.includes("✓") ? 'text-emerald-400' : 'text-rose-400'} whitespace-pre-wrap`}>
                   <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-2">
-                    <span className="text-slate-600">$ Kernel Execution Output</span>
+                    <span className="text-slate-400">$ Kernel Execution Output</span>
                     {output.includes("❌") && (
                       <button
                         onClick={handleGetHelp}
@@ -650,7 +650,7 @@ export const TrainingLevel = () => {
                       </div>
 
                       {isExplaining ? (
-                        <div className="flex flex-col items-center justify-center p-12 text-slate-600">
+                        <div className="flex flex-col items-center justify-center p-12 text-slate-400">
                           <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
                           <p className="text-[10px] font-bold uppercase tracking-widest animate-pulse">Running AI Synthesizer...</p>
                         </div>
@@ -686,11 +686,11 @@ export const TrainingLevel = () => {
 
                           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-800">
                             <div>
-                              <h4 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Complexity</h4>
+                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Complexity</h4>
                               <span className="text-xs font-mono text-amber-500">{submissionResult.fullAiAnalysis.explanation.complexity}</span>
                             </div>
                             <div>
-                              <h4 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Key Concepts</h4>
+                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Key Concepts</h4>
                               <div className="flex flex-wrap gap-2">
                                 {submissionResult.fullAiAnalysis.explanation.keyConcepts?.map((c, i) => (
                                   <span key={i} className="text-[9px] px-2 py-0.5 bg-slate-800 rounded-full text-slate-400">{c}</span>

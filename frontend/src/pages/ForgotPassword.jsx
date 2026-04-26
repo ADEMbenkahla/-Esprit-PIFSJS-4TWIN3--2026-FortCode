@@ -86,8 +86,8 @@ function ForgotPassword() {
                     <img src={logoImg} alt="FortCode Logo" />
                 </div>
 
-                <label>Email Address</label>
-                <input
+                <label htmlFor="emailaddre_81023">Email Address</label>
+<input id="emailaddre_81023" 
                     type="email"
                     placeholder="user@fortcode.com"
                     value={email}

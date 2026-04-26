@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Swal from "sweetalert2";
 import Sidebar from "./components/Sidebar";
 import { adminStagesApi, adminChallengesApi } from "../../services/api";
@@ -20,8 +20,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
       <div className="bg-surface-dark border border-purple-900/20 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
         <div className="p-6 border-b border-purple-900/20 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-bold text-white">{title}</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white">
-            <span className="material-icons-outlined">close</span>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-white">
+            <span className="material-icons-outlined" aria-hidden="true">close</span>
           </button>
         </div>
         <div className="p-6 overflow-y-auto flex-1">{children}</div>
@@ -147,13 +147,13 @@ export default function AdminStages() {
     }
   };
 
-  const filteredPick = allChallenges.filter(
+  const filteredPick = useMemo(() => allChallenges.filter(
     (c) =>
       !pickerQuery ||
       c.title.toLowerCase().includes(pickerQuery.toLowerCase())
-  );
+  ), [allChallenges, pickerQuery]);
 
-  const prerequisiteOptions = stages.filter((s) => !editingId || String(s._id) !== String(editingId));
+  const prerequisiteOptions = useMemo(() => stages.filter((s) => !editingId || String(s._id) !== String(editingId)), [stages, editingId]);
 
   return (
     <div className="flex h-screen bg-background-dark font-body text-gray-200 overflow-hidden">
@@ -169,7 +169,7 @@ export default function AdminStages() {
             onClick={openCreate}
             className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium"
           >
-            <span className="material-icons-outlined">add</span>
+            <span className="material-icons-outlined" aria-hidden="true">add</span>
             Add stage
           </button>
         </div>
@@ -202,17 +202,19 @@ export default function AdminStages() {
                       <td className="p-4 text-right space-x-2">
                         <button
                           type="button"
+                          aria-label="Edit Stage"
                           onClick={() => openEdit(st)}
                           className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg"
                         >
-                          <span className="material-icons-outlined text-sm">edit</span>
+                          <span className="material-icons-outlined text-sm" aria-hidden="true">edit</span>
                         </button>
                         <button
                           type="button"
+                          aria-label="Delete Stage"
                           onClick={() => deleteStage(st._id)}
                           className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"
                         >
-                          <span className="material-icons-outlined text-sm">delete</span>
+                          <span className="material-icons-outlined text-sm" aria-hidden="true">delete</span>
                         </button>
                       </td>
                     </tr>
@@ -228,8 +230,9 @@ export default function AdminStages() {
         <form onSubmit={saveStage} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm text-gray-300">Title</label>
+              <label htmlFor="stage-title" className="text-sm text-gray-300">Title</label>
               <input
+                id="stage-title"
                 required
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -237,8 +240,9 @@ export default function AdminStages() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm text-gray-300">Description</label>
+              <label htmlFor="stage-description" className="text-sm text-gray-300">Description</label>
               <textarea
+                id="stage-description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
@@ -246,8 +250,9 @@ export default function AdminStages() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-gray-300">Difficulty</label>
+              <label htmlFor="stage-difficulty" className="text-sm text-gray-300">Difficulty</label>
               <select
+                id="stage-difficulty"
                 value={form.difficulty}
                 onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"
@@ -259,8 +264,9 @@ export default function AdminStages() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-gray-300">Order</label>
+              <label htmlFor="stage-order" className="text-sm text-gray-300">Order</label>
               <input
+                id="stage-order"
                 type="number"
                 required
                 min={1}
@@ -270,8 +276,9 @@ export default function AdminStages() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-gray-300">Category</label>
+              <label htmlFor="stage-category" className="text-sm text-gray-300">Category</label>
               <select
+                id="stage-category"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"
@@ -281,8 +288,9 @@ export default function AdminStages() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-gray-300">Prerequisite stage</label>
+              <label htmlFor="stage-prereq" className="text-sm text-gray-300">Prerequisite stage</label>
               <select
+                id="stage-prereq"
                 value={form.prerequisiteStageId}
                 onChange={(e) => setForm({ ...form, prerequisiteStageId: e.target.value })}
                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"

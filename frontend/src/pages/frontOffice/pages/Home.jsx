@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ScrollButton } from '../components/ui/ScrollButton';
-import { RecruiterDashboard } from './RecruiterDashboard';
 import { getParticipantBattleRooms } from '../../../services/api';
+const RecruiterDashboard = React.lazy(() => import('./RecruiterDashboard').then(m => ({ default: m.RecruiterDashboard })));
 
 export function Home() {
   const [userRole, setUserRole] = useState(null);
@@ -59,7 +59,11 @@ export function Home() {
 
   // Show recruiter dashboard for recruiters
   if (userRole === "recruiter") {
-    return <RecruiterDashboard />;
+    return (
+      <React.Suspense fallback={null}>
+        <RecruiterDashboard />
+      </React.Suspense>
+    );
   }
 
   // Show regular home for participants

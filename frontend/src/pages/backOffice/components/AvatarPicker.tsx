@@ -85,7 +85,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({ currentAvatar, onSel
                         <RefreshCw className="w-4 h-4" />
                     </button>
                 </div>
-                <p className="text-[10px] text-gray-500 font-mono">Seed: {seed}</p>
+                <p className="text-[10px] text-gray-400 font-mono">Seed: {seed}</p>
             </div>
 
             {/* Style Selector */}

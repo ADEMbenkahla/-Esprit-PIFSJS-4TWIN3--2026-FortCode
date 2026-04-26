@@ -522,7 +522,7 @@ export function RecruiterDashboard() {
                     <p className="text-slate-400 text-sm">Total rooms</p>
                     <p className="text-2xl font-bold text-slate-100">{rooms.length}</p>
                   </div>
-                  <ListChecks className="w-10 h-10 text-slate-600" />
+                  <ListChecks className="w-10 h-10 text-slate-400" />
                 </div>
               </Card>
               <Card className="p-5 bg-slate-900/90 border-slate-800">
@@ -654,16 +654,16 @@ export function RecruiterDashboard() {
             <p className="text-slate-400 text-sm mb-6">Set the challenge details and add participant emails. Invitees will receive a secure link and invitation code by email.</p>
             <form onSubmit={handleCreateRoom} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Room title *</label>
-                <input type="text" value={createForm.title} onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Frontend Assessment" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="roomtitle_52224">Room title *</label>
+<input id="roomtitle_52224" type="text" value={createForm.title} onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Frontend Assessment" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Description (optional)</label>
-                <textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of the battle" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="descriptio_13184">Description (optional)</label>
+<textarea id="descriptio_13184" value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Brief description of the battle" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Invite by email (non-registered users allowed)</label>
-                <textarea
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="invitebyem_22760">Invite by email (non-registered users allowed)</label>
+<textarea id="invitebyem_22760" 
                   value={createForm.inviteEmailsText}
                   onChange={(e) => setCreateForm((f) => ({ ...f, inviteEmailsText: e.target.value }))}
                   rows={3}
@@ -673,8 +673,8 @@ export function RecruiterDashboard() {
                 <p className="text-xs text-slate-500 mt-2">Each invitee receives a secure link and an invitation code by email.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Challenge title *</label>
-                <input type="text" value={createForm.challengeTitle} onChange={(e) => setCreateForm((f) => ({ ...f, challengeTitle: e.target.value }))} placeholder="e.g. Two Sum" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="challenget_42778">Challenge title *</label>
+<input id="challenget_42778" type="text" value={createForm.challengeTitle} onChange={(e) => setCreateForm((f) => ({ ...f, challengeTitle: e.target.value }))} placeholder="e.g. Two Sum" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
                 <p className="text-sm font-medium text-slate-200">AI Exercise Generator</p>
@@ -718,7 +718,7 @@ export function RecruiterDashboard() {
                     <option value="medium">Medium</option>
                     <option value="hard">Hard</option>
                   </select>
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-300" htmlFor="inputtypec_83055">
                     <input
                       type="checkbox"
                       checked={createForm.randomExercise}
@@ -738,11 +738,11 @@ export function RecruiterDashboard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Challenge description (optional)</label>
-                <textarea value={createForm.challengeDescription} onChange={(e) => setCreateForm((f) => ({ ...f, challengeDescription: e.target.value }))} rows={3} placeholder="Describe the exercise or problem" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+<textarea id="inputtypec_83055" value={createForm.challengeDescription} onChange={(e) => setCreateForm((f) => ({ ...f, challengeDescription: e.target.value }))} rows={3} placeholder="Describe the exercise or problem" className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Programming language</label>
-                <select
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="programmin_77969">Programming language</label>
+<select id="programmin_77969" 
                   value={createForm.challengeLanguage}
                   onChange={(e) => setCreateForm((f) => ({ ...f, challengeLanguage: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500"
@@ -758,7 +758,7 @@ export function RecruiterDashboard() {
                 </select>
               </div>
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-slate-300">Expected function names</label>
+                <label className="block text-sm font-medium text-slate-300" htmlFor="expectedfu_21976">Expected function names</label>
                 {createForm.expectedFunctions.map((fn, idx) => (
                   <div key={`fn-${idx}`} className="flex gap-2">
                     <input
@@ -825,7 +825,7 @@ export function RecruiterDashboard() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Name</label>
-                          <input
+<input id="expectedfu_21976" 
                             type="text"
                             value={test.name}
                             onChange={(e) => setCreateForm((f) => ({
@@ -839,7 +839,7 @@ export function RecruiterDashboard() {
                           />
                         </div>
                         <div className="flex items-end gap-2">
-                          <label className="inline-flex items-center gap-2 text-xs text-slate-300 mb-2">
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-300 mb-2" htmlFor="inputtypec_79494">
                             <input
                               type="checkbox"
                               checked={Boolean(test.hidden)}
@@ -866,7 +866,7 @@ export function RecruiterDashboard() {
                       </div>
                       <div>
                         <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">Assertion</label>
-                        <textarea
+<textarea id="inputtypec_79494" 
                           value={test.assertion}
                           onChange={(e) => setCreateForm((f) => ({
                             ...f,
@@ -887,8 +887,8 @@ export function RecruiterDashboard() {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Exercise file (PDF or statement document)</label>
-                <input
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="exercisefi_58091">Exercise file (PDF or statement document)</label>
+<input id="exercisefi_58091" 
                   type="file"
                   accept=".pdf,.txt,.md,.doc,.docx,.zip"
                   onChange={(e) => setCreateForm((f) => ({ ...f, exerciseFile: e.target.files?.[0] || null }))}
@@ -897,8 +897,8 @@ export function RecruiterDashboard() {
                 <p className="text-xs text-slate-500 mt-2">Allowed: PDF, TXT, MD, DOC, DOCX, ZIP (max 10 MB).</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Time limit (minutes) *</label>
-                <input type="number" min={1} max={300} value={createForm.timeLimitMinutes} onChange={(e) => setCreateForm((f) => ({ ...f, timeLimitMinutes: Number(e.target.value) || 60 }))} className="w-32 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500" />
+                <label className="block text-sm font-medium text-slate-300 mb-2" htmlFor="timelimitm_66955">Time limit (minutes) *</label>
+<input id="timelimitm_66955" type="number" min={1} max={300} value={createForm.timeLimitMinutes} onChange={(e) => setCreateForm((f) => ({ ...f, timeLimitMinutes: Number(e.target.value) || 60 }))} className="w-32 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-blue-500" />
               </div>
               <div className="flex gap-3">
                 <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg text-white font-medium disabled:opacity-50" style={{ backgroundColor: "var(--accent-color)" }}>
@@ -1231,7 +1231,7 @@ function SubmissionView({ room, onBack, onSaveEvaluation, onConfirmSubmission, o
                 </div>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} onClick={() => editingSub === sub._id && setRating(n)} className={`p-1 ${editingSub === sub._id ? "hover:opacity-80" : ""} ${(sub.recruiterRating ?? rating) >= n ? "text-amber-400" : "text-slate-600"}`}>
+                    <button key={n} onClick={() => editingSub === sub._id && setRating(n)} className={`p-1 ${editingSub === sub._id ? "hover:opacity-80" : ""} ${(sub.recruiterRating ?? rating) >= n ? "text-amber-400" : "text-slate-400"}`}>
                       <Star className="w-5 h-5" fill={(sub.recruiterRating ?? rating) >= n ? "currentColor" : "none"} />
                     </button>
                   ))}

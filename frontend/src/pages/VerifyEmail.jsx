@@ -169,8 +169,8 @@ function VerifyEmail() {
                     We sent a verification code to <br /><strong style={{ color: "#fff" }}>{email}</strong>
                 </p>
 
-                <label>Verification Code</label>
-                <input
+                <label htmlFor="verificati_31357">Verification Code</label>
+<input id="verificati_31357" 
                     type="text"
                     placeholder="Enter 6-digit code"
                     value={code}

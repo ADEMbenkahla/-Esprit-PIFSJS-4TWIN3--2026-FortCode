@@ -27,6 +27,7 @@ exports.getStats = async (req, res) => {
             .populate('user', 'username name email avatar')
             .sort({ timestamp: -1 })
             .limit(7)
+            .lean()
             .exec();
 
         // Activity per day (last 7 days)

@@ -196,7 +196,7 @@ const AccessibilityMenu = () => {
                     }`}
                 title="Hold to drag, click to open"
             >
-                <span className="material-icons-outlined text-3xl pointer-events-none">
+                <span aria-hidden="true" className="material-icons-outlined text-3xl pointer-events-none">
                     {isOpen ? 'close' : 'accessibility_new'}
                 </span>
             </button>
@@ -214,7 +214,7 @@ const AccessibilityMenu = () => {
                                 }`}
                             title={item.label}
                         >
-                            <span className="material-icons-outlined">{item.icon}</span>
+                            <span aria-hidden="true" className="material-icons-outlined">{item.icon}</span>
                         </button>
                         <span className="px-3 py-1 bg-surface-dark text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-sm border border-gray-700">
                             {item.label}

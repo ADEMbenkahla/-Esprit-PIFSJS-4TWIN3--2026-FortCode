@@ -53,23 +53,25 @@ const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-4">
         <button
           onClick={toggleSidebar}
+          aria-label="Toggle Sidebar"
           className="lg:hidden p-2 rounded-lg text-gray-400 hover:bg-purple-900/20 transition-colors"
         >
-          <span className="material-icons-outlined">menu</span>
+          <span className="material-icons-outlined" aria-hidden="true">menu</span>
         </button>
         <div className="flex flex-col">
           <h1 className="font-display font-bold text-lg md:text-2xl text-white tracking-wide">{title}</h1>
-          <p className="text-[10px] md:text-sm text-gray-500">{subtitle}</p>
+          <p className="text-[10px] md:text-sm text-gray-400">{subtitle}</p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
         <div className="relative hidden md:block">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="material-icons-outlined text-gray-500 text-lg">search</span>
+            <span className="material-icons-outlined text-gray-400 text-lg" aria-hidden="true">search</span>
           </span>
           <input
             type="text"
+            aria-label="Search anything"
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => onSearchChange?.(e.target.value)}
@@ -79,10 +81,11 @@ const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => navigate('/backoffice/role-requests')}
+          aria-label="Notifications"
           className="relative p-2 rounded-lg text-gray-400 hover:bg-purple-900/20 transition-colors"
           title={pendingCount > 0 ? `${pendingCount} pending role requests` : 'No new notifications'}
         >
-          <span className="material-icons-outlined">notifications</span>
+          <span className="material-icons-outlined" aria-hidden="true">notifications</span>
           {pendingCount > 0 && (
             <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-primary rounded-full border-2 border-surface-dark animate-pulse shadow-[0_0_10px_rgba(124,58,237,0.5)]"></span>
           )}

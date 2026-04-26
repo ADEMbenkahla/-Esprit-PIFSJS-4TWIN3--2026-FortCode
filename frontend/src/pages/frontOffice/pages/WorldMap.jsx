@@ -122,7 +122,7 @@ export default function WorldMap() {
                   </div>
 
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${isLocked ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${isLocked ? "bg-slate-800 text-slate-400" : "bg-blue-600 text-white shadow-lg"
                       }`}
                   >
                     {isLocked ? <Lock className="w-4 h-4" /> : <ChevronRight className="w-5 h-5" />}

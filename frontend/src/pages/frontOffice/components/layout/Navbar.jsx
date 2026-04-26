@@ -481,6 +481,8 @@ export function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
+                  aria-label="User menu"
+                  aria-expanded={showDropdown}
                   className="w-10 h-10 rounded-full border-2 border-slate-700 hover:border-blue-500 transition-all overflow-hidden flex items-center justify-center bg-slate-800 shadow-lg"
                 >
                   <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
@@ -589,6 +591,8 @@ export function Navbar() {
           {/* Burger Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMobileMenuOpen}
             className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800 border border-slate-700 hover:border-blue-500 transition-colors"
           >
             {isMobileMenuOpen ? (

@@ -110,14 +110,14 @@ function BattleInvite() {
             </div>
 
             <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
-              <label className="block text-sm text-slate-300 mb-2">Invited email</label>
+              <label className="block text-sm text-slate-300 mb-2" htmlFor="invitedema_92927">Invited email</label>
               <p className="text-slate-200 text-sm font-mono">{inviteEmail}</p>
               <p className="text-xs text-slate-500 mt-2">This is the email the invitation was sent to.</p>
             </div>
 
             <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
               <label className="block text-sm text-slate-300 mb-2">Invitation code</label>
-              <input
+<input id="invitedema_92927" 
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}

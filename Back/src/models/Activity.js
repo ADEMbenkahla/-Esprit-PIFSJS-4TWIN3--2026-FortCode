@@ -44,4 +44,6 @@ const activitySchema = new mongoose.Schema({
   }
 });
 
+activitySchema.index({ timestamp: -1 });
+
 module.exports = mongoose.model('Activity', activitySchema);

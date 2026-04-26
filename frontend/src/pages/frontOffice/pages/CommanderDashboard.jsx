@@ -78,15 +78,15 @@ export default function UserDashboard() {
             <div className="space-y-3 max-h-48 overflow-y-auto pr-2 font-mono text-sm">
               <div className="flex justify-between text-slate-400 hover:bg-slate-800/50 p-2 rounded">
                 <span><span className="text-blue-400">@alex_swift</span> submitted solution for <span className="text-blue-500">Binary Search</span></span>
-                <span className="text-slate-600">2m ago</span>
+                <span className="text-slate-400">2m ago</span>
               </div>
               <div className="flex justify-between text-slate-400 hover:bg-slate-800/50 p-2 rounded">
                 <span><span className="text-red-400">@rogue_jenkins</span> failed test case #4 on <span className="text-blue-500">API Integration</span></span>
-                <span className="text-slate-600">5m ago</span>
+                <span className="text-slate-400">5m ago</span>
               </div>
               <div className="flex justify-between text-slate-400 hover:bg-slate-800/50 p-2 rounded">
                 <span><span className="text-purple-400">@sarah_node</span> achieved <span className="text-green-400">Perfect Score</span></span>
-                <span className="text-slate-600">12m ago</span>
+                <span className="text-slate-400">12m ago</span>
               </div>
             </div>
           </Card>
@@ -113,14 +113,14 @@ export default function UserDashboard() {
                   </div>
                   <div className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold uppercase ${candidate.status === 'Live Battle' ? 'bg-red-100 text-red-700 animate-pulse' :
                     candidate.status === 'Reviewing' ? 'bg-blue-100 text-blue-700' :
-                      'bg-slate-200 text-slate-600'
+                      'bg-slate-200 text-slate-400'
                     }`}>
                     {candidate.status}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-slate-600">
+                  <div className="flex justify-between text-xs text-slate-400">
                     <span>Code Quality</span>
                     <span className="font-bold">{candidate.health}%</span>
                   </div>
@@ -128,7 +128,7 @@ export default function UserDashboard() {
                     <div className="bg-green-500 h-full" style={{ width: `${candidate.health}%` }} />
                   </div>
 
-                  <div className="flex justify-between text-xs text-slate-600">
+                  <div className="flex justify-between text-xs text-slate-400">
                     <span>Speed</span>
                     <span className="font-bold">{candidate.mana}%</span>
                   </div>

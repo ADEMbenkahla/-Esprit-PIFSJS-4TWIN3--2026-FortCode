@@ -122,9 +122,10 @@ const Sidebar: React.FC = () => {
 
           <button
             onClick={closeSidebar}
+            aria-label="Close Sidebar"
             className="lg:hidden p-2 text-gray-400 hover:text-white"
           >
-            <span className="material-icons-outlined">close</span>
+            <span className="material-icons-outlined" aria-hidden="true">close</span>
           </button>
         </div>
 
@@ -135,6 +136,7 @@ const Sidebar: React.FC = () => {
             .map((item) => (
               <button
                 key={item.label}
+                aria-label={item.label}
                 onClick={() => {
                   if (item.path !== '#') {
                     navigate(item.path);
@@ -146,7 +148,7 @@ const Sidebar: React.FC = () => {
                   : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
                   }`}
               >
-                <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>
+                <span className={`material-icons-outlined text-xl ${item.active ? 'text-primary' : 'group-hover:text-primary transition-colors'}`} aria-hidden="true">
                   {item.icon}
                 </span>
                 <span className="font-medium">{item.label}</span>
@@ -154,7 +156,7 @@ const Sidebar: React.FC = () => {
             ))}
 
           <div className="pt-8 mt-4 border-t border-purple-900/20 space-y-1">
-            <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System</p>
+            <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">System</p>
             <button
               onClick={() => {
                 navigate('/backoffice/settings');
@@ -165,7 +167,7 @@ const Sidebar: React.FC = () => {
                 : 'text-gray-400 hover:bg-purple-900/20 hover:text-white'
                 }`}
             >
-              <span className={`material-icons-outlined text-xl ${location.pathname === '/backoffice/settings' ? 'text-primary' : 'group-hover:text-primary transition-colors'}`}>settings</span>
+              <span className={`material-icons-outlined text-xl ${location.pathname === '/backoffice/settings' ? 'text-primary' : 'group-hover:text-primary transition-colors'}`} aria-hidden="true">settings</span>
               <span className="font-medium">Settings</span>
             </button>
 
@@ -173,7 +175,7 @@ const Sidebar: React.FC = () => {
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all group text-left"
             >
-              <span className="material-icons-outlined text-xl group-hover:text-red-400 transition-colors">logout</span>
+              <span className="material-icons-outlined text-xl group-hover:text-red-400 transition-colors" aria-hidden="true">logout</span>
               <span className="font-medium">Logout</span>
             </button>
           </div>
@@ -184,7 +186,7 @@ const Sidebar: React.FC = () => {
           <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/10">
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-white truncate">{currentUser.name}</span>
-              <span className="text-[10px] text-gray-500 capitalize">{currentUser.role}</span>
+              <span className="text-[10px] text-gray-400 capitalize">{currentUser.role}</span>
             </div>
           </div>
         </div>

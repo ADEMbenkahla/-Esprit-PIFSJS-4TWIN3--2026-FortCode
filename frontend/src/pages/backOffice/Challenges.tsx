@@ -14,7 +14,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
         <div className="p-6 border-b border-purple-900/20 flex justify-between items-center">
           <h2 className="text-xl font-bold text-white">{title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <span className="material-icons-outlined">close</span>
+            <span aria-hidden="true" className="material-icons-outlined">close</span>
           </button>
         </div>
         <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
@@ -242,7 +242,7 @@ export default function Challenges() {
             onClick={openAddModal}
             className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium"
           >
-            <span className="material-icons-outlined">add</span>
+            <span aria-hidden="true" className="material-icons-outlined">add</span>
             New Challenge
           </button>
         </div>
@@ -302,14 +302,14 @@ export default function Challenges() {
                           className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg"
                           title="Edit"
                         >
-                          <span className="material-icons-outlined text-sm">edit</span>
+                          <span aria-hidden="true" className="material-icons-outlined text-sm">edit</span>
                         </button>
                         <button
                           onClick={() => handleDelete(challenge._id)}
                           className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"
                           title="Delete"
                         >
-                          <span className="material-icons-outlined text-sm">delete</span>
+                          <span aria-hidden="true" className="material-icons-outlined text-sm">delete</span>
                         </button>
                       </td>
                     </tr>
@@ -333,8 +333,8 @@ export default function Challenges() {
             {aiOpen ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="md:col-span-2">
-                  <label className="text-xs text-gray-400">Prompt</label>
-                  <textarea
+                  <label className="text-xs text-gray-400" htmlFor="prompt_7775">Prompt</label>
+<textarea id="prompt_7775" 
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     rows={2}
@@ -343,8 +343,8 @@ export default function Challenges() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400">Difficulty</label>
-                  <select value={aiDifficulty} onChange={(e) => setAiDifficulty(e.target.value)} className={inputClass}>
+                  <label className="text-xs text-gray-400" htmlFor="difficulty_72403">Difficulty</label>
+<select id="difficulty_72403" value={aiDifficulty} onChange={(e) => setAiDifficulty(e.target.value)} className={inputClass}>
                     <option value="easy">Easy</option>
                     <option value="medium">Medium</option>
                     <option value="hard">Hard</option>
@@ -367,24 +367,24 @@ export default function Challenges() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="text-sm text-gray-300">Title</label>
-              <input name="title" value={formData.title} onChange={handleInputChange} required className={inputClass} />
+              <label className="text-sm text-gray-300" htmlFor="title_19990">Title</label>
+<input id="title_19990" name="title" value={formData.title} onChange={handleInputChange} required className={inputClass} />
             </div>
             <div className="md:col-span-2">
-              <label className="text-sm text-gray-300">Description</label>
-              <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} required className={`${inputClass} resize-none`} />
+              <label className="text-sm text-gray-300" htmlFor="descriptio_51970">Description</label>
+<textarea id="descriptio_51970" name="description" value={formData.description} onChange={handleInputChange} rows={3} required className={`${inputClass} resize-none`} />
             </div>
             <div>
-              <label className="text-sm text-gray-300">Category</label>
-              <input name="category" value={formData.category} onChange={handleInputChange} className={inputClass} />
+              <label className="text-sm text-gray-300" htmlFor="category_52398">Category</label>
+<input id="category_52398" name="category" value={formData.category} onChange={handleInputChange} className={inputClass} />
             </div>
             <div>
-              <label className="text-sm text-gray-300">XP Reward</label>
-              <input type="number" name="xpReward" value={formData.xpReward} onChange={handleInputChange} className={inputClass} />
+              <label className="text-sm text-gray-300" htmlFor="xpreward_34913">XP Reward</label>
+<input id="xpreward_34913" type="number" name="xpReward" value={formData.xpReward} onChange={handleInputChange} className={inputClass} />
             </div>
             <div>
-              <label className="text-sm text-gray-300">Difficulty</label>
-              <select name="difficulty" value={formData.difficulty} onChange={handleInputChange} className={inputClass}>
+              <label className="text-sm text-gray-300" htmlFor="difficulty_58719">Difficulty</label>
+<select id="difficulty_58719" name="difficulty" value={formData.difficulty} onChange={handleInputChange} className={inputClass}>
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
@@ -392,8 +392,8 @@ export default function Challenges() {
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-300">Language</label>
-              <select name="language" value={formData.language} onChange={handleInputChange} className={inputClass}>
+              <label className="text-sm text-gray-300" htmlFor="language_72005">Language</label>
+<select id="language_72005" name="language" value={formData.language} onChange={handleInputChange} className={inputClass}>
                 <option value="javascript">JavaScript</option>
                 <option value="typescript">TypeScript</option>
                 <option value="python">Python</option>
@@ -405,15 +405,15 @@ export default function Challenges() {
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-300">Type</label>
-              <select name="type" value={formData.type} onChange={handleInputChange} className={inputClass}>
+              <label className="text-sm text-gray-300" htmlFor="type_41381">Type</label>
+<select id="type_41381" name="type" value={formData.type} onChange={handleInputChange} className={inputClass}>
                 <option value="Stage">Stage</option>
                 <option value="Battle">Battle</option>
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-300">Training Stage</label>
-              <select name="stageId" value={formData.stageId} onChange={handleInputChange} disabled={formData.type === "Battle"} className={`${inputClass} disabled:opacity-50`}>
+              <label className="text-sm text-gray-300" htmlFor="trainingst_7414">Training Stage</label>
+<select id="trainingst_7414" name="stageId" value={formData.stageId} onChange={handleInputChange} disabled={formData.type === "Battle"} className={`${inputClass} disabled:opacity-50`}>
                 <option value="">Pool (unassigned)</option>
                 {stages.map((s) => (
                   <option key={s._id} value={s._id}>
@@ -423,16 +423,16 @@ export default function Challenges() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="text-sm text-gray-300">Starter Code</label>
-              <textarea name="starterCode" value={formData.starterCode} onChange={handleInputChange} rows={4} className={`${inputClass} resize-none font-mono text-sm`} />
+              <label className="text-sm text-gray-300" htmlFor="startercod_66773">Starter Code</label>
+<textarea id="startercod_66773" name="starterCode" value={formData.starterCode} onChange={handleInputChange} rows={4} className={`${inputClass} resize-none font-mono text-sm`} />
             </div>
             <div className="md:col-span-2">
-              <label className="text-sm text-gray-300">Tests (JSON)</label>
-              <textarea name="testCasesJson" value={formData.testCasesJson} onChange={handleInputChange} rows={6} className={`${inputClass} resize-none font-mono text-xs`} />
+              <label className="text-sm text-gray-300" htmlFor="testsjson_52778">Tests (JSON)</label>
+<textarea id="testsjson_52778" name="testCasesJson" value={formData.testCasesJson} onChange={handleInputChange} rows={6} className={`${inputClass} resize-none font-mono text-xs`} />
             </div>
             <div className="md:col-span-2">
-              <label className="text-sm text-gray-300">Constraints (Optional)</label>
-              <textarea name="constraints" value={formData.constraints} onChange={handleInputChange} rows={2} className={`${inputClass} resize-none`} />
+              <label className="text-sm text-gray-300" htmlFor="constraint_64822">Constraints (Optional)</label>
+<textarea id="constraint_64822" name="constraints" value={formData.constraints} onChange={handleInputChange} rows={2} className={`${inputClass} resize-none`} />
             </div>
           </div>
 
