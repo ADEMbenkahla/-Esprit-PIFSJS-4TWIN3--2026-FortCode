@@ -12,46 +12,29 @@ class AiAnalysisService {
     }
 
     /**
-     * Performs a comprehensive analysis of the submitted code.
-     * @param {string} code The participant's code.
-     * @param {string} language The programming language (javascript, python).
-     * @param {string} challengeDescription Context for the AI.
-     * @returns {Object} Full analysis result.
+     * Performs a comprehensive, advanced analysis of the code using a unified prompt.
+     * Uses a Senior Architect persona and Chain-of-Thought reasoning for deeper insights.
      */
     async performFullAnalysis(code, language, challengeDescription) {
-        try {
-            const [bugs, explanation, recommendations] = await Promise.all([
-                this.analyzeBugs(code, language),
-                this.explainCode(code, language, 'simple'),
-                this.recommendResources(code, language, challengeDescription)
-            ]);
+        if (!this.apiKey) return this.getFallbackAnalysis();
 
-            return {
-                bugs: bugs.bugs || [],
-                bugSummary: bugs.summary || "No specific issues identified.",
-                metrics: bugs.metrics || null,
-                explanation: explanation,
-                recommendations: recommendations.recommendations || [],
-                weakAreas: recommendations.weakAreas || []
-            };
-        } catch (error) {
-            console.error("AI Full Analysis Error:", error);
-            return {
-                bugs: [],
-                bugSummary: "AI analysis currently unavailable.",
-                explanation: null,
-                recommendations: [],
-                weakAreas: []
-            };
-        }
-    }
+        const prompt = `### ROLE: Senior Software Architect & Pedagogical Mentor
+        ### TASK: Perform a deep technical audit of the following code.
+        ### LANGUAGE: ${language}
+        ### CONTEXT: The developer is solving this exercise: "${challengeDescription}".
 
-    async analyzeBugs(code, language) {
-        const prompt = `Analyze the following ${language} code for bugs, logic errors, and quality metrics. 
-        Provide feedback in JSON format: 
-        { 
-          "summary": "...", 
-          "bugs": [ { "line": 1, "type": "syntax|logic|performance", "message": "...", "explanation": "...", "suggestion": "..." } ],
+        Analyze the code for:
+        1. LOGICAL BUGS: Focus on algorithmic correctness, edge cases (empty inputs, large values), and structural flaws.
+        2. EXPLANATION: Clearly explain the "WHY" behind the logic used, not just the "WHAT".
+        3. METRICS: Quantifiable ratings (1-5) and metrics (Reliability, Security, Maintainability).
+        4. GROWTH MAP: Map specific code weaknesses to high-quality learning resources.
+
+        Return results in STRICT JSON format:
+        {
+          "bugSummary": "A sophisticated summary of the code's health and architectural choices.",
+          "bugs": [
+            { "line": number, "type": "logic|syntax|performance", "message": "Concise issue", "explanation": "Deep-dive reason why this is an issue", "suggestion": "// Refactored suggestion\n..." }
+          ],
           "metrics": {
             "reliability_rating": 1-5,
             "security_rating": 1-5,
@@ -60,46 +43,58 @@ class AiAnalysisService {
             "vulnerabilities": number,
             "code_smells": number,
             "qualityScore": 0-100
-          }
+          },
+          "explanation": {
+            "overview": "Deep technical analysis of the programmer's strategy.",
+            "steps": [ { "step": "Phase Name", "logic": "Technical implementation detail", "highlight": "Key line or pattern" } ],
+            "complexity": "e.g., O(n log n) time | O(1) space",
+            "keyConcepts": ["Advanced Concept Name", "Underlying Pattern"]
+          },
+          "weakAreas": ["Concept X", "Technique Y"],
+          "recommendations": [
+            { "title": "...", "url": "Actual high-quality link or specific topic path", "type": "video|article|exercise", "difficulty": "Junior|Mid|Senior", "reason": "Strategic benefit for current weakness" }
+          ]
         }
-        
-        Code:
-        ${code}`;
 
-        return this.queryAi(prompt);
+        CODE TO AUDIT:
+        \`\`\`${language}
+        ${code}
+        \`\`\``;
+
+        try {
+            const data = await this.queryAi(prompt);
+            return {
+                bugs: data.bugs || [],
+                bugSummary: data.bugSummary || "Advanced audit complete.",
+                metrics: data.metrics || this.getFallbackMetrics(),
+                explanation: data.explanation || null,
+                recommendations: data.recommendations || [],
+                weakAreas: data.weakAreas || []
+            };
+        } catch (error) {
+            console.error("AI Advanced Analysis Error:", error);
+            return this.getFallbackAnalysis();
+        }
     }
 
-    async explainCode(code, language, level = 'simple') {
-        const prompt = `Explain this ${language} code in natural language for a ${level} level.
-        Provide feedback in JSON format: { "overview": "...", "steps": [ { "step": "...", "logic": "...", "highlight": "..." } ], "complexity": "...", "keyConcepts": ["..."] }
-        
-        Code:
-        ${code}`;
-
-        return this.queryAi(prompt);
+    getFallbackMetrics() {
+        return { reliability_rating: 3, security_rating: 4, sqale_rating: 3, bugs: 0, vulnerabilities: 0, code_smells: 1, qualityScore: 70 };
     }
 
-    async recommendResources(code, language, context) {
-        const prompt = `Based on this ${language} code and the context "${context}", identify weak areas and recommend learning resources (articles, videos, exercises).
-        Provide feedback in JSON format: { "weakAreas": ["..."], "recommendations": [ { "title": "...", "url": "...", "type": "video|article|exercise", "difficulty": "...", "reason": "..." } ] }
-        
-        Code:
-        ${code}`;
-
-        return this.queryAi(prompt);
+    getFallbackAnalysis() {
+        return { bugs: [], bugSummary: "AI analysis currently unavailable.", metrics: this.getFallbackMetrics(), explanation: null, recommendations: [], weakAreas: [] };
     }
 
     async queryAi(prompt) {
-        if (!this.apiKey) {
-            console.error("OPENAI_API_KEY is not set.");
-            return {};
-        }
-
         try {
             const response = await axios.post(this.apiUrl, {
                 model: this.model,
-                messages: [{ role: 'user', content: prompt }],
-                response_format: { type: "json_object" }
+                messages: [
+                    { role: 'system', content: "You are a world-class software engineer. You provide actionable, truthful, and deep technical insights. Always return valid JSON." },
+                    { role: 'user', content: prompt }
+                ],
+                response_format: { type: "json_object" },
+                temperature: 0.1
             }, {
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
@@ -110,9 +105,14 @@ class AiAnalysisService {
             return JSON.parse(response.data.choices[0].message.content);
         } catch (error) {
             console.error("OpenAI API Error:", error.response?.data || error.message);
-            return {};
+            throw error;
         }
     }
+
+    // Individual methods using the unified engine for consistency
+    async analyzeBugs(code, language) { return (await this.performFullAnalysis(code, language, "")).bugs; }
+    async explainCode(code, language, level) { return (await this.performFullAnalysis(code, language, "")).explanation; }
+    async recommendResources(code, language, context) { return (await this.performFullAnalysis(code, language, context)); }
 }
 
 module.exports = new AiAnalysisService();

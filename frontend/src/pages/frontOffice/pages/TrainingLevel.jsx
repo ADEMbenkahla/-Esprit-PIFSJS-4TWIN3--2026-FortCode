@@ -599,9 +599,19 @@ export const TrainingLevel = () => {
                             <span className="text-[9px] font-bold text-rose-500 uppercase">{bug.type}</span>
                           </div>
                           <p className="text-sm font-bold text-rose-200 mb-2">{bug.message}</p>
-                          <div className="pl-4 border-l border-rose-500/30 space-y-2">
-                            <p className="text-xs text-slate-400"><span className="text-rose-400/60 uppercase font-bold text-[8px] mr-2">Analysis</span> {bug.explanation}</p>
-                            <p className="text-xs text-emerald-400/80"><span className="text-emerald-500/60 uppercase font-bold text-[8px] mr-2">Suggested Fix</span> {bug.suggestion}</p>
+                          <div className="pl-4 border-l border-rose-500/30 space-y-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-rose-500/60 uppercase tracking-widest">Architectural Analysis</p>
+                              <p className="text-xs text-slate-300 leading-relaxed">{bug.explanation}</p>
+                            </div>
+                            {bug.suggestion && (
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">Actionable Remediation</p>
+                                <pre className="p-3 bg-slate-900 rounded-lg text-[10px] font-mono text-emerald-400 overflow-x-auto border border-emerald-500/20">
+                                  {bug.suggestion}
+                                </pre>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -717,7 +727,10 @@ export const TrainingLevel = () => {
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{res.difficulty}</span>
                           </div>
                           <h4 className="text-sm font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">{res.title}</h4>
-                          <p className="text-xs text-slate-500 leading-relaxed">{res.reason}</p>
+                          <div className="mt-2 pt-2 border-t border-slate-800/50">
+                            <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Strategic Benefit</p>
+                            <p className="text-[11px] text-slate-400 leading-relaxed italic">"{res.reason}"</p>
+                          </div>
                         </a>
                       ))
                     ) : (
