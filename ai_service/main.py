@@ -22,9 +22,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Configure Gemini
 if GEMINI_API_KEY and "your_gemini_api_key" not in GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    print("✨ Google Gemini API configured successfully.")
+    print("Google Gemini API configured successfully.")
 else:
-    print("⚠️  GEMINI_API_KEY is missing. AI will only work in TEST_MODE.")
+    print("WARNING: GEMINI_API_KEY is missing. AI will only work in TEST_MODE.")
 
 _AVAILABILITY_CACHE = {"models": [], "expiry": 0}
 
