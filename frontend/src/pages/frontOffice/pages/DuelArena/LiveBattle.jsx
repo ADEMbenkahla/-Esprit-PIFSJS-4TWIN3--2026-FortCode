@@ -209,18 +209,37 @@ export default function LiveBattle() {
         console.log("SUBMIT BUTTON CLICKED!");
         if (!socket) return;
 
-        const confirmed = window.confirm("FINALIZE SUBMISSION? This will end the match and submit your final solution for analysis.");
-
-        if (confirmed) {
-            console.log("SUBMISSION CONFIRMED, EMITTING...");
-            socket.emit("submitMatch", {
-                matchId,
-                roomId,
-                code,
-                language
-            });
-        }
+        Swal.fire({
+            title: "FINAL SUBMISSION?",
+            text: "This will end the match and submit your final solution for analysis. Are you ready to claim victory?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "YES, SUBMIT",
+            cancelButtonText: "NOT YET",
+            background: "#0f172a",
+            color: "#fff",
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#334155",
+            customClass: {
+                popup: 'border border-slate-700 shadow-2xl rounded-2xl',
+                title: 'text-2xl font-bold font-display tracking-tight text-white mb-2',
+                htmlContainer: 'text-slate-400 text-sm font-body',
+                confirmButton: 'px-6 py-2 rounded-lg font-bold uppercase tracking-wider transition-all hover:scale-105',
+                cancelButton: 'px-6 py-2 rounded-lg font-bold uppercase tracking-wider transition-all hover:bg-slate-600'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                console.log("SUBMISSION CONFIRMED, EMITTING...");
+                socket.emit("submitMatch", {
+                    matchId,
+                    roomId,
+                    code,
+                    language
+                });
+            }
+        });
     }, [code, language, matchId, roomId, socket]);
+
 
     useEffect(() => {
         if (socket && code) {
