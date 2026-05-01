@@ -94,6 +94,15 @@ const battleRoomSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    aiWinner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    aiJustification: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

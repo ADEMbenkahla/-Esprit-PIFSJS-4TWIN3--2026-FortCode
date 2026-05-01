@@ -9,6 +9,7 @@ const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
 const { runChallengeCode } = require("../utils/runChallengeCode");
 const { detectCodeOrigin } = require("../services/mlDetectionAgent");
 const { generateExercises, httpStatusForAiError } = require("../services/aiExerciseService");
+const aiJudgeService = require("../services/aiJudgeService");
 
 const getRecruiterId = (req) => req.user && (req.user.id || req.user._id);
 const getUserId = (req) => req.user && (req.user.id || req.user._id);
@@ -521,7 +522,52 @@ exports.updateBattleRoomStatus = async (req, res) => {
 
       room.status = status;
       if (status === "live") room.startedAt = new Date();
-      if (status === "ended") room.endedAt = new Date();
+      if (status === "ended") {
+        room.endedAt = new Date();
+
+        // Resolve ties with AI Judge when battle ends
+        try {
+          const submissions = await BattleSubmission.find({ battleRoom: room._id, status: "submitted" }).populate("participant", "username");
+          if (submissions.length >= 2) {
+            // Sort to find the top tied ones
+            const sorted = submissions.sort((a, b) => {
+              const scoreA = Number(a.finalScore || 0);
+              const scoreB = Number(b.finalScore || 0);
+              if (scoreB !== scoreA) return scoreB - scoreA;
+
+              const correctA = Number(a.correctnessScore || 0);
+              const correctB = Number(b.correctnessScore || 0);
+              if (correctB !== correctA) return correctB - correctA;
+
+              // Fallback to time: earlier submission wins
+              const timeA = a.submittedAt ? new Date(a.submittedAt).getTime() : new Date(a.createdAt).getTime();
+              const timeB = b.submittedAt ? new Date(b.submittedAt).getTime() : new Date(b.createdAt).getTime();
+              return timeA - timeB;
+            });
+
+            const top1 = sorted[0];
+            const top2 = sorted[1];
+
+            // If scores are very close or tied
+            if (Number(top1.finalScore || 0) === Number(top2.finalScore || 0)) {
+              console.log(`[BattleRoom] Tie detected between ${top1.participant.username} and ${top2.participant.username}. Calling AI Judge...`);
+              const judgeResult = await aiJudgeService.judgeMatch(
+                { code: top1.code, username: top1.participant.username, language: room.challenge.language || "javascript" },
+                { code: top2.code, username: top2.participant.username, language: room.challenge.language || "javascript" },
+                room.challenge.description || ""
+              );
+
+              if (judgeResult.winnerIndex === 0) room.aiWinner = top1.participant._id;
+              else if (judgeResult.winnerIndex === 1) room.aiWinner = top2.participant._id;
+
+              room.aiJustification = judgeResult.justification || "";
+              console.log(`[BattleRoom] AI Judge picked winner: ${room.aiWinner}. Justification: ${room.aiJustification}`);
+            }
+          }
+        } catch (err) {
+          console.error("[BattleRoom] AI Judge error:", err);
+        }
+      }
     }
 
     if (shareResults !== undefined) {
@@ -804,6 +850,15 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
       sharedRanking = submissions
         .filter((sub) => sub?.status === "submitted" || sub?.status === "evaluated" || sub?.finalScore != null)
         .sort((a, b) => {
+          // Rule 1: AI/Plagiarism automatically loses (put them at bottom)
+          const isAiA = a?.mlDetection?.label === "IA" || a?.mlDetection?.label === "Plagiat";
+          const isAiB = b?.mlDetection?.label === "IA" || b?.mlDetection?.label === "Plagiat";
+
+          if (isAiA && !isAiB) return 1;
+          if (!isAiA && isAiB) return -1;
+          if (isAiA && isAiB) return 0; // Both AI, tie at bottom
+
+          // Rule 2: Compare scores/correctness
           const scoreA = Number(a?.finalScore ?? a?.score ?? 0);
           const scoreB = Number(b?.finalScore ?? b?.score ?? 0);
           if (scoreB !== scoreA) return scoreB - scoreA;
@@ -812,8 +867,9 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
           const corrB = Number(b?.correctnessScore ?? 0);
           if (corrB !== corrA) return corrB - corrA;
 
-          const timeA = Number(a?.executionTimeMs ?? Number.POSITIVE_INFINITY);
-          const timeB = Number(b?.executionTimeMs ?? Number.POSITIVE_INFINITY);
+          // Rule 3: Tie-breaker - First to submit wins
+          const timeA = a?.submittedAt ? new Date(a.submittedAt).getTime() : Number.POSITIVE_INFINITY;
+          const timeB = b?.submittedAt ? new Date(b.submittedAt).getTime() : Number.POSITIVE_INFINITY;
           if (timeA !== timeB) return timeA - timeB;
 
           const nameA = String(a?.participant?.username || a?.participant?.nickname || "");
@@ -822,16 +878,19 @@ exports.getParticipantBattleRoomAccess = async (req, res) => {
         })
         .map((sub, index) => {
           const participant = sub?.participant || {};
+          const isAi = sub?.mlDetection?.label === "IA" || sub?.mlDetection?.label === "Plagiat";
           return {
             rank: index + 1,
             participantId: participant?._id ? String(participant._id) : "",
             name: participant?.username || participant?.nickname || participant?.email || "Participant",
             email: participant?.email || "",
-            score: Number(sub?.finalScore ?? sub?.score ?? 0),
-            correctnessScore: Number(sub?.correctnessScore ?? 0),
+            score: isAi ? 0 : Number(sub?.finalScore ?? sub?.score ?? 0),
+            correctnessScore: isAi ? 0 : Number(sub?.correctnessScore ?? 0),
             executionTimeMs: sub?.executionTimeMs != null ? Number(sub.executionTimeMs) : null,
             outputSnapshot: String(sub?.outputSnapshot || "").trim(),
             isCurrentUser: String(sub?.participant?._id || sub?.participant || "") === String(participantId),
+            isAutoLoss: isAi,
+            mlLabel: sub?.mlDetection?.label || "Humain"
           };
         });
     }
@@ -1007,6 +1066,8 @@ exports.submitParticipantBattleCode = async (req, res) => {
       correctnessScore: correctness.correctnessScore,
     });
     const offTopic = correctness.correctnessScore != null && correctness.correctnessScore < 50;
+    const isAiAutoLoss = mlDetection && (mlDetection.label === "IA" || mlDetection.label === "Plagiat");
+
     const updated = await BattleSubmission.findOneAndUpdate(
       { battleRoom: room._id, participant: participantId },
       {
@@ -1014,7 +1075,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
           code,
           status: "submitted",
           submittedAt: new Date(),
-          score: finalScore != null ? finalScore : 0,
+          score: isAiAutoLoss ? 0 : (finalScore != null ? finalScore : 0),
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
           outputSnapshot: testRun?.outputSnapshot || "",
           sonarSummary: analysis.sonar?.summary || "",
@@ -1032,22 +1093,23 @@ exports.submitParticipantBattleCode = async (req, res) => {
               analysis.sonar?.metrics?.security_hotspots_reviewed != null
                 ? Number(analysis.sonar.metrics.security_hotspots_reviewed)
                 : null,
+            count_milestones_met: 0,
             duplications:
               analysis.sonar?.metrics?.duplicated_lines_density != null
                 ? Number(analysis.sonar.metrics.duplicated_lines_density)
                 : null,
           },
           aiFeedback: analysis.aiFeedback?.summary || analysis.aiFeedback?.message || "",
-          qualityScore: analysis.qualityScore,
-          qualityGrade: analysis.qualityGrade,
-          correctnessScore: correctness.correctnessScore,
-          finalScore,
+          qualityScore: isAiAutoLoss ? 0 : analysis.qualityScore,
+          qualityGrade: isAiAutoLoss ? "F" : analysis.qualityGrade,
+          correctnessScore: isAiAutoLoss ? 0 : correctness.correctnessScore,
+          finalScore: isAiAutoLoss ? 0 : finalScore,
           mlDetection,
-          offTopic,
+          offTopic: isAiAutoLoss ? true : offTopic,
           qualityIssues: analysis.qualityIssues,
           securityAlerts: analysis.securityAlerts,
           metrics: {
-            passedTests: correctness.passedTests,
+            passedTests: isAiAutoLoss ? 0 : correctness.passedTests,
             totalTests: correctness.totalTests,
           },
         },
@@ -1055,21 +1117,34 @@ exports.submitParticipantBattleCode = async (req, res) => {
       { new: true, upsert: true }
     ).lean();
 
+    // Award XP if not AI/Plagiarism
+    let xpResult = null;
+    if (!isAiAutoLoss) {
+      const gamificationService = require("../services/gamificationService");
+      try {
+        xpResult = await gamificationService.addXP(participantId, 150, "arena");
+      } catch (err) {
+        console.error("XP Award Error:", err);
+      }
+    }
+
     return res.json({
-      message: "Code submitted",
+      message: isAiAutoLoss ? "Code submitted (AI/Plagiarism detected - Auto-loss)" : "Code submitted",
       submission: updated,
+      xp: xpResult,
       analysis: {
         ...analysis,
+        isAutoLoss: isAiAutoLoss,
         tests: {
           total: correctness.totalTests,
-          passed: correctness.passedTests,
-          results: correctness.testResults,
+          passed: isAiAutoLoss ? 0 : correctness.passedTests,
+          results: isAiAutoLoss ? [] : correctness.testResults,
           executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
           outputSnapshot: testRun?.outputSnapshot || "",
         },
-        correctnessScore: correctness.correctnessScore,
-        finalScore,
-        offTopic,
+        correctnessScore: isAiAutoLoss ? 0 : correctness.correctnessScore,
+        finalScore: isAiAutoLoss ? 0 : finalScore,
+        offTopic: isAiAutoLoss ? true : offTopic,
       },
     });
   } catch (error) {

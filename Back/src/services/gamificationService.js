@@ -48,9 +48,31 @@ const calculateRank = (rankedRating) => {
 };
 
 /**
+ * Milestones for badges based on Level
+ */
+const LEVEL_BADGES = [
+  { level: 5, id: "novice_coder", label: "Novice Coder" },
+  { level: 10, id: "proficient_dev", label: "Proficient Developer" },
+  { level: 20, id: "ranked_contender", label: "Ranked Contender" },
+  { level: 30, id: "expert_architect", label: "Expert Architect" },
+  { level: 50, id: "code_master", label: "Code Master" },
+  { level: 80, id: "legendary_hacker", label: "Legendary Hacker" }
+];
+
+/**
+ * XP Multipliers based on source
+ */
+const XP_SOURCES = {
+  arena: 2.0,    // Arena matches give double XP
+  stage: 1.0,    // Standard stage completion
+  training: 0.5, // Training gives half XP
+  default: 1.0
+};
+
+/**
  * Fonction publique pour ajouter de l'XP à un utilisateur (Impacte le NIVEAU uniquement).
  */
-exports.addXP = async (userId, xpAmount) => {
+exports.addXP = async (userId, xpAmount, source = "default") => {
   let user = typeof userId === 'string' || userId instanceof Buffer || typeof userId === 'object' && !userId.save
     ? await User.findById(userId) 
     : userId;
@@ -61,8 +83,11 @@ exports.addXP = async (userId, xpAmount) => {
       user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
   }
   
+  const multiplier = XP_SOURCES[source] || XP_SOURCES.default;
+  const actualXp = Math.floor(xpAmount * multiplier);
+
   const oldLevel = user.gamification.level || 1;
-  user.gamification.points += xpAmount;
+  user.gamification.points += actualXp;
   
   // 1 Niveau tous les 500 points (Cap maximum à 80)
   user.gamification.level = Math.floor(user.gamification.points / 500) + 1;
@@ -72,19 +97,41 @@ exports.addXP = async (userId, xpAmount) => {
   }
   
   const levelUp = user.gamification.level > oldLevel;
+
+  // Check for new badges
+  const newBadges = [];
+  for (const milestone of LEVEL_BADGES) {
+    if (user.gamification.level >= milestone.level && !user.gamification.badges.includes(milestone.id)) {
+      user.gamification.badges.push(milestone.id);
+      newBadges.push(milestone);
+    }
+  }
   
   await user.save();
   return { 
     points: user.gamification.points,
     level: user.gamification.level, 
-    gainedXP: xpAmount,
-    levelUp
+    gainedXP: actualXp,
+    levelUp,
+    newBadges
   };
 };
 
 /**
+ * Checks if a user is eligible for Ranked (Level 20+)
+ */
+exports.isRankedEligible = async (userId) => {
+  const user = typeof userId === 'string' || userId instanceof Buffer || typeof userId === 'object' && !userId.save
+    ? await User.findById(userId) 
+    : userId;
+    
+  if (!user) return false;
+  return (user.gamification?.level || 1) >= 20;
+};
+
+/**
  * Deduct XP points from a user (used for paid actions like hints).
- * Throws an Error with code INSUFFICIENT_XP when balance is too low.
+... (existing spendXP code) ...
  */
 exports.spendXP = async (userId, xpCost) => {
   const cost = Math.max(0, Number(xpCost) || 0);

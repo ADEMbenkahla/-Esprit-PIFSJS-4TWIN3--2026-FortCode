@@ -717,7 +717,7 @@ exports.submitChallenge = async (req, res) => {
     let xpResult = null;
     if (isNewCompletion) {
       try {
-        xpResult = await gamificationService.addXP(userId, challenge.xpReward || 100);
+        xpResult = await gamificationService.addXP(userId, challenge.xpReward || 100, "stage");
       } catch (err) {
         console.error("XP Award Error:", err);
       }
@@ -767,12 +767,12 @@ exports.submitChallenge = async (req, res) => {
         completedAt: progress.completedAt,
       },
       stageCompleted: progress.status === "completed",
-      xpReward: xpResult ? {
-        xpAwarded: true,
-        xpAmount: xpResult.gainedXP,
-        newPoints: xpResult.points,
-        newLevel: xpResult.level,
-        levelUp: xpResult.levelUp
+      xp: xpResult ? {
+        gainedXP: xpResult.gainedXP,
+        points: xpResult.points,
+        level: xpResult.level,
+        levelUp: xpResult.levelUp,
+        newBadges: xpResult.newBadges || []
       } : null,
       nextStageUnlocked,
     });

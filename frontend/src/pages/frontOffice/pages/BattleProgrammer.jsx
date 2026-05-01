@@ -210,10 +210,36 @@ export default function BattleProgrammer() {
         ...(prev || {}),
         mySubmission: data?.submission || prev?.mySubmission || null,
       }));
+      const { xp } = data;
+      const currentPoints = xp?.points || 0;
+      const progress = (currentPoints % 500) / 5;
+
       Swal.fire({
         icon: "success",
         title: "Code submitted",
-        text: "Final submission recorded. Editing is now locked.",
+        html: `
+          <div class="mb-4 text-xs opacity-80">
+            Final submission recorded. Editing is now locked.
+          </div>
+          ${xp ? `
+          <div class="mt-4 p-4 bg-blue-900/40 rounded-2xl border border-blue-500/20 text-left">
+              <div class="flex justify-between items-center mb-2">
+                   <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${xp.level}</div>
+                   <div class="text-[10px] text-emerald-400 font-bold">+${xp.gainedXP} XP</div>
+              </div>
+              <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                  <div class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000" style="width: ${progress}%"></div>
+              </div>
+              <div class="text-[9px] text-slate-500 mt-1 text-right">${currentPoints % 500}/500 to next level</div>
+              ${xp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce text-center">LEVEL UP! 🎊</div>` : ''}
+              ${xp.newBadges?.length > 0 ? `
+                  <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                      ${xp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
+                  </div>
+              ` : ''}
+          </div>
+          ` : ''}
+        `,
         background: "#1a1a2e",
         color: "#fff",
       });

@@ -5,6 +5,7 @@ const Match = require("./models/Match");
 const Challenge = require("./models/Challenge");
 const { runChallengeCode } = require("./utils/runChallengeCode");
 const { detectCodeOrigin } = require("./services/mlDetectionAgent");
+const aiJudgeService = require("./services/aiJudgeService");
 
 let io;
 
@@ -58,9 +59,19 @@ const initSocket = (server) => {
             io.emit("statsUpdate", { onlineCount: userSockets.size });
 
             // --- 1. Matchmaking ---
+            const gamificationService = require("./services/gamificationService");
 
             socket.on("findMatch", async ({ type }) => {
-                console.log(`[ARENA] Search request received from ${socket.userUsername}`);
+                console.log(`[ARENA] Search request received from ${socket.userUsername} for ${type}`);
+
+                // Check Level 20 requirement for Ranked
+                if (type === "ranked") {
+                    const isEligible = await gamificationService.isRankedEligible(userId);
+                    if (!isEligible) {
+                        socket.emit("matchmakingError", { message: "You must be at least Level 20 to play Ranked." });
+                        return;
+                    }
+                }
 
                 // Allow matching with self by filtering by socketId
                 matchmakingQueue[type] = matchmakingQueue[type].filter(p => p.socketId !== socket.id);
@@ -86,12 +97,12 @@ const initSocket = (server) => {
                             challenge: {
                                 title: challenge.title,
                                 description: challenge.description,
+                                language: challenge.language || "javascript",
+                                testCases: challenge.toObject().testCases || [],
                                 data: {
-                                    [challenge.language || 'javascript']: challenge,
-                                    // Also provide fallback for other languages if possible or use the same
-                                    'javascript': challenge,
-                                    'python': challenge,
-                                    'java': challenge
+                                    [challenge.language || 'javascript']: challenge.toObject(),
+                                    'javascript': challenge.toObject(),
+                                    'python': challenge.toObject()
                                 }
                             },
                             startedAt: new Date()
@@ -145,17 +156,17 @@ const initSocket = (server) => {
                     const match = await Match.findById(matchId);
                     if (!match) return;
 
-                    // Support for multi-tab testing with the same account
-                    // Find if I'm already assigned, or find an empty/stale slot
+                    // Support for LiveBattle's separate socket connection
+                    // Find if I'm already assigned, or find our user's slot
                     let pIndex = match.players.findIndex(p => p.socketId === socket.id);
 
                     if (pIndex === -1) {
-                        // Find a slot for this userId that is either empty OR has a disconnected socket
+                        // Find a slot assigned to this user that hasn't ALREADY been claimed by another active tab IN THIS MATCH ROOM
+                        const roomClients = await io.in(actualRoomId).allSockets();
                         pIndex = match.players.findIndex(p => {
                             if (p.user.toString() !== userId) return false;
-                            if (!p.socketId) return true;
-                            // Check if the stored socket is still alive
-                            return !io.sockets.sockets.has(p.socketId);
+                            // If the socket currently occupying this slot is active in this room, skip it (it's the other tab)
+                            return !roomClients.has(p.socketId);
                         });
                     }
 
@@ -190,6 +201,7 @@ const initSocket = (server) => {
                     const mlResult = await detectCodeOrigin(code);
 
                     // 2. Atomic update of attacker state
+                    const isAi = mlResult.label === "IA" || mlResult.label === "Plagiat";
                     const updateAttacker = {};
                     updateAttacker[`players.${idx}.code`] = code;
                     updateAttacker[`players.${idx}.mlDetection`] = { prediction: mlResult.prediction, label: mlResult.label };
@@ -200,8 +212,8 @@ const initSocket = (server) => {
                         { new: true }
                     );
 
-                    // 3. Handle damage if test passed
-                    if (testResults.passed) {
+                    // 3. Handle damage if test passed AND NOT AI
+                    if (testResults.passed && !isAi) {
                         const damage = 25;
                         const oppIdx = idx === 0 ? 1 : 0;
                         const opp = updatedMatch.players[oppIdx];
@@ -271,7 +283,9 @@ const initSocket = (server) => {
 
                     const updateQuery = {};
                     updateQuery[`players.${idx}.finished`] = true;
+                    updateQuery[`players.${idx}.finishedAt`] = new Date();
                     updateQuery[`players.${idx}.code`] = code;
+                    updateQuery[`players.${idx}.language`] = language || "javascript";
                     updateQuery[`players.${idx}.mlDetection`] = { prediction: mlResult.prediction, label: mlResult.label };
 
                     const match = await Match.findOneAndUpdate(
@@ -286,23 +300,115 @@ const initSocket = (server) => {
                     console.log(`[Arena] Submission saved for slot ${idx}. All finished? ${allFinished}`);
 
                     if (allFinished) {
-                        const p1Id = (match.players[0].user?._id || match.players[0].user).toString();
-                        const p2Id = (match.players[1].user?._id || match.players[1].user).toString();
-                        let winnerId = "draw";
-                        if (match.players[0].health > match.players[1].health) winnerId = p1Id;
-                        else if (match.players[1].health > match.players[0].health) winnerId = p2Id;
+                        try {
+                            const p1Id = (match.players[0].user?._id || match.players[0].user || "").toString();
+                            const p2Id = (match.players[1].user?._id || match.players[1].user || "").toString();
 
-                        const finalMatch = await Match.findOneAndUpdate(
-                            { _id: matchId },
-                            { $set: { status: "completed", winner: winnerId === "draw" ? null : winnerId, completedAt: new Date() } },
-                            { new: true }
-                        );
+                            const isAi1 = match.players[0].mlDetection?.label === "IA" || match.players[0].mlDetection?.label === "Plagiat";
+                            const isAi2 = match.players[1].mlDetection?.label === "IA" || match.players[1].mlDetection?.label === "Plagiat";
 
-                        const endPayload = { winnerId, match: finalMatch };
-                        io.to(roomId).emit("matchEnded", endPayload);
-                        io.to(`user:${p1Id}`).emit("matchEnded", endPayload);
-                        io.to(`user:${p2Id}`).emit("matchEnded", endPayload);
-                        console.log(`[Arena] Match ${matchId} completed. Winner: ${winnerId}`);
+                            let winnerId = "draw";
+
+                            if (isAi1 && !isAi2) {
+                                winnerId = p2Id;
+                            } else if (!isAi1 && isAi2) {
+                                winnerId = p1Id;
+                            } else if (isAi1 && isAi2) {
+                                winnerId = "draw";
+                            } else {
+                                // Human vs Human Evaluation
+                                const getTests = (pIdx) => {
+                                    const player = match.players[pIdx];
+                                    const rawLang = (player.language || "javascript").toLowerCase();
+
+                                    // Robust retrieval
+                                    let tests = [];
+                                    if (match.challenge?.testCases?.length > 0) {
+                                        tests = match.challenge.testCases;
+                                    } else {
+                                        const data = match.challenge?.data || {};
+                                        const langKey = Object.keys(data).find(k => k.toLowerCase() === rawLang) || rawLang;
+                                        tests = data[langKey]?.testCases || [];
+                                    }
+                                    return { lang: rawLang, tests: Array.isArray(tests) ? tests : [] };
+                                };
+
+                                const { lang: l1, tests: tests1 } = getTests(0);
+                                const { lang: l2, tests: tests2 } = getTests(1);
+
+                                const [runP1, runP2] = await Promise.all([
+                                    runChallengeCode(l1, match.players[0].code, tests1),
+                                    runChallengeCode(l2, match.players[1].code, tests2)
+                                ]);
+
+                                const res1 = runP1.testResults || [];
+                                const res2 = runP2.testResults || [];
+                                const pct1 = res1.length > 0 ? (res1.filter(r => r.passed).length / res1.length) * 100 : 0;
+                                const pct2 = res2.length > 0 ? (res2.filter(r => r.passed).length / res2.length) * 100 : 0;
+
+                                console.log(`[Arena] Result Calc [p1:${pct1}%, p2:${pct2}%]`);
+
+                                if (pct1 > pct2) {
+                                    winnerId = p1Id;
+                                } else if (pct2 > pct1) {
+                                    winnerId = p2Id;
+                                } else if (pct1 === 100 && pct2 === 100) {
+                                    // Both are 100% correct, use tie-breakers
+                                    if (match.players[0].health > match.players[1].health) {
+                                        winnerId = p1Id;
+                                    } else if (match.players[1].health > match.players[0].health) {
+                                        winnerId = p2Id;
+                                    } else {
+                                        const time1 = match.players[0].finishedAt ? new Date(match.players[0].finishedAt).getTime() : Infinity;
+                                        const time2 = match.players[1].finishedAt ? new Date(match.players[1].finishedAt).getTime() : Infinity;
+                                        if (time1 < time2) winnerId = p1Id;
+                                        else if (time2 < time1) winnerId = p2Id;
+                                    }
+                                } else {
+                                    // Both were equal but NOT 100% (e.g. both 0% or both 50%) -> DRAW
+                                    winnerId = "draw";
+                                }
+                            }
+
+                            const finalMatch = await Match.findOneAndUpdate(
+                                { _id: matchId },
+                                { $set: { status: "completed", winner: winnerId === "draw" ? null : winnerId, completedAt: new Date() } },
+                                { new: true }
+                            );
+
+                            const xpSource = match.type === "ranked" ? "arena" : "training";
+                            const p1XpAmt = (winnerId === p1Id) ? 200 : (winnerId === "draw" ? 50 : 25);
+                            const p2XpAmt = (winnerId === p2Id) ? 200 : (winnerId === "draw" ? 50 : 25);
+
+                            const xpRes = await Promise.allSettled([
+                                gamificationService.addXP(p1Id, p1XpAmt, xpSource),
+                                gamificationService.addXP(p2Id, p2XpAmt, xpSource)
+                            ]);
+
+                            const p1XpFinal = xpRes[0].status === "fulfilled" ? xpRes[0].value : { gainedXP: 0 };
+                            const p2XpFinal = xpRes[1].status === "fulfilled" ? xpRes[1].value : { gainedXP: 0 };
+
+                            const endPayload = {
+                                winnerId,
+                                match: finalMatch,
+                                xpResults: { [p1Id]: p1XpFinal, [p2Id]: p2XpFinal },
+                                evaluation: {
+                                    [p1Id]: { correctness: pct1 || 0, results: res1 },
+                                    [p2Id]: { correctness: pct2 || 0, results: res2 }
+                                }
+                            };
+                            console.log(`[Arena] Result Calc [p1:${pct1}%, p2:${pct2}%]. Winner: ${winnerId}`);
+                            io.to(roomId).emit("matchEnded", endPayload);
+                        } catch (fatalErr) {
+                            console.error("[Arena] Resolution Error:", fatalErr);
+                            // Ensure we fetch state for fallback
+                            const fallbackMatch = await Match.findById(matchId);
+                            io.to(roomId).emit("matchEnded", {
+                                winnerId: "draw",
+                                match: fallbackMatch,
+                                error: "Final resolution failed."
+                            });
+                        }
                     } else {
                         socket.emit("waitingForOpponent");
                         const myUid = (match.players[idx].user?._id || match.players[idx].user).toString();

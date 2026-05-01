@@ -4,6 +4,7 @@ const matchSchema = new mongoose.Schema({
     players: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         username: String,
+        language: { type: String, default: "javascript" },
         avatar: String,
         code: { type: String, default: "" },
         health: { type: Number, default: 100 },
@@ -13,6 +14,7 @@ const matchSchema = new mongoose.Schema({
             label: { type: String, default: "" }
         },
         finished: { type: Boolean, default: false },
+        finishedAt: { type: Date },
         socketId: { type: String }
     }],
     type: {
@@ -33,6 +35,8 @@ const matchSchema = new mongoose.Schema({
     challenge: {
         title: String,
         description: String,
+        language: { type: String, default: "javascript" },
+        testCases: [{ type: mongoose.Schema.Types.Mixed }],
         data: mongoose.Schema.Types.Mixed // Stores { javascript: {...}, python: {...} }
     },
     startedAt: Date,

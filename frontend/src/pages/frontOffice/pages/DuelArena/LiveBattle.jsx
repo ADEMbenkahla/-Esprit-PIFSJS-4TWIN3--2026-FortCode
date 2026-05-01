@@ -129,7 +129,7 @@ export default function LiveBattle() {
             console.log(`${username} has finished the duel.`);
         });
 
-        newSocket.on("matchEnded", ({ winnerId, match: endMatch }) => {
+        newSocket.on("matchEnded", ({ winnerId, match: endMatch, xpResults }) => {
             setIsWaiting(false);
             Swal.close(); // Close the waiting modal
             setWinner(winnerId);
@@ -137,9 +137,14 @@ export default function LiveBattle() {
 
             const isMe = winnerId === myId;
             // Use socketId to find MY specific player entry in the match
-            const myPlayer = endMatch.players.find(p => p.socketId === newSocket.id);
+            const myPlayer = endMatch?.players ? endMatch.players.find(p => p.socketId === newSocket.id || p.user?._id === myId || p.user === myId) : null;
             const mlFeedback = myPlayer?.mlDetection?.label || "Unknown";
             const mlClass = myPlayer?.mlDetection?.prediction === 0 ? "text-green-400" : (myPlayer?.mlDetection?.prediction === 1 ? "text-yellow-400" : "text-red-400");
+
+            // Get XP result if available
+            const myXp = xpResults && xpResults[myId];
+            const currentPoints = myXp?.points || 0;
+            const progress = (currentPoints % 500) / 5; // Percentage towards next level
 
             Swal.fire({
                 title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
@@ -147,10 +152,29 @@ export default function LiveBattle() {
                     <div class="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                         <div class="text-xs text-slate-500 uppercase tracking-widest mb-2 font-mono">ML Origin Classification</div>
                         <div class="text-2xl font-bold ${mlClass}">${mlFeedback}</div>
-                        <p class="text-[10px] text-slate-400 mt-2">The system analyzed your coding style and identified it as ${mlFeedback.toLowerCase()}.</p>
+                        <p class="text-[10px] text-slate-400 mt-2">The system identified your code as ${mlFeedback.toLowerCase()}.</p>
                     </div>
+
+                    ${myXp ? `
+                    <div class="mt-4 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
+                        <div class="flex justify-between items-center mb-2">
+                             <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${myXp.level}</div>
+                             <div class="text-[10px] text-emerald-400 font-bold">+${myXp.gainedXP} XP</div>
+                        </div>
+                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                            <div class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="text-[9px] text-slate-500 mt-1 text-right">${currentPoints % 500}/500 to next level</div>
+                        ${myXp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
+                        ${myXp.newBadges?.length > 0 ? `
+                            <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                                ${myXp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 `,
-                text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired. It's a draw." : "The recursion was too strong for you."),
+                text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired." : "The recursion was too strong for you."),
                 icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
                 confirmButtonText: "Return to Arena",
                 background: "#0f172a",
@@ -370,6 +394,7 @@ export default function LiveBattle() {
                         </div>
                         <div className="flex gap-2">
                             <select
+                                aria-label="Select programming language"
                                 value={language}
                                 onChange={(e) => {
                                     const newLang = e.target.value;
@@ -384,6 +409,7 @@ export default function LiveBattle() {
                                 <option value="python">Python</option>
                             </select>
                             <Button
+                                aria-label="Run Code to cast spell"
                                 variant="primary"
                                 size="sm"
                                 className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-500"
@@ -393,6 +419,7 @@ export default function LiveBattle() {
                                 {isRunning ? "Casting..." : "Cast Spell"}
                             </Button>
                             <Button
+                                aria-label="Finish and submit match"
                                 variant="secondary"
                                 size="sm"
                                 className="h-8 px-4 text-xs bg-green-600 hover:bg-green-500 border-none text-white"
@@ -405,6 +432,7 @@ export default function LiveBattle() {
                     </div>
                     <div className="flex-1 relative font-mono text-sm">
                         <textarea
+                            aria-label="Code editor input"
                             value={code}
                             onChange={(e) => setCode(e.target.value)}
                             className="w-full h-full bg-transparent text-slate-300 p-6 resize-none focus:outline-none scrollbar-hide"
