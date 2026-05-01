@@ -633,6 +633,12 @@ exports.submitChallenge = async (req, res) => {
 
         console.log("[STUCK DETECTOR] Failed submission - userId:", userId, "challengeId:", challengeId, "fails:", nextFails, "stuckLevel:", stuckLevel, "autoHintTrigger:", autoHintTrigger, "submissionId:", submissionId);
 
+        let xpResult = null;
+        try {
+          // Give 20% XP for trying but failing
+          xpResult = await gamificationService.addXP(userId, Math.floor((challenge.xpReward || 100) * 0.20), "stage");
+        } catch (err) { }
+
         return res.status(400).json({
           message: "Tests did not pass",
           testResults: run.testResults,
@@ -646,6 +652,13 @@ exports.submitChallenge = async (req, res) => {
           stuckLevel,
           autoHintTrigger,
           submissionId,
+          xp: xpResult ? {
+            gainedXP: xpResult.gainedXP,
+            points: xpResult.points,
+            level: xpResult.level,
+            levelUp: xpResult.levelUp,
+            newBadges: xpResult.newBadges || []
+          } : null,
         });
       } else {
         // Don't increment for empty or duplicate submissions
@@ -661,6 +674,13 @@ exports.submitChallenge = async (req, res) => {
 
         console.log("[STUCK DETECTOR] Failed submission (no increment) - userId:", userId, "challengeId:", challengeId, "fails:", nextFails, "stuckLevel:", stuckLevel, "autoHintTrigger:", autoHintTrigger, "isDuplicate:", isDuplicate, "isMeaningfulCode:", isMeaningfulCode, "submissionId:", submissionId);
 
+        let xpResult = null;
+        try {
+          if (isMeaningfulCode && !isDuplicate) {
+            xpResult = await gamificationService.addXP(userId, Math.floor((challenge.xpReward || 100) * 0.20), "stage");
+          }
+        } catch (err) { }
+
         return res.status(400).json({
           message: "Tests did not pass",
           testResults: run.testResults,
@@ -675,6 +695,13 @@ exports.submitChallenge = async (req, res) => {
           isDuplicate,
           isMeaningfulCode,
           submissionId,
+          xp: xpResult ? {
+            gainedXP: xpResult.gainedXP,
+            points: xpResult.points,
+            level: xpResult.level,
+            levelUp: xpResult.levelUp,
+            newBadges: xpResult.newBadges || []
+          } : null,
         });
       }
     }

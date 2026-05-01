@@ -212,7 +212,10 @@ export default function BattleProgrammer() {
       }));
       const { xp } = data;
       const currentPoints = xp?.points || 0;
-      const progress = (currentPoints % 500) / 5;
+      const progress = Math.max(0, Math.min(100, (currentPoints % 500) / 5));
+      const oldPoints = currentPoints - (xp?.gainedXP || 0);
+      const oldProgress = Math.max(0, Math.min(100, (oldPoints % 500) / 5));
+      const progressWidth = progress;
 
       Swal.fire({
         icon: "success",
@@ -228,7 +231,7 @@ export default function BattleProgrammer() {
                    <div class="text-[10px] text-emerald-400 font-bold">+${xp.gainedXP} XP</div>
               </div>
               <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                  <div class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000" style="width: ${progress}%"></div>
+                  <div id="programmer-xp-bar" class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000 ease-out" style="width: ${progressWidth}%"></div>
               </div>
               <div class="text-[9px] text-slate-500 mt-1 text-right">${currentPoints % 500}/500 to next level</div>
               ${xp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce text-center">LEVEL UP! 🎊</div>` : ''}
@@ -242,6 +245,14 @@ export default function BattleProgrammer() {
         `,
         background: "#1a1a2e",
         color: "#fff",
+        didOpen: () => {
+          if (xp) {
+            setTimeout(() => {
+              const bar = document.getElementById('programmer-xp-bar');
+              if (bar) bar.style.width = progress + '%';
+            }, 100);
+          }
+        }
       });
       await refreshAccess(true, { suppressFraud: true });
     } catch (error) {
@@ -299,7 +310,7 @@ export default function BattleProgrammer() {
       const tests = data?.analysis?.tests || {};
       const rawResults = Array.isArray(tests.results) ? tests.results : [];
       const normalizedResults = rawResults.map((item, index) => ({
-        name: String(item?.name || `Test ${index + 1}`),
+        name: String(item?.name || `Test ${index + 1} `),
         expected: true,
         actual: Boolean(item?.passed),
         passed: Boolean(item?.passed),
@@ -388,8 +399,8 @@ export default function BattleProgrammer() {
                   <tbody>
                     {sharedRanking.map((item, index) => (
                       <tr
-                        key={`${item.participantId || item.email || item.name || "visitor"}-${index}`}
-                        className={`border-b border-slate-800/70 ${item.isCurrentUser ? "bg-emerald-900/20" : ""}`}
+                        key={`${item.participantId || item.email || item.name || "visitor"} -${index} `}
+                        className={`border - b border - slate - 800 / 70 ${item.isCurrentUser ? "bg-emerald-900/20" : ""} `}
                       >
                         <td className="py-2 pr-4 text-slate-200 font-semibold">#{item.rank}</td>
                         <td className="py-2 pr-4 text-slate-200">
@@ -445,9 +456,10 @@ export default function BattleProgrammer() {
               className="inline-block mt-3 text-sm text-blue-300 hover:text-blue-200"
             >
               Download statement: {room.challenge.statementAttachment.originalName || "Attached file"}
-            </a>
-          )}
-        </div>
+            </a >
+          )
+          }
+        </div >
 
         {waitingStart && (
           <div className="rounded-xl border border-amber-700/40 bg-amber-900/10 p-5">
@@ -458,145 +470,153 @@ export default function BattleProgrammer() {
           </div>
         )}
 
-        {isEnded && (
-          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
-            <h2 className="text-slate-300 font-semibold">Challenge ended</h2>
-            <p className="text-slate-400 text-sm mt-1">The recruiter has ended this battle room. You can still view your code below.</p>
-          </div>
-        )}
+        {
+          isEnded && (
+            <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-5">
+              <h2 className="text-slate-300 font-semibold">Challenge ended</h2>
+              <p className="text-slate-400 text-sm mt-1">The recruiter has ended this battle room. You can still view your code below.</p>
+            </div>
+          )
+        }
 
-        {timeExpired && !isEnded && (
-          <div className="rounded-xl border border-red-500/40 bg-red-950/20 p-5">
-            <h2 className="text-red-300 font-semibold">Time expired</h2>
-            <p className="text-red-200/80 text-sm mt-1">The countdown reached zero. Editing is locked until the recruiter ends the room.</p>
-          </div>
-        )}
+        {
+          timeExpired && !isEnded && (
+            <div className="rounded-xl border border-red-500/40 bg-red-950/20 p-5">
+              <h2 className="text-red-300 font-semibold">Time expired</h2>
+              <p className="text-red-200/80 text-sm mt-1">The countdown reached zero. Editing is locked until the recruiter ends the room.</p>
+            </div>
+          )
+        }
 
-        {blockedByFinalSubmit && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-5">
-            <h2 className="text-emerald-300 font-semibold">Final submission received</h2>
-            <p className="text-emerald-200/90 text-sm mt-1">
-              Your final answer was submitted successfully. Coding is now disabled for this challenge.
-            </p>
-          </div>
-        )}
+        {
+          blockedByFinalSubmit && (
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-5">
+              <h2 className="text-emerald-300 font-semibold">Final submission received</h2>
+              <p className="text-emerald-200/90 text-sm mt-1">
+                Your final answer was submitted successfully. Coding is now disabled for this challenge.
+              </p>
+            </div>
+          )
+        }
 
-        {(isLive || isEnded) && (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
-                <h3 className="font-medium text-slate-100">Enonce</h3>
-                <p className="text-slate-400 text-sm mt-2">{room.challenge?.title || "Coding Challenge"}</p>
-                <p className="text-slate-500 text-sm mt-2 whitespace-pre-wrap">
-                  {room.challenge?.description || "No challenge description provided."}
-                </p>
+        {
+          (isLive || isEnded) && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
+                  <h3 className="font-medium text-slate-100">Enonce</h3>
+                  <p className="text-slate-400 text-sm mt-2">{room.challenge?.title || "Coding Challenge"}</p>
+                  <p className="text-slate-500 text-sm mt-2 whitespace-pre-wrap">
+                    {room.challenge?.description || "No challenge description provided."}
+                  </p>
 
-                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Uploaded file</p>
-                  {room.challenge?.statementAttachment?.url ? (
-                    <div className="mt-2">
-                      <p className="text-slate-200 text-sm">
-                        {room.challenge.statementAttachment.originalName || "Attached file"}
-                      </p>
-                      <a
-                        href={`http://localhost:5000${room.challenge.statementAttachment.url}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block mt-2 text-sm text-blue-300 hover:text-blue-200"
-                      >
-                        Open uploaded statement
-                      </a>
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-sm mt-2">No file uploaded for this challenge.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium">Code</h3>
-                  {isLive && (
-                    <span className={`text-sm ${remainingMs != null && remainingMs <= 5 * 60 * 1000 ? "text-red-300 font-semibold" : "text-emerald-300"}`}>
-                      Time remaining: {remainingText || "--:--"}
-                    </span>
-                  )}
-                </div>
-                <div className="overflow-hidden rounded-lg border border-slate-700">
-                  <Editor
-                    height="420px"
-                    language={monacoLanguage}
-                    theme="vs-dark"
-                    value={code}
-                    onChange={(value) => setCode(value ?? "")}
-                    options={{
-                      fontSize: 14,
-                      minimap: { enabled: false },
-                      wordWrap: "on",
-                      scrollBeyondLastLine: false,
-                      readOnly: isEnded || timeExpired || blockedByFraud || blockedByFinalSubmit,
-                      automaticLayout: true,
-                    }}
-                  />
-                </div>
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={handleRunShell}
-                    disabled={runningShell || (!canEdit && !isEnded) || !shellLanguageSupported}
-                    className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
-                  >
-                    {runningShell ? "Running..." : "Run code (JS/Python)"}
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!canEdit || saving}
-                    className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
-                  >
-                    {saving ? "Submitting..." : "Submit code"}
-                  </button>
-                  <button
-                    onClick={() => refreshAccess(true)}
-                    className="px-5 py-2.5 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800"
-                  >
-                    Refresh status
-                  </button>
-                </div>
-
-                {shellRun && (
                   <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Shell Result (comparison with backend exercise tests)</p>
-                    {shellRun.error ? (
-                      <p className="text-red-300 text-sm mt-2">{shellRun.error}</p>
-                    ) : (
-                      <>
-                        <p className="text-slate-200 text-sm mt-2">
-                          Passed {shellRun.passed}/{shellRun.total} tests
-                          {typeof shellRun.executionTimeMs === "number" ? ` in ${shellRun.executionTimeMs} ms` : ""}
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Uploaded file</p>
+                    {room.challenge?.statementAttachment?.url ? (
+                      <div className="mt-2">
+                        <p className="text-slate-200 text-sm">
+                          {room.challenge.statementAttachment.originalName || "Attached file"}
                         </p>
-                        <div className="mt-2 space-y-2 max-h-44 overflow-y-auto pr-1">
-                          {shellRun.results.map((item, index) => (
-                            <div key={`${item.name}-${index}`} className="rounded border border-slate-700 bg-slate-950/50 p-2 text-xs">
-                              <p className="text-slate-200 font-medium">{item.name}</p>
-                              <p className="text-slate-400 mt-1">
-                                Expected: <span className="text-slate-200">{String(item.expected)}</span>
-                                {" · "}
-                                Actual: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.actual == null ? "error" : String(item.actual)}</span>
-                                {" · "}
-                                Status: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.passed ? "PASS" : "FAIL"}</span>
-                              </p>
-                              {item.error && <p className="text-red-300 mt-1">{item.error}</p>}
-                            </div>
-                          ))}
-                        </div>
-                      </>
+                        <a
+                          href={`http://localhost:5000${room.challenge.statementAttachment.url}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block mt-2 text-sm text-blue-300 hover:text-blue-200"
+                        >
+                          Open uploaded statement
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-sm mt-2">No file uploaded for this challenge.</p>
                     )}
                   </div>
-                )}
+                </div>
+
+                <div className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">Code</h3>
+                    {isLive && (
+                      <span className={`text-sm ${remainingMs != null && remainingMs <= 5 * 60 * 1000 ? "text-red-300 font-semibold" : "text-emerald-300"}`}>
+                        Time remaining: {remainingText || "--:--"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="overflow-hidden rounded-lg border border-slate-700">
+                    <Editor
+                      height="420px"
+                      language={monacoLanguage}
+                      theme="vs-dark"
+                      value={code}
+                      onChange={(value) => setCode(value ?? "")}
+                      options={{
+                        fontSize: 14,
+                        minimap: { enabled: false },
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                        readOnly: isEnded || timeExpired || blockedByFraud || blockedByFinalSubmit,
+                        automaticLayout: true,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      onClick={handleRunShell}
+                      disabled={runningShell || (!canEdit && !isEnded) || !shellLanguageSupported}
+                      className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+                    >
+                      {runningShell ? "Running..." : "Run code (JS/Python)"}
+                    </button>
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!canEdit || saving}
+                      className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
+                    >
+                      {saving ? "Submitting..." : "Submit code"}
+                    </button>
+                    <button
+                      onClick={() => refreshAccess(true)}
+                      className="px-5 py-2.5 rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800"
+                    >
+                      Refresh status
+                    </button>
+                  </div>
+
+                  {shellRun && (
+                    <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
+                      <p className="text-xs uppercase tracking-wide text-slate-400">Shell Result (comparison with backend exercise tests)</p>
+                      {shellRun.error ? (
+                        <p className="text-red-300 text-sm mt-2">{shellRun.error}</p>
+                      ) : (
+                        <>
+                          <p className="text-slate-200 text-sm mt-2">
+                            Passed {shellRun.passed}/{shellRun.total} tests
+                            {typeof shellRun.executionTimeMs === "number" ? ` in ${shellRun.executionTimeMs} ms` : ""}
+                          </p>
+                          <div className="mt-2 space-y-2 max-h-44 overflow-y-auto pr-1">
+                            {shellRun.results.map((item, index) => (
+                              <div key={`${item.name}-${index}`} className="rounded border border-slate-700 bg-slate-950/50 p-2 text-xs">
+                                <p className="text-slate-200 font-medium">{item.name}</p>
+                                <p className="text-slate-400 mt-1">
+                                  Expected: <span className="text-slate-200">{String(item.expected)}</span>
+                                  {" · "}
+                                  Actual: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.actual == null ? "error" : String(item.actual)}</span>
+                                  {" · "}
+                                  Status: <span className={item.passed ? "text-emerald-300" : "text-red-300"}>{item.passed ? "PASS" : "FAIL"}</span>
+                                </p>
+                                {item.error && <p className="text-red-300 mt-1">{item.error}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
+          )
+        }
+      </div >
+    </div >
   );
 }

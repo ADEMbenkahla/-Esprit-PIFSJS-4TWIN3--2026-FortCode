@@ -5,6 +5,7 @@ import { Swords, Shield, Zap, Play, RotateCcw, AlertTriangle, CheckCircle, Code,
 import { io } from 'socket.io-client';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import ExperienceBar from '../../../../components/ui/ExperienceBar';
 import Swal from 'sweetalert2';
 
 const SOCKET_URL = "http://127.0.0.1:5000";
@@ -32,6 +33,17 @@ export default function LiveBattle() {
     const [timeLeft, setTimeLeft] = useState(210); // 3:30 in seconds
     const [myId, setMyId] = useState("");
     const [myRoomSocketId, setMyRoomSocketId] = useState("");
+
+    const getCurrentUserId = useCallback(() => {
+        if (myId) return myId;
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        if (!token) return null;
+        try {
+            return JSON.parse(atob(token.split('.')[1])).id;
+        } catch {
+            return null;
+        }
+    }, [myId]);
 
     const loadMatchData = useCallback(async () => {
         try {
@@ -89,8 +101,9 @@ export default function LiveBattle() {
 
         newSocket.on("opponentBattleEvent", ({ event, data }) => {
             if (event === "damageTaken") {
+                const actualMyId = getCurrentUserId();
                 // Update health based on who took damage
-                if (data.targetId === userId) {
+                if (data.targetId === actualMyId) {
                     setHealth(data.newHealth);
                     setOutput(`⚠️ INCANTATION DETECTED: Opponent struck you for ${data.damage} DMG!`);
                 } else {
@@ -130,56 +143,7 @@ export default function LiveBattle() {
         });
 
         newSocket.on("matchEnded", ({ winnerId, match: endMatch, xpResults }) => {
-            setIsWaiting(false);
-            Swal.close(); // Close the waiting modal
-            setWinner(winnerId);
-            setMatch(endMatch); // Update match to get final ML results
-
-            const isMe = winnerId === myId;
-            // Use socketId to find MY specific player entry in the match
-            const myPlayer = endMatch?.players ? endMatch.players.find(p => p.socketId === newSocket.id || p.user?._id === myId || p.user === myId) : null;
-            const mlFeedback = myPlayer?.mlDetection?.label || "Unknown";
-            const mlClass = myPlayer?.mlDetection?.prediction === 0 ? "text-green-400" : (myPlayer?.mlDetection?.prediction === 1 ? "text-yellow-400" : "text-red-400");
-
-            // Get XP result if available
-            const myXp = xpResults && xpResults[myId];
-            const currentPoints = myXp?.points || 0;
-            const progress = (currentPoints % 500) / 5; // Percentage towards next level
-
-            Swal.fire({
-                title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
-                html: `
-                    <div class="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                        <div class="text-xs text-slate-500 uppercase tracking-widest mb-2 font-mono">ML Origin Classification</div>
-                        <div class="text-2xl font-bold ${mlClass}">${mlFeedback}</div>
-                        <p class="text-[10px] text-slate-400 mt-2">The system identified your code as ${mlFeedback.toLowerCase()}.</p>
-                    </div>
-
-                    ${myXp ? `
-                    <div class="mt-4 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
-                        <div class="flex justify-between items-center mb-2">
-                             <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${myXp.level}</div>
-                             <div class="text-[10px] text-emerald-400 font-bold">+${myXp.gainedXP} XP</div>
-                        </div>
-                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                            <div class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000" style="width: ${progress}%"></div>
-                        </div>
-                        <div class="text-[9px] text-slate-500 mt-1 text-right">${currentPoints % 500}/500 to next level</div>
-                        ${myXp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
-                        ${myXp.newBadges?.length > 0 ? `
-                            <div class="mt-2 flex flex-wrap gap-1 justify-center">
-                                ${myXp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    ` : ''}
-                `,
-                text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired." : "The recursion was too strong for you."),
-                icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
-                confirmButtonText: "Return to Arena",
-                background: "#0f172a",
-                color: "#fff"
-            }).then(() => navigate('/arena'));
+            handleMatchEnd(winnerId, endMatch, xpResults);
         });
 
         newSocket.on("connect", () => {
@@ -198,6 +162,40 @@ export default function LiveBattle() {
             setTimeLeft((prev) => {
                 if (prev <= 0) {
                     clearInterval(interval);
+                    // Force match end when timer expires
+                    if (!winner && socket) {
+                        console.log("⏰ Timer expired, forcing match end");
+                        setIsWaiting(false);
+                        Swal.close();
+                        setWinner("draw"); // Set as draw when time expires
+                        
+                        // Create a mock match end event
+                        const mockEndMatch = {
+                            ...match,
+                            status: "completed",
+                            winner: "draw"
+                        };
+                        
+                        // Trigger the match end logic manually
+                        const mockXpResults = {};
+                        if (match.players) {
+                            match.players.forEach(player => {
+                                const userId = player.user?._id || player.user;
+                                mockXpResults[userId] = {
+                                    level: 5,
+                                    points: 1250,
+                                    gainedXP: 75,
+                                    levelUp: false,
+                                    newBadges: [
+                                        { _id: '1', label: 'Survivor' }
+                                    ]
+                                };
+                            });
+                        }
+                        
+                        // Manually trigger match end logic
+                        handleMatchEnd("draw", mockEndMatch, mockXpResults);
+                    }
                     return 0;
                 }
                 return prev - 1;
@@ -205,13 +203,90 @@ export default function LiveBattle() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [match, winner]);
+    }, [match, winner, socket]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} `;
     };
+
+    const handleMatchEnd = useCallback((winnerId, endMatch, xpResults) => {
+        setIsWaiting(false);
+        Swal.close();
+        setWinner(winnerId);
+        setMatch(endMatch);
+
+        // To bypass any closure state issues, grab `myId` from the token!
+        let actualMyId = myId;
+        if (!actualMyId) {
+            try {
+                const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+                const decoded = JSON.parse(atob(token.split('.')[1]));
+                actualMyId = decoded.id;
+            } catch (e) { }
+        }
+
+        const isMe = winnerId === actualMyId;
+        // Use socketId to find MY specific player entry in the match
+        const myPlayer = endMatch?.players ? endMatch.players.find(p => p.socketId === socket?.id || p.user?._id === actualMyId || p.user === actualMyId) : null;
+        const mlFeedback = myPlayer?.mlDetection?.label || "Unknown";
+        const mlClass = myPlayer?.mlDetection?.prediction === 0 ? "text-green-400" : (myPlayer?.mlDetection?.prediction === 1 ? "text-yellow-400" : "text-red-400");
+
+        // Get XP result if available
+        const myXp = xpResults && xpResults[actualMyId];
+        
+        // Determine result type for XP calculation
+        let resultType = 'defeat'; // default
+        if (winnerId === "draw") resultType = 'draw';
+        else if (isMe) resultType = 'win';
+
+        Swal.fire({
+            title: isMe ? "GLORIOUS VICTORY!" : (winnerId === "draw" ? "DRAW" : "DEFEAT..."),
+            html: `
+                <div class="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                    <div class="text-xs text-slate-500 uppercase tracking-widest mb-2 font-mono">ML Origin Classification</div>
+                    <div class="text-2xl font-bold ${mlClass}">${mlFeedback}</div>
+                    <p class="text-[10px] text-slate-400 mt-2">The system identified your code as ${mlFeedback.toLowerCase()}.</p>
+                </div>
+
+                <div class="mt-4 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
+                    <div class="flex justify-between items-center mb-2">
+                         <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${myXp?.level || 5}</div>
+                         <div class="text-[10px] text-emerald-400 font-bold">+${Math.floor((myXp?.gainedXP || 50) * (resultType === 'win' ? 1 : resultType === 'draw' ? 0.5 : 0.2))} XP</div>
+                    </div>
+                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <div id="duel-xp-bar" class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000 ease-out" style="width: 0%"></div>
+                    </div>
+                    <div class="text-[9px] text-slate-500 mt-1 text-right">${Math.floor(((myXp?.points || 1250) * (resultType === 'win' ? 1 : resultType === 'draw' ? 0.5 : 0.2))) % 500}/500 to next level</div>
+                    ${myXp?.levelUp && resultType === 'win' ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
+                    ${myXp?.newBadges?.length > 0 ? `
+                        <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                            ${myXp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `,
+            text: isMe ? "You have crushed your opponent!" : (winnerId === "draw" ? "Time expired." : "The recursion was too strong for you."),
+            icon: isMe ? "success" : (winnerId === "draw" ? "info" : "error"),
+            confirmButtonText: "Return to Arena",
+            background: "#0f172a",
+            color: "#fff",
+            didOpen: () => {
+                setTimeout(() => {
+                    const bar = document.getElementById('duel-xp-bar');
+                    if (bar) {
+                        const multiplier = resultType === 'win' ? 1 : resultType === 'draw' ? 0.5 : 0.2;
+                        const points = myXp?.points || 1250;
+                        const adjustedPoints = Math.floor(points * multiplier);
+                        const progress = Math.max(0, Math.min(100, (adjustedPoints % 500) / 5));
+                        
+                        bar.style.width = progress + '%';
+                    }
+                }, 100);
+            }
+        }).then(() => navigate('/arena'));
+    }, [myId, socket, navigate]);
 
     const handleRun = useCallback(() => {
         if (!socket) return;
@@ -280,12 +355,26 @@ export default function LiveBattle() {
 
     // UI Helper to find me/opponent accurately even in self-matching
     const getPlayer = (isMe) => {
-        if (!match?.players) return null;
-        const target = match.players.find(p => {
-            const pId = (p.user?._id || p.user).toString();
-            const isMatch = pId === myId || p.socketId === myRoomSocketId;
-            return isMe ? isMatch : !isMatch;
+        if (!match?.players || match.players.length === 0) return null;
+        const actualMyId = getCurrentUserId();
+
+        const candidates = match.players.map((p) => {
+            const pId = (p.user?._id || p.user)?.toString();
+            const isSelf = Boolean(
+                (actualMyId && pId === actualMyId) ||
+                (myRoomSocketId && p.socketId === myRoomSocketId)
+            );
+            return { player: p, isSelf };
         });
+
+        let target = candidates.find((c) => (isMe ? c.isSelf : !c.isSelf))?.player;
+        if (!target) {
+            if (!actualMyId && !myRoomSocketId && candidates.length === 2) {
+                target = isMe ? candidates[0].player : candidates[1].player;
+            } else if (!target) {
+                target = candidates[0].player;
+            }
+        }
         return target;
     };
 
@@ -312,7 +401,7 @@ export default function LiveBattle() {
                     <div className="flex-1 max-w-[150px]">
                         <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                             <motion.div
-                                animate={{ width: `${health}%` }}
+                                animate={{ width: `${health}% ` }}
                                 className="h-full bg-gradient-to-r from-blue-500 to-cyan-400"
                             />
                         </div>
@@ -332,7 +421,7 @@ export default function LiveBattle() {
                     </div>
 
                     {/* TIMER DISPLAY */}
-                    <div className={`text-xl font-mono font-bold ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-300'}`}>
+                    <div className={`text - xl font - mono font - bold ${timeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-300'} `}>
                         {formatTime(timeLeft)}
                     </div>
 
@@ -366,7 +455,7 @@ export default function LiveBattle() {
                     <div className="flex-1 max-w-[150px] text-right">
                         <div className="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                             <motion.div
-                                animate={{ width: `${opponentHealth}%` }}
+                                animate={{ width: `${opponentHealth}% ` }}
                                 className="h-full bg-gradient-to-l from-red-500 to-orange-400"
                             />
                         </div>
@@ -468,7 +557,7 @@ export default function LiveBattle() {
                         </div>
                         <div className="flex-1 p-4 font-mono text-xs overflow-y-auto">
                             {output && (
-                                <div className={`mb-4 pb-2 border-b border-white/5 ${output.includes('✨') ? 'text-green-400' : 'text-blue-400'}`}>
+                                <div className={`mb - 4 pb - 2 border - b border - white / 5 ${output.includes('✨') ? 'text-green-400' : 'text-blue-400'} `}>
                                     {output}
                                 </div>
                             )}

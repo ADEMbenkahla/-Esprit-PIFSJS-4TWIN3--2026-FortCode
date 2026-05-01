@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Circle, Loader2, Play, Save, Zap, Star, RotateCcw } from 'lucide-react';
 import { stagesApi } from '../../../services/api';
+import ExperienceBar from '../../../components/ui/ExperienceBar';
 import './TrainingLevel.css';
 import Swal from 'sweetalert2';
 
@@ -190,8 +191,9 @@ export const TrainingLevel = () => {
       setOutput(logLines);
 
       const { xp } = data;
-      const currentPoints = xp?.points || 0;
-      const progress = (currentPoints % 500) / 5;
+      
+      // Stage training always gives 100% XP on success
+      const resultType = 'win';
 
       Swal.fire({
         icon: 'success',
@@ -203,22 +205,7 @@ export const TrainingLevel = () => {
             : `Results analyzed. Quality Score: ${data.sonar?.qualityScore || 0}/100`}
           </div>
           ${xp ? `
-          <div class="mt-4 p-4 bg-blue-900/40 rounded-2xl border border-blue-500/20">
-              <div class="flex justify-between items-center mb-2">
-                   <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${xp.level}</div>
-                   <div class="text-[10px] text-emerald-400 font-bold">+${xp.gainedXP} XP</div>
-              </div>
-              <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                  <div class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000" style="width: ${progress}%"></div>
-              </div>
-              <div class="text-[9px] text-slate-500 mt-1 text-right">${currentPoints % 500}/500 to next level</div>
-              ${xp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
-              ${xp.newBadges?.length > 0 ? `
-                  <div class="mt-2 flex flex-wrap gap-1 justify-center">
-                      ${xp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
-                  </div>
-              ` : ''}
-          </div>
+          <div id="training-xp-container"></div>
           ` : ''}
         `,
         background: '#1a1a2e',
@@ -226,13 +213,51 @@ export const TrainingLevel = () => {
         timer: data.stageCompleted ? undefined : 4000,
         showConfirmButton: !!data.stageCompleted,
         confirmButtonText: data.stageCompleted ? 'Return to Map' : undefined,
+        didOpen: () => {
+          if (xp) {
+            setTimeout(() => {
+              const container = document.getElementById('training-xp-container');
+              if (container) {
+                // Create and render the ExperienceBar for training (100% XP)
+                const xpBarHtml = `
+                  <div class="mt-4 p-4 bg-blue-900/40 rounded-2xl border border-blue-500/20">
+                      <div class="flex justify-between items-center mb-2">
+                           <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${xp.level}</div>
+                           <div class="text-[10px] text-emerald-400 font-bold">+${xp.gainedXP} XP</div>
+                      </div>
+                      <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                          <div id="training-xp-bar" class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000 ease-out" style="width: 0%"></div>
+                      </div>
+                      <div class="text-[9px] text-slate-500 mt-1 text-right">${xp.points % 500}/500 to next level</div>
+                      ${xp.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
+                      ${xp.newBadges?.length > 0 ? `
+                          <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                              ${xp.newBadges.map(b => `<span class="bg-amber-500/20 text-amber-500 text-[8px] px-2 py-0.5 rounded border border-amber-500/30">🏆 ${b.label}</span>`).join('')}
+                          </div>
+                      ` : ''}
+                  </div>
+                `;
+                container.innerHTML = xpBarHtml;
+                
+                // Animate the bar (100% for training success)
+                setTimeout(() => {
+                  const bar = document.getElementById('training-xp-bar');
+                  if (bar) {
+                    const progress = Math.max(0, Math.min(100, (xp.points % 500) / 5));
+                    bar.style.width = progress + '%';
+                  }
+                }, 100);
+              }
+            }, 100);
+          }
+        }
       }).then((result) => {
         if (data.stageCompleted) {
           setShowReport(false);
           if (result.isConfirmed) {
             navigate('/map');
           } else {
-            navigate(`/training/${stageId}`);
+            navigate(`/ training / ${stageId} `);
           }
         }
       });
@@ -245,14 +270,57 @@ export const TrainingLevel = () => {
       }
 
       const msg = err.response?.data?.message || "Failed to submit.";
-      setOutput(`❌ Error: ${msg}\n\n${err.response?.data?.output || ""}`);
+      setOutput(`❌ Error: ${msg} \n\n${err.response?.data?.output || ""} `);
+
+      const xp = err.response?.data?.xp;
+      
+      // Stage failure gives 20% XP
+      const resultType = 'defeat';
 
       Swal.fire({
         icon: 'error',
         title: 'Tests Incomplete',
-        text: msg,
+        html: `
+          <div class="mb-4 text-sm opacity-80">${msg}</div>
+          ${xp ? `
+          <div id="training-xp-fail-container"></div>
+          ` : ''}
+        `,
         background: '#1a1a2e',
-        color: '#fff'
+        color: '#fff',
+        didOpen: () => {
+          if (xp) {
+            setTimeout(() => {
+              const container = document.getElementById('training-xp-fail-container');
+              if (container) {
+                // Create and render the ExperienceBar for training failure (20% XP)
+                const xpBarHtml = `
+                  <div class="mt-4 p-4 bg-blue-900/40 rounded-2xl border border-blue-500/20 text-left">
+                      <div class="flex justify-between items-center mb-2">
+                           <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${xp.level}</div>
+                           <div class="text-[10px] text-emerald-400 font-bold">+${Math.floor(xp.gainedXP * 0.2)} XP</div>
+                      </div>
+                      <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                          <div id="training-xp-bar-fail" class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000 ease-out" style="width: 0%"></div>
+                      </div>
+                      <div class="text-[9px] text-slate-500 mt-1 text-right">${Math.floor((xp.points * 0.2)) % 500}/500 to next level</div>
+                  </div>
+                `;
+                container.innerHTML = xpBarHtml;
+                
+                // Animate the bar (20% for training failure)
+                setTimeout(() => {
+                  const bar = document.getElementById('training-xp-bar-fail');
+                  if (bar) {
+                    const progress = Math.max(0, Math.min(100, (xp.points % 500) / 5));
+                    const adjustedProgress = progress * 0.2;
+                    bar.style.width = adjustedProgress + '%';
+                  }
+                }, 100);
+              }
+            }, 100);
+          }
+        }
       });
     } finally {
       setIsUpdating(false);
@@ -348,7 +416,7 @@ export const TrainingLevel = () => {
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-200">
       <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(`/training/${stageId}`)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white">
+          <button onClick={() => navigate(`/ training / ${stageId}`)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
@@ -357,7 +425,7 @@ export const TrainingLevel = () => {
               <span className="text-[10px] font-mono text-slate-500 uppercase">Level {stage.level} • {stage.difficulty}</span>
               <div className="flex items-center gap-2">
                 <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)]" style={{ width: `${progressPercent}%` }} />
+                  <div className="h-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)]" style={{ width: `${progressPercent}% ` }} />
                 </div>
                 <span className="text-[10px] text-blue-400 font-bold font-mono">{progressPercent}%</span>
               </div>
@@ -410,10 +478,10 @@ export const TrainingLevel = () => {
                 <div
                   key={c._id}
                   onClick={() => handleChallengeSelect(c)}
-                  className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between group ${String(selectedChallenge?._id) === String(c._id)
+                  className={`p - 3 rounded - lg border transition - all cursor - pointer flex items - center justify - between group ${String(selectedChallenge?._id) === String(c._id)
                     ? 'bg-blue-500/10 border-blue-500/40 text-blue-200'
                     : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-                    }`}
+                    } `}
                 >
                   <div className="flex items-center gap-3">
                     {completed.some(comp => String(comp.challengeId || comp) === String(c._id)) ? (
@@ -426,11 +494,11 @@ export const TrainingLevel = () => {
                   <div className="flex items-center gap-2">
                     <div className="flex gap-0.5">
                       {[...Array(3)].map((_, i) => (
-                        <Star key={i} className={`w-3 h-3 ${i < (c.stars || 0) ? 'text-amber-400 fill-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]' : 'text-slate-800'}`} />
+                        <Star key={i} className={`w - 3 h - 3 ${i < (c.stars || 0) ? 'text-amber-400 fill-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]' : 'text-slate-800'} `} />
                       ))}
                     </div>
-                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${c.language === 'python' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'
-                      }`}>
+                    <span className={`text - [9px] uppercase font - bold px - 1.5 py - 0.5 rounded ${c.language === 'python' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-400'
+                      } `}>
                       {c.language === 'javascript' ? 'JS' : 'PY'}
                     </span>
                   </div>
@@ -454,7 +522,7 @@ export const TrainingLevel = () => {
                   <div className="flex items-center gap-4 mb-3">
                     <div className="flex gap-1">
                       {[...Array(3)].map((_, i) => (
-                        <Star key={i} className={`w-5 h-5 ${i < calculateStars() ? 'text-amber-400 fill-amber-400' : 'text-slate-800'}`} />
+                        <Star key={i} className={`w - 5 h - 5 ${i < calculateStars() ? 'text-amber-400 fill-amber-400' : 'text-slate-800'} `} />
                       ))}
                     </div>
                     <span className="text-[10px] font-mono text-slate-500 uppercase">Est. Reward</span>
@@ -471,15 +539,15 @@ export const TrainingLevel = () => {
         <div className="flex-1 flex flex-col bg-slate-950">
           <div className="px-5 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${selectedChallenge?.language === 'python' ? 'bg-yellow-500 text-slate-950' : 'bg-blue-600 text-white'
-                }`}>
+              <span className={`text - [10px] font - bold px - 2 py - 0.5 rounded uppercase ${selectedChallenge?.language === 'python' ? 'bg-yellow-500 text-slate-950' : 'bg-blue-600 text-white'
+                } `}>
                 {selectedChallenge?.language}
               </span>
               <span className="text-[10px] font-mono text-slate-500">solution.src</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-bold text-slate-500 uppercase">Attempts:</span>
-              <span className={`text-[10px] font-mono ${attempts > 3 ? 'text-rose-500' : attempts > 1 ? 'text-amber-500' : 'text-blue-400'}`}>{attempts}</span>
+              <span className={`text - [10px] font - mono ${attempts > 3 ? 'text-rose-500' : attempts > 1 ? 'text-amber-500' : 'text-blue-400'} `}>{attempts}</span>
             </div>
           </div>
 
@@ -499,7 +567,7 @@ export const TrainingLevel = () => {
             </div>
             <div className="flex-1 p-5 font-mono text-[11px] overflow-y-auto bg-slate-950/40">
               {output ? (
-                <div className={`${output.includes("✓") ? 'text-emerald-400' : 'text-rose-400'} whitespace-pre-wrap`}>
+                <div className={`${output.includes("✓") ? 'text-emerald-400' : 'text-rose-400'} whitespace - pre - wrap`}>
                   <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-2">
                     <span className="text-slate-400">$ Kernel Execution Output</span>
                     {output.includes("❌") && (
@@ -536,10 +604,10 @@ export const TrainingLevel = () => {
                   <button
                     key={tab}
                     onClick={() => setActiveReportTab(tab)}
-                    className={`px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest text-left transition-all border ${activeReportTab === tab
+                    className={`px - 4 py - 3 rounded - xl text - [10px] font - bold uppercase tracking - widest text - left transition - all border ${activeReportTab === tab
                       ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)]'
                       : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                      }`}
+                      } `}
                   >
                     {tab === 'bugs' && submissionResult.fullAiAnalysis?.bugs?.length > 0 && (
                       <span className="float-right bg-rose-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px] animate-pulse">
@@ -567,7 +635,7 @@ export const TrainingLevel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</h3>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${submissionResult.passed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                      <div className={`inline - flex items - center gap - 2 px - 3 py - 1 rounded - full border text - [10px] font - bold uppercase tracking - widest ${submissionResult.passed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'} `}>
                         {submissionResult.passed ? 'Result: Optimal' : 'Result: Logic Error'}
                       </div>
                     </div>
@@ -605,7 +673,7 @@ export const TrainingLevel = () => {
                       <SonarBadge label="Reliability" rating={submissionResult.sonar?.metrics?.reliability_rating} value={`${submissionResult.sonar?.metrics?.bugs ?? 0} Bugs`} />
                       <SonarBadge label="Security" rating={submissionResult.sonar?.metrics?.security_rating} value={`${submissionResult.sonar?.metrics?.vulnerabilities ?? 0} Vuln.`} />
                       <SonarBadge label="Maintainability" rating={submissionResult.sonar?.metrics?.sqale_rating} value={`${submissionResult.sonar?.metrics?.code_smells ?? 0} Smells`} />
-                      <SonarBadge label="Coverage" rating="A" value={`${submissionResult.sonar?.metrics?.coverage || 0}%`} />
+                      <SonarBadge label="Coverage" rating="A" value={`${submissionResult.sonar?.metrics?.coverage || 0}% `} />
                     </div>
                   </div>
 
@@ -664,10 +732,10 @@ export const TrainingLevel = () => {
                               key={lvl}
                               onClick={() => handleExplanationLevelChange(lvl)}
                               disabled={isExplaining}
-                              className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${explanationLevel === lvl
+                              className={`px - 3 py - 1 rounded - md text - [9px] font - bold uppercase transition - all ${explanationLevel === lvl
                                 ? 'bg-blue-600 text-white shadow-lg'
                                 : 'text-slate-500 hover:text-slate-300'
-                                }`}
+                                } `}
                             >
                               {lvl}
                             </button>
@@ -751,8 +819,8 @@ export const TrainingLevel = () => {
                             <Zap className="w-5 h-5 text-blue-500" />
                           </div>
                           <div className="flex items-center gap-3 mb-3">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${res.type === 'video' ? 'bg-rose-500/20 text-rose-500' : res.type === 'exercise' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
-                              }`}>
+                            <span className={`px - 2 py - 0.5 rounded text - [9px] font - bold uppercase ${res.type === 'video' ? 'bg-rose-500/20 text-rose-500' : res.type === 'exercise' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'
+                              } `}>
                               {res.type}
                             </span>
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{res.difficulty}</span>
@@ -783,7 +851,7 @@ export const TrainingLevel = () => {
                               <span className="text-blue-400">{85 - i * 12}%</span>
                             </div>
                             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-500/50" style={{ width: `${85 - i * 12}%` }} />
+                              <div className="h-full bg-blue-500/50" style={{ width: `${85 - i * 12}% ` }} />
                             </div>
                           </div>
                         ))}

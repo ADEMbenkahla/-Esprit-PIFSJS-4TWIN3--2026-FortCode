@@ -61,6 +61,23 @@ const initSocket = (server) => {
             // --- 1. Matchmaking ---
             const gamificationService = require("./services/gamificationService");
 
+            async function resolveMatchXp(winnerId, p1Id, p2Id, xpSource) {
+                // If it's a draw, 100 XP (50%). If lose, 40 XP (20%). If win, 200 XP (100%).
+                const p1XpAmt = (winnerId === p1Id) ? 200 : (winnerId === "draw" ? 100 : 40);
+                const p2XpAmt = (winnerId === p2Id) ? 200 : (winnerId === "draw" ? 100 : 40);
+
+                const xpRes = await Promise.allSettled([
+                    gamificationService.addXP(p1Id, p1XpAmt, xpSource),
+                    gamificationService.addXP(p2Id, p2XpAmt, xpSource)
+                ]);
+
+                return {
+                    [p1Id]: xpRes[0].status === "fulfilled" ? xpRes[0].value : { gainedXP: 0 },
+                    [p2Id]: xpRes[1].status === "fulfilled" ? xpRes[1].value : { gainedXP: 0 }
+                };
+            }
+
+
             socket.on("findMatch", async ({ type }) => {
                 console.log(`[ARENA] Search request received from ${socket.userUsername} for ${type}`);
 
@@ -236,10 +253,14 @@ const initSocket = (server) => {
                                 finalMatch.winner = userId;
                                 finalMatch.completedAt = new Date();
                                 await finalMatch.save();
-                                const endPayload = { winnerId: userId, match: finalMatch };
+                                const p1Id = (finalMatch.players[0].user?._id || finalMatch.players[0].user).toString();
+                                const p2Id = (finalMatch.players[1].user?._id || finalMatch.players[1].user).toString();
+                                const xpSource = finalMatch.type === "ranked" ? "arena" : "training";
+                                const xpResults = await resolveMatchXp(userId, p1Id, p2Id, xpSource);
+                                const endPayload = { winnerId: userId, match: finalMatch, xpResults };
                                 io.to(roomId).emit("matchEnded", endPayload);
-                                io.to(`user:${finalMatch.players[0].user}`).emit("matchEnded", endPayload);
-                                io.to(`user:${finalMatch.players[1].user}`).emit("matchEnded", endPayload);
+                                io.to(`user:${p1Id}`).emit("matchEnded", endPayload);
+                                io.to(`user:${p2Id}`).emit("matchEnded", endPayload);
                             } else {
                                 // Just damage
                                 io.to(roomId).emit("opponentBattleEvent", {
@@ -377,21 +398,12 @@ const initSocket = (server) => {
                             );
 
                             const xpSource = match.type === "ranked" ? "arena" : "training";
-                            const p1XpAmt = (winnerId === p1Id) ? 200 : (winnerId === "draw" ? 50 : 25);
-                            const p2XpAmt = (winnerId === p2Id) ? 200 : (winnerId === "draw" ? 50 : 25);
-
-                            const xpRes = await Promise.allSettled([
-                                gamificationService.addXP(p1Id, p1XpAmt, xpSource),
-                                gamificationService.addXP(p2Id, p2XpAmt, xpSource)
-                            ]);
-
-                            const p1XpFinal = xpRes[0].status === "fulfilled" ? xpRes[0].value : { gainedXP: 0 };
-                            const p2XpFinal = xpRes[1].status === "fulfilled" ? xpRes[1].value : { gainedXP: 0 };
+                            const xpResults = await resolveMatchXp(winnerId, p1Id, p2Id, xpSource);
 
                             const endPayload = {
                                 winnerId,
                                 match: finalMatch,
-                                xpResults: { [p1Id]: p1XpFinal, [p2Id]: p2XpFinal },
+                                xpResults: xpResults,
                                 evaluation: {
                                     [p1Id]: { correctness: pct1 || 0, results: res1 },
                                     [p2Id]: { correctness: pct2 || 0, results: res2 }
@@ -428,7 +440,11 @@ const initSocket = (server) => {
                         match.winner = winner ? winner.user : null;
                         match.completedAt = new Date();
                         await match.save();
-                        io.to(roomId).emit("matchEnded", { winnerId: match.winner, match });
+                        const p1Id = (match.players[0].user?._id || match.players[0].user).toString();
+                        const p2Id = (match.players[1].user?._id || match.players[1].user).toString();
+                        const xpSource = match.type === "ranked" ? "arena" : "training";
+                        const xpResults = await resolveMatchXp(match.winner?.toString(), p1Id, p2Id, xpSource);
+                        io.to(roomId).emit("matchEnded", { winnerId: match.winner, match, xpResults });
                     }
                 } catch (err) { }
             });
