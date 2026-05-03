@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +19,6 @@
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.19.0",
@@ -30,10 +30,21 @@
     "passport-google-oauth20": "^2.0.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "speakeasy": "^2.0.0",
     "ua-parser-js": "^2.0.9"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "dotenv": "^17.4.2",
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
+  },
+  "jest": {
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/setup.js"
+    ],
+    "testEnvironment": "node",
+    "testTimeout": 30000
   }
 }
