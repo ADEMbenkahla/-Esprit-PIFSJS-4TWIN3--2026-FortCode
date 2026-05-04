@@ -1,0 +1,104 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/frontend/index.html b/frontend/index.html
+index f9b1f1f..c9af1e5 100644
+--- a/frontend/index.html
++++ b/frontend/index.html
+@@ -5,7 +5,15 @@
+   <meta charset="UTF-8" />
+   <link rel="icon" type="image/png" href="/images/logo.png" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
++  <meta name="description"
++    content="FortCode - The ultimate coding battle platform for developers. Train, compete, and level up your skills." />
++  <meta name="theme-color" content="#7c3aed" />
++  <link rel="preconnect" href="https://fonts.googleapis.com" />
++  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
++  <link
++    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@400;500;600;700;800;900&display=swap"
++    rel="stylesheet" />
+   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+   <title>FortCode</title>
+ </head>
+diff --git a/frontend/src/components/AccessibilityMenu.jsx b/frontend/src/components/AccessibilityMenu.jsx
+index 1f973df..ac47604 100644
+--- a/frontend/src/components/AccessibilityMenu.jsx
++++ b/frontend/src/components/AccessibilityMenu.jsx
+@@ -196,7 +196,7 @@ const AccessibilityMenu = () => {
+                     }`}
+                 title="Hold to drag, click to open"
+             >
+-                <span className="material-icons-outlined text-3xl pointer-events-none">
++                <span aria-hidden="true" className="material-icons-outlined text-3xl pointer-events-none">
+                     {isOpen ? 'close' : 'accessibility_new'}
+                 </span>
+             </button>
+@@ -214,7 +214,7 @@ const AccessibilityMenu = () => {
+                                 }`}
+                             title={item.label}
+                         >
+-                            <span className="material-icons-outlined">{item.icon}</span>
++                            <span aria-hidden="true" className="material-icons-outlined">{item.icon}</span>
+                         </button>
+                         <span className="px-3 py-1 bg-surface-dark text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap shadow-sm border border-gray-700">
+                             {item.label}
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index 37fc957..3625ed9 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -1,5 +1,3 @@
+-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700&display=swap');
+-@import url('https://fonts.googleapis.com/icon?family=Material+Icons+Outlined');
+ @import "tailwindcss";
+ 
+ /* ── Tailwind v4 Theme Tokens ─────────────────────────── */
+@@ -31,6 +29,11 @@
+ }
+ 
+ /* ── Accessibility Utilities ─────────────────────────── */
++*:focus-visible {
++  outline: 2px solid var(--color-primary, #e05a2b);
++  outline-offset: 2px;
++}
++
+ .reading-guide {
+   position: fixed;
+   left: 0;
+diff --git a/frontend/vite.config.ts b/frontend/vite.config.ts
+index 4b20994..afce1c7 100644
+--- a/frontend/vite.config.ts
++++ b/frontend/vite.config.ts
+@@ -12,6 +12,10 @@ export default defineConfig({
+         port: 5173,
+         strictPort: true,
+     },
++    preview: {
++        port: 5173,
++        strictPort: true,
++    },
+     plugins: [
+         // The React and Tailwind plugins are both required for Make, even if
+         // Tailwind is not being actively used – do not remove them
+@@ -24,6 +28,17 @@ export default defineConfig({
+             '@': path.resolve(__dirname, './src'),
+         },
+     },
++    build: {
++        rollupOptions: {
++            output: {
++                manualChunks: {
++                    vendor: ['react', 'react-dom', 'react-router-dom'],
++                    three: ['three'],
++                    ui: ['lucide-react']
++                }
++            }
++        }
++    },
+ 
+     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
+     assetsInclude: ['**/*.svg', '**/*.csv'],

@@ -1,0 +1,374 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 3e4e0c2..bac0f3f 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -1,49 +1,54 @@
+-import React from "react";
++import React, { Suspense, lazy, useEffect, useState } from "react";
+ import { Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
+ import "./App.css";
+ import { AdminOnlyRoute, FrontOfficeOnlyRoute } from "./guards/RouteGuards";
+ 
+-import Login from "./pages/Login";
+-import Register from "./pages/Register";
+-import OAuthCallback from "./pages/OAuthCallback";
+-import BattleInvite from "./pages/BattleInvite";
+-import BattleProgrammer from "./pages/frontOffice/pages/BattleProgrammer";
+-import UserTracker from "./pages/backOffice/UserTracker";
+-import Dashboard from "./pages/backOffice/Dashboard";
+-import ActivityLogs from "./pages/backOffice/ActivityLogs";
+-import ActivityDetail from "./pages/backOffice/ActivityDetail";
+-import RoleRequests from "./pages/backOffice/RoleRequests";
+-import BackOfficeSettings from "./pages/backOffice/Settings";
+-import BackOfficeChallenges from "./pages/backOffice/Challenges";
+-import AdminStages from "./pages/backOffice/AdminStages";
+-import MyActivity from "./pages/MyActivity";
+-import VirtualRooms from "./pages/backOffice/VirtualRooms";
+-
+-// Front Office Imports
+-import ForgotPassword from "./pages/ForgotPassword";
+-import ResetPassword from "./pages/ResetPassword";
+-import VerifyEmail from "./pages/VerifyEmail";
+-import { Home } from "./pages/frontOffice/pages/Home";
+-import WorldMap3D from "./pages/frontOffice/pages/WorldMap3D";
+-import TrainingGrounds from "./pages/frontOffice/pages/TrainingGrounds";
+-import StageDetail from "./pages/frontOffice/pages/StageDetail";
+-import ChallengeEditor from "./pages/frontOffice/pages/ChallengeEditor";
+-import DuelLobby from "./pages/frontOffice/pages/DuelArena/DuelLobby";
+-import LiveBattle from "./pages/frontOffice/pages/DuelArena/LiveBattle";
+-import UserDashboard from "./pages/frontOffice/pages/CommanderDashboard";
+-import Armory from "./pages/frontOffice/pages/Armory";
+-import Settings from "./pages/frontOffice/pages/Settings";
+-import { UnityCastlePage } from "./pages/frontOffice/pages/UnityCastlePage";
+-import VirtualRoom from "./pages/frontOffice/pages/VirtualRoom";
+-import RequestRecruiterRole from "./pages/frontOffice/pages/RequestRecruiterRole";
++const Login = lazy(() => import("./pages/Login"));
++const Register = lazy(() => import("./pages/Register"));
++const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
++const BattleInvite = lazy(() => import("./pages/BattleInvite"));
++const BattleProgrammer = lazy(() => import("./pages/frontOffice/pages/BattleProgrammer"));
++const UserTracker = lazy(() => import("./pages/backOffice/UserTracker"));
++const Dashboard = lazy(() => import("./pages/backOffice/Dashboard"));
++const ActivityLogs = lazy(() => import("./pages/backOffice/ActivityLogs"));
++const ActivityDetail = lazy(() => import("./pages/backOffice/ActivityDetail"));
++const RoleRequests = lazy(() => import("./pages/backOffice/RoleRequests"));
++const BackOfficeSettings = lazy(() => import("./pages/backOffice/Settings"));
++const BackOfficeChallenges = lazy(() => import("./pages/backOffice/Challenges"));
++const AdminStages = lazy(() => import("./pages/backOffice/AdminStages"));
++const MyActivity = lazy(() => import("./pages/MyActivity"));
++const VirtualRooms = lazy(() => import("./pages/backOffice/VirtualRooms"));
++
++const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
++const ResetPassword = lazy(() => import("./pages/ResetPassword"));
++const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
++const Home = lazy(() => import("./pages/frontOffice/pages/Home").then(m => ({ default: m.Home })));
++const WorldMap3D = lazy(() => import("./pages/frontOffice/pages/WorldMap3D"));
++const TrainingGrounds = lazy(() => import("./pages/frontOffice/pages/TrainingGrounds"));
++const StageDetail = lazy(() => import("./pages/frontOffice/pages/StageDetail"));
++const ChallengeEditor = lazy(() => import("./pages/frontOffice/pages/ChallengeEditor"));
++const DuelLobby = lazy(() => import("./pages/frontOffice/pages/DuelArena/DuelLobby"));
++const LiveBattle = lazy(() => import("./pages/frontOffice/pages/DuelArena/LiveBattle"));
++const UserDashboard = lazy(() => import("./pages/frontOffice/pages/CommanderDashboard"));
++const Armory = lazy(() => import("./pages/frontOffice/pages/Armory"));
++const Settings = lazy(() => import("./pages/frontOffice/pages/Settings"));
++const UnityCastlePage = lazy(() => import("./pages/frontOffice/pages/UnityCastlePage").then(m => ({ default: m.UnityCastlePage })));
++const VirtualRoom = lazy(() => import("./pages/frontOffice/pages/VirtualRoom"));
++const RequestRecruiterRole = lazy(() => import("./pages/frontOffice/pages/RequestRecruiterRole"));
++const TrainingLevel = lazy(() => import("./pages/frontOffice/pages/TrainingLevel").then(m => ({ default: m.TrainingLevel })));
++
+ import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
+-import { TrainingLevel } from "./pages/frontOffice/pages/TrainingLevel";
+ import { Footer } from "./pages/frontOffice/components/layout/Footer";
+ import { SidebarProvider } from "./context/SidebarContext";
+ import { SettingsProvider, useSettings } from "./context/SettingsContext";
+ import { ProtectedRoute } from "./components/ProtectedRoute";
+ import AccessibilityMenu from "./components/AccessibilityMenu";
+-import { useEffect, useState } from "react";
++
++const PageLoader = () => (
++  <div className="flex items-center justify-center min-h-screen bg-slate-950">
++    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
++  </div>
++);
+ 
+ function LegacyStagesRedirect() {
+   const { stageId } = useParams();
+@@ -70,54 +75,56 @@ function AppContent() {
+   return (
+     <>
+       {!shouldHideNavbar && <Navbar />}
+-      <Routes>
+-        <Route path="/" element={<Login />} />
+-        <Route path="/register" element={<Register />} />
+-        <Route path="/forgot-password" element={<ForgotPassword />} />
+-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+-        <Route path="/verify-email" element={<VerifyEmail />} />
+-        <Route path="/auth/callback" element={<OAuthCallback />} />
+-        <Route path="/battle-invite" element={<BattleInvite />} />
+-        <Route path="/visitor/battle-invite" element={<BattleInvite />} />
+-        <Route path="/room-invitation" element={<BattleInvite />} />
+-        <Route
+-          path="/programmer/:roomId"
+-          element={
+-            <ProtectedRoute requiredRole={["participant"]}>
+-              <BattleProgrammer />
+-            </ProtectedRoute>
+-          }
+-        />
+-
+-        {/* Front Office Routes — only participants & recruiters; admin is redirected to back office */}
+-        <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />
+-        <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap3D /></FrontOfficeOnlyRoute>} />
+-        <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
+-        <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
+-        <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
+-        <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
+-        <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
+-        <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />
+-        <Route path="/dashboard" element={<FrontOfficeOnlyRoute><UserDashboard /></FrontOfficeOnlyRoute>} />
+-        <Route path="/armory" element={<FrontOfficeOnlyRoute><Armory /></FrontOfficeOnlyRoute>} />
+-        <Route path="/settings" element={<FrontOfficeOnlyRoute><Settings /></FrontOfficeOnlyRoute>} />
+-        <Route path="/castle" element={<FrontOfficeOnlyRoute><UnityCastlePage /></FrontOfficeOnlyRoute>} />
+-        <Route path="/virtual-room/:roomSlug" element={<FrontOfficeOnlyRoute><VirtualRoom /></FrontOfficeOnlyRoute>} />
+-        <Route path="/level/:id" element={<FrontOfficeOnlyRoute><div>Challenge Page Coming Soon!</div></FrontOfficeOnlyRoute>} />
+-        <Route path="/request-recruiter" element={<FrontOfficeOnlyRoute><RequestRecruiterRole /></FrontOfficeOnlyRoute>} />
+-
+-        {/* Back Office & Admin — only admin; participants/recruiters redirected to /home */}
+-        <Route path="/backoffice/dashboard" element={<AdminOnlyRoute><Dashboard /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/users" element={<AdminOnlyRoute><UserTracker /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/virtual-rooms" element={<AdminOnlyRoute><VirtualRooms /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/role-requests" element={<AdminOnlyRoute><RoleRequests /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/settings" element={<AdminOnlyRoute><BackOfficeSettings /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/challenges" element={<AdminOnlyRoute><BackOfficeChallenges /></AdminOnlyRoute>} />
+-        <Route path="/backoffice/stages" element={<AdminOnlyRoute><AdminStages /></AdminOnlyRoute>} />
+-        <Route path="/admin/activity" element={<AdminOnlyRoute><ActivityLogs /></AdminOnlyRoute>} />
+-        <Route path="/admin/activity/:id" element={<AdminOnlyRoute><ActivityDetail /></AdminOnlyRoute>} />
+-        <Route path="/my-activity" element={<MyActivity />} />
+-      </Routes>
++      <Suspense fallback={<PageLoader />}>
++        <Routes>
++          <Route path="/" element={<Login />} />
++          <Route path="/register" element={<Register />} />
++          <Route path="/forgot-password" element={<ForgotPassword />} />
++          <Route path="/reset-password/:token" element={<ResetPassword />} />
++          <Route path="/verify-email" element={<VerifyEmail />} />
++          <Route path="/auth/callback" element={<OAuthCallback />} />
++          <Route path="/battle-invite" element={<BattleInvite />} />
++          <Route path="/visitor/battle-invite" element={<BattleInvite />} />
++          <Route path="/room-invitation" element={<BattleInvite />} />
++          <Route
++            path="/programmer/:roomId"
++            element={
++              <ProtectedRoute requiredRole={["participant"]}>
++                <BattleProgrammer />
++              </ProtectedRoute>
++            }
++          />
++
++          {/* Front Office Routes — only participants & recruiters; admin is redirected to back office */}
++          <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />
++          <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap3D /></FrontOfficeOnlyRoute>} />
++          <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
++          <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
++          <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
++          <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
++          <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
++          <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />
++          <Route path="/dashboard" element={<FrontOfficeOnlyRoute><UserDashboard /></FrontOfficeOnlyRoute>} />
++          <Route path="/armory" element={<FrontOfficeOnlyRoute><Armory /></FrontOfficeOnlyRoute>} />
++          <Route path="/settings" element={<FrontOfficeOnlyRoute><Settings /></FrontOfficeOnlyRoute>} />
++          <Route path="/castle" element={<FrontOfficeOnlyRoute><UnityCastlePage /></FrontOfficeOnlyRoute>} />
++          <Route path="/virtual-room/:roomSlug" element={<FrontOfficeOnlyRoute><VirtualRoom /></FrontOfficeOnlyRoute>} />
++          <Route path="/level/:id" element={<FrontOfficeOnlyRoute><div>Challenge Page Coming Soon!</div></FrontOfficeOnlyRoute>} />
++          <Route path="/request-recruiter" element={<FrontOfficeOnlyRoute><RequestRecruiterRole /></FrontOfficeOnlyRoute>} />
++
++          {/* Back Office & Admin — only admin; participants/recruiters redirected to /home */}
++          <Route path="/backoffice/dashboard" element={<AdminOnlyRoute><Dashboard /></AdminOnlyRoute>} />
++          <Route path="/backoffice/users" element={<AdminOnlyRoute><UserTracker /></AdminOnlyRoute>} />
++          <Route path="/backoffice/virtual-rooms" element={<AdminOnlyRoute><VirtualRooms /></AdminOnlyRoute>} />
++          <Route path="/backoffice/role-requests" element={<AdminOnlyRoute><RoleRequests /></AdminOnlyRoute>} />
++          <Route path="/backoffice/settings" element={<AdminOnlyRoute><BackOfficeSettings /></AdminOnlyRoute>} />
++          <Route path="/backoffice/challenges" element={<AdminOnlyRoute><BackOfficeChallenges /></AdminOnlyRoute>} />
++          <Route path="/backoffice/stages" element={<AdminOnlyRoute><AdminStages /></AdminOnlyRoute>} />
++          <Route path="/admin/activity" element={<AdminOnlyRoute><ActivityLogs /></AdminOnlyRoute>} />
++          <Route path="/admin/activity/:id" element={<AdminOnlyRoute><ActivityDetail /></AdminOnlyRoute>} />
++          <Route path="/my-activity" element={<MyActivity />} />
++        </Routes>
++      </Suspense>
+       {!shouldHideNavbar && <Footer />}
+ 
+       <AccessibilityMenu />
+diff --git a/frontend/src/pages/BattleInvite.jsx b/frontend/src/pages/BattleInvite.jsx
+index 57055d9..f250a8e 100644
+--- a/frontend/src/pages/BattleInvite.jsx
++++ b/frontend/src/pages/BattleInvite.jsx
+@@ -110,14 +110,14 @@ function BattleInvite() {
+             </div>
+ 
+             <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+-              <label className="block text-sm text-slate-300 mb-2">Invited email</label>
++              <label className="block text-sm text-slate-300 mb-2" htmlFor="invitedema_92927">Invited email</label>
+               <p className="text-slate-200 text-sm font-mono">{inviteEmail}</p>
+               <p className="text-xs text-slate-500 mt-2">This is the email the invitation was sent to.</p>
+             </div>
+ 
+             <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+               <label className="block text-sm text-slate-300 mb-2">Invitation code</label>
+-              <input
++<input id="invitedema_92927" 
+                 type="text"
+                 value={code}
+                 onChange={(e) => setCode(e.target.value)}
+diff --git a/frontend/src/pages/ForgotPassword.jsx b/frontend/src/pages/ForgotPassword.jsx
+index 234e381..b9ea0a5 100644
+--- a/frontend/src/pages/ForgotPassword.jsx
++++ b/frontend/src/pages/ForgotPassword.jsx
+@@ -86,8 +86,8 @@ function ForgotPassword() {
+                     <img src={logoImg} alt="FortCode Logo" />
+                 </div>
+ 
+-                <label>Email Address</label>
+-                <input
++                <label htmlFor="emailaddre_81023">Email Address</label>
++<input id="emailaddre_81023" 
+                     type="email"
+                     placeholder="user@fortcode.com"
+                     value={email}
+diff --git a/frontend/src/pages/Login.jsx b/frontend/src/pages/Login.jsx
+index c14640c..67292b3 100644
+--- a/frontend/src/pages/Login.jsx
++++ b/frontend/src/pages/Login.jsx
+@@ -1,7 +1,7 @@
+-import React, { useState, useEffect } from "react";
++import React, { useState, useEffect, Suspense, lazy } from "react";
+ import logoImg from "../assets/logo.png";
+ import "./pages.css";
+-import FaceAuthModal from "../components/FaceAuthModal";
++const FaceAuthModal = lazy(() => import("../components/FaceAuthModal"));
+ import { useNavigate, Link, useLocation } from "react-router-dom";
+ import { useSocket } from "../context/SocketContext";
+ import { getUserRole } from "../guards/RouteGuards";
+@@ -338,22 +338,24 @@ function Login() {
+     <div className="auth-container">
+       <div className="card">
+         <div className="logo-card login">
+-          <img src={logoImg} alt="FortCode Logo" />
++          <img src={logoImg} alt="FortCode Logo" fetchPriority="high" width="240" height="80" style={{ objectFit: "contain" }} />
+         </div>
+ 
+         {!twoFactorRequired && (
+           <>
+-            <label>Username or Email Address</label>
++            <label htmlFor="identifier">Username or Email Address</label>
+             <input
++              id="identifier"
+               type="text"
+               placeholder="user@fortcode.com or username"
+               value={identifier}
+               onChange={(e) => setIdentifier(e.target.value)}
+             />
+ 
+-            <label>Password</label>
++            <label htmlFor="password">Password</label>
+             <div className="password-container">
+               <input
++                id="password"
+                 type="password"
+                 placeholder="••••••••"
+                 value={password}
+@@ -393,18 +395,23 @@ function Login() {
+           </>
+         )}
+ 
+-        <FaceAuthModal
+-          isOpen={isFaceModalOpen}
+-          onClose={() => setIsFaceModalOpen(false)}
+-          mode="login"
+-          email={identifier}
+-          onCapture={handleFaceLogin}
+-        />
++        <Suspense fallback={null}>
++          {isFaceModalOpen && (
++            <FaceAuthModal
++              isOpen={isFaceModalOpen}
++              onClose={() => setIsFaceModalOpen(false)}
++              mode="login"
++              email={identifier}
++              onCapture={handleFaceLogin}
++            />
++          )}
++        </Suspense>
+ 
+         {twoFactorRequired && (
+           <>
+-            <label>2FA Code</label>
++            <label htmlFor="twoFactorCode">2FA Code</label>
+             <input
++              id="twoFactorCode"
+               type="text"
+               placeholder={twoFactorMethod === 'email' ? 'Enter code from email' : 'Enter code from app'}
+               value={twoFactorCode}
+diff --git a/frontend/src/pages/Register.jsx b/frontend/src/pages/Register.jsx
+index e66c837..59136fd 100644
+--- a/frontend/src/pages/Register.jsx
++++ b/frontend/src/pages/Register.jsx
+@@ -140,26 +140,28 @@ function Register() {
+     <div className="auth-container">
+       <div className="card">
+         <div className="logo-card register">
+-          <img src={logoImg} alt="FortCode Logo" />
++          <img src={logoImg} alt="FortCode Logo" fetchPriority="high" width="240" height="80" style={{ objectFit: "contain" }} />
+         </div>
+ 
+         <div className="avatar-preview-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+           <div className="avatar-preview" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid #7c3aed', overflow: 'hidden', marginBottom: '10px', background: '#1a1a2e' }}>
+-            <img src={avatar} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
++            <img src={avatar} alt="Avatar Preview" decoding="async" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+           </div>
+           <p style={{ fontSize: '12px', color: '#94a3b8' }}>This will be your initial avatar</p>
+         </div>
+ 
+-        <label>Username</label>
++        <label htmlFor="username">Username</label>
+         <input
++          id="username"
+           type="text"
+           placeholder="Your username"
+           value={username}
+           onChange={(e) => setUsername(e.target.value)}
+         />
+ 
+-        <label>Email Address</label>
++        <label htmlFor="email">Email Address</label>
+         <input
++          id="email"
+           type="email"
+           placeholder="you@fortcode.com"
+           value={email}
+@@ -167,16 +169,18 @@ function Register() {
+           disabled={isGoogleUser}
+         />
+ 
+-        <label>Password</label>
++        <label htmlFor="password">Password</label>
+         <input
++          id="password"
+           type="password"
+           placeholder="••••••••"
+           value={password}
+           onChange={(e) => setPassword(e.target.value)}
+         />
+ 
+-        <label>Confirm Password</label>
++        <label htmlFor="confirmPassword">Confirm Password</label>
+         <input
++          id="confirmPassword"
+           type="password"
+           placeholder="••••••••"
+           value={confirmPassword}

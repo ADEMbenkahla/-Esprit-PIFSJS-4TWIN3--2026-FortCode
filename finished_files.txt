@@ -1,0 +1,7 @@
+commit 6671abe49549e9e28a4e7da4eef5c13ba28bd632
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+frontend/package.json

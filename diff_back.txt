@@ -1,0 +1,40 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/Back/src/app.js b/Back/src/app.js
+index 0ec9916..4fb4ae6 100644
+--- a/Back/src/app.js
++++ b/Back/src/app.js
+@@ -1,5 +1,6 @@
+ const express = require("express");
+ const cors = require("cors");
++const compression = require("compression");
+ const session = require("express-session");
+ const passport = require("./config/passport");
+ const connectDB = require("./config/db");
+@@ -10,8 +11,9 @@ connectDB();
+ 
+ const app = express();
+ 
++app.use(compression());
+ app.use(cors({
+-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
++    origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://127.0.0.1:4173'],
+     credentials: true
+ }));
+ app.use(express.json());
+diff --git a/Back/src/controllers/dashboardController.js b/Back/src/controllers/dashboardController.js
+index 9cd7298..60646d3 100644
+--- a/Back/src/controllers/dashboardController.js
++++ b/Back/src/controllers/dashboardController.js
+@@ -27,6 +27,7 @@ exports.getStats = async (req, res) => {
+             .populate('user', 'username name email avatar')
+             .sort({ timestamp: -1 })
+             .limit(7)
++            .lean()
+             .exec();
+ 
+         // Activity per day (last 7 days)

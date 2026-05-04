@@ -1,0 +1,58 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+M	Back/node_modules/.package-lock.json
+M	Back/package-lock.json
+M	Back/package.json
+M	Back/src/app.js
+M	Back/src/controllers/dashboardController.js
+M	Back/src/models/Activity.js
+M	Back/src/models/User.js
+M	frontend/index.html
+M	frontend/package.json
+M	frontend/src/App.jsx
+M	frontend/src/components/AccessibilityMenu.jsx
+M	frontend/src/index.css
+M	frontend/src/pages/BattleInvite.jsx
+M	frontend/src/pages/ForgotPassword.jsx
+M	frontend/src/pages/Login.jsx
+M	frontend/src/pages/MyActivity.tsx
+M	frontend/src/pages/Register.jsx
+M	frontend/src/pages/ResetPassword.jsx
+M	frontend/src/pages/VerifyEmail.jsx
+M	frontend/src/pages/backOffice/ActivityDetail.tsx
+M	frontend/src/pages/backOffice/ActivityLogs.tsx
+M	frontend/src/pages/backOffice/AdminStages.jsx
+M	frontend/src/pages/backOffice/Challenges.tsx
+M	frontend/src/pages/backOffice/Dashboard.tsx
+M	frontend/src/pages/backOffice/RoleRequests.tsx
+M	frontend/src/pages/backOffice/Settings.tsx
+M	frontend/src/pages/backOffice/UserTracker.tsx
+M	frontend/src/pages/backOffice/VirtualRooms.tsx
+M	frontend/src/pages/backOffice/components/ActivityTable.tsx
+M	frontend/src/pages/backOffice/components/AddUserModal.tsx
+M	frontend/src/pages/backOffice/components/AvatarPicker.tsx
+M	frontend/src/pages/backOffice/components/EditUserModal.tsx
+M	frontend/src/pages/backOffice/components/Header.tsx
+M	frontend/src/pages/backOffice/components/Sidebar.tsx
+M	frontend/src/pages/backOffice/components/UserDetails.tsx
+M	frontend/src/pages/backOffice/components/UserTable.tsx
+M	frontend/src/pages/frontOffice/components/Gamification/RankBadge.jsx
+M	frontend/src/pages/frontOffice/components/layout/Footer.jsx
+M	frontend/src/pages/frontOffice/components/layout/Navbar.jsx
+M	frontend/src/pages/frontOffice/pages/Armory.jsx
+M	frontend/src/pages/frontOffice/pages/BattleArena.jsx
+M	frontend/src/pages/frontOffice/pages/ChallengeEditor.jsx
+M	frontend/src/pages/frontOffice/pages/CommanderDashboard.jsx
+M	frontend/src/pages/frontOffice/pages/DuelArena/LiveBattle.jsx
+M	frontend/src/pages/frontOffice/pages/Home.jsx
+M	frontend/src/pages/frontOffice/pages/RecruiterDashboard.jsx
+M	frontend/src/pages/frontOffice/pages/RequestRecruiterRole.jsx
+M	frontend/src/pages/frontOffice/pages/Settings.jsx
+M	frontend/src/pages/frontOffice/pages/StageDetail.jsx
+M	frontend/src/pages/frontOffice/pages/TrainingLevel.jsx
+M	frontend/src/pages/frontOffice/pages/WorldMap.jsx
+M	frontend/vite.config.ts

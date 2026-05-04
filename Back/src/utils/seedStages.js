@@ -14,90 +14,90 @@ const seedStages = async () => {
     await Stage.deleteMany({});
 
     const challengeDocs = await Challenge.insertMany([
-      // --- TRAINING (BASICS) ---
+      // --- TRAINING EXERCISES (CONCEPTS ÉDUCATIFS) ---
       {
-        title: "JS: Greet Function",
-        description: "Create a function 'greet' that returns 'Hello World'.",
+        title: "Training: JS String Reverser",
+        description: "Create a function 'reverseString(str)' that returns the string reversed.",
         difficulty: "easy",
         language: "javascript",
         category: "training",
         type: "Stage",
-        starterCode: "function greet() {\n  // Your code here\n}",
-        testCases: [{ name: "returns greeting", assertion: "greet() === 'Hello World'" }],
+        starterCode: "function reverseString(str) {\n  // Reverse the string\n}",
+        testCases: [{ name: "reverse test", assertion: "reverseString('hello') === 'olleh'" }],
       },
       {
-        title: "JS: Sum Function",
-        description: "Create a function 'sum(a, b)' that returns the sum of a and b.",
+        title: "Training: JS Array Length Finder",
+        description: "Create a function 'getLength(arr)' that returns the length of an array.",
         difficulty: "easy",
         language: "javascript",
         category: "training",
         type: "Stage",
-        starterCode: "function sum(a, b) {\n  // Your code here\n}",
-        testCases: [{ name: "sum valid", assertion: "sum(5, 10) === 15" }],
+        starterCode: "function getLength(arr) {\n  // Get array length\n}",
+        testCases: [{ name: "length test", assertion: "getLength([1,2,3]) === 3" }],
       },
       {
-        title: "PY: Hello Python",
-        description: "Create a function 'hello' that returns 'Python is cool'.",
+        title: "Training: Python Number Checker",
+        description: "Create a function 'isPositive(n)' that returns True if n > 0, False otherwise.",
         difficulty: "easy",
         language: "python",
         category: "training",
         type: "Stage",
-        starterCode: "def hello():\n    # Your code here\n    pass",
-        testCases: [{ name: "hello check", assertion: "hello() == 'Python is cool'" }],
+        starterCode: "def isPositive(n):\n    # Check if positive\n    pass",
+        testCases: [{ name: "positive test", assertion: "isPositive(5) == True" }],
       },
       {
-        title: "PY: Square Number",
-        description: "Create a function 'square(n)' that returns n * n.",
+        title: "Training: Python List Max Finder",
+        description: "Create a function 'findMax(lst)' that returns the maximum value in a list.",
         difficulty: "easy",
         language: "python",
         category: "training",
         type: "Stage",
-        starterCode: "def square(n):\n    # Your code here\n    pass",
-        testCases: [{ name: "square valid", assertion: "square(4) == 16" }],
+        starterCode: "def findMax(lst):\n    # Find maximum value\n    pass",
+        testCases: [{ name: "max test", assertion: "findMax([1,5,3]) == 5" }],
       },
 
-      // --- MISSIONS (STAGES/MAP) ---
+      // --- MAP MISSION EXERCISES (DÉFIS AVANCÉS) ---
       {
-        title: "JS: Array Processor",
-        description: "Filter even numbers and return their sum.\n\nExample Output:\n[1,2,3,4,6] => 12",
+        title: "Mission: Dragon Fire Calculator",
+        description: "Calculate dragon damage: multiply all numbers in array.\nExample: [2,3,4] => 24",
         difficulty: "medium",
         language: "javascript",
         category: "mission",
         type: "Stage",
-        starterCode: "function processData(arr) {\n  // Your code here\n}",
-        testCases: [{ name: "evens sum", assertion: "processData([1,2,3,4,6]) === 12" }],
+        starterCode: "function calculateDragonDamage(arr) {\n  // Calculate dragon fire damage\n}",
+        testCases: [{ name: "dragon damage", assertion: "calculateDragonDamage([2,3,4]) === 24" }],
       },
       {
-        title: "PY: Deep Square",
-        description: "Implement a square function for the Red Castle defenses.",
+        title: "Mission: Magic Spell Power",
+        description: "Calculate spell power using fibonacci sequence: nth fibonacci number.",
         difficulty: "medium",
         language: "python",
         category: "mission",
         type: "Stage",
-        starterCode: "def square(n):\n    # Your code here\n    pass",
-        testCases: [{ name: "square mission", assertion: "square(10) == 100" }],
+        starterCode: "def calculateSpellPower(n):\n    # Calculate fibonacci number\n    pass",
+        testCases: [{ name: "spell power", assertion: "calculateSpellPower(7) == 13" }],
       },
       {
-        title: "JS: Prime Sentinel",
-        description: "Verify if a number is prime using optimized algorithms.",
+        title: "Mission: Portal Energy Generator",
+        description: "Generate portal energy using prime number summation: sum of first n primes.",
         difficulty: "hard",
         language: "javascript",
         category: "mission",
         type: "Stage",
-        starterCode: "function isPrime(n) {\n  // Your code here\n}",
+        starterCode: "function generatePortalEnergy(n) {\n  // Sum first n prime numbers\n}",
         testCases: [
-          { name: "prime 7", assertion: "isPrime(7) === true" },
-          { name: "not prime 10", assertion: "isPrime(10) === false" }
+          { name: "portal 3", assertion: "generatePortalEnergy(3) === 10" }, // 2+3+5
+          { name: "portal 1", assertion: "generatePortalEnergy(1) === 2" }
         ],
       },
     ]);
 
     const [c1, c2, c3, c4, c5, c6, c7] = challengeDocs;
 
-    // --- TRAINING STAGES ---
+    // --- TRAINING STAGES (CONCEPTS ÉDUCATIFS) ---
     const t1 = await Stage.create({
-      title: "JavaScript Basics",
-      description: "Fundamental syntax of JavaScript.",
+      title: "JavaScript String Operations",
+      description: "Master string manipulation and array basics with educational exercises.",
       category: "training",
       order: 1,
       difficulty: "easy",
@@ -105,19 +105,19 @@ const seedStages = async () => {
     });
 
     const t2 = await Stage.create({
-      title: "Python 101",
-      description: "Introduction to Python programming.",
+      title: "Python Logic & Lists",
+      description: "Learn conditional logic and list operations with fundamental programming concepts.",
       category: "training",
       order: 2,
       difficulty: "easy",
-      prerequisiteStageId: t1._id,
+      prerequisiteStageId: null, // Pas de dépendance
       challenges: [c3._id, c4._id],
     });
 
-    // --- MISSION STAGES (MAP) ---
+    // --- MAP MISSION STAGES (DÉFIS FANTASTIQUES) ---
     const m1 = await Stage.create({
-      title: "Blue Castle - Foundations",
-      description: "Building the base logic of the fortress.",
+      title: "Dragon Valley - Fire Damage",
+      description: "Calculate dragon fire damage using multiplication arrays for battle strategy.",
       category: "mission",
       order: 1,
       difficulty: "medium",
@@ -126,22 +126,22 @@ const seedStages = async () => {
     });
 
     const m2 = await Stage.create({
-      title: "Red Castle - Intermediate",
-      description: "Intermediate challenges for brave souls.",
+      title: "Wizard Tower - Magic Spells",
+      description: "Master fibonacci sequences to calculate magical spell power for wizard battles.",
       category: "mission",
       order: 2,
       difficulty: "medium",
-      prerequisiteStageId: m1._id,
+      prerequisiteStageId: null, // Pas de dépendance
       challenges: [c6._id],
     });
 
     await Stage.create({
-      title: "Purple Castle - Master",
-      description: "Final fortress optimization and prime verification.",
+      title: "Portal Nexus - Energy Generation",
+      description: "Generate portal energy using prime number summation for interdimensional travel.",
       category: "mission",
       order: 3,
       difficulty: "hard",
-      prerequisiteStageId: m2._id,
+      prerequisiteStageId: null, // Pas de dépendance
       challenges: [c7._id],
     });
 

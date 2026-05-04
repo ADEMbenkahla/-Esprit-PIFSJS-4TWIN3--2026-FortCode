@@ -1,0 +1,68 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/frontend/src/pages/frontOffice/pages/BattleArena.jsx b/frontend/src/pages/frontOffice/pages/BattleArena.jsx
+index 16f4d55..efa346d 100644
+--- a/frontend/src/pages/frontOffice/pages/BattleArena.jsx
++++ b/frontend/src/pages/frontOffice/pages/BattleArena.jsx
+@@ -109,7 +109,7 @@ export default function BattleArena() {
+ 
+            {/* Editor Area */}
+            <div className="flex-1 relative">
+-             <div className="absolute left-0 top-0 bottom-0 w-12 bg-slate-900 border-r border-slate-800 flex flex-col items-end py-4 pr-2 text-slate-600 font-mono text-sm select-none">
++             <div className="absolute left-0 top-0 bottom-0 w-12 bg-slate-900 border-r border-slate-800 flex flex-col items-end py-4 pr-2 text-slate-400 font-mono text-sm select-none">
+                {code.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+              </div>
+              <textarea
+@@ -133,7 +133,7 @@ export default function BattleArena() {
+               {output ? (
+                 <div className="text-green-400 whitespace-pre-wrap animate-pulse">{output}</div>
+               ) : (
+-                <div className="text-slate-600 italic">Waiting for spell cast...</div>
++                <div className="text-slate-400 italic">Waiting for spell cast...</div>
+               )}
+             </div>
+           </div>
+diff --git a/frontend/src/pages/frontOffice/pages/Home.jsx b/frontend/src/pages/frontOffice/pages/Home.jsx
+index 24034fc..8cfca80 100644
+--- a/frontend/src/pages/frontOffice/pages/Home.jsx
++++ b/frontend/src/pages/frontOffice/pages/Home.jsx
+@@ -1,8 +1,8 @@
+ import React, { useState, useEffect } from "react";
+ import { Link } from "react-router-dom";
+ import { ScrollButton } from '../components/ui/ScrollButton';
+-import { RecruiterDashboard } from './RecruiterDashboard';
+ import { getParticipantBattleRooms } from '../../../services/api';
++const RecruiterDashboard = React.lazy(() => import('./RecruiterDashboard').then(m => ({ default: m.RecruiterDashboard })));
+ 
+ export function Home() {
+   const [userRole, setUserRole] = useState(null);
+@@ -59,7 +59,11 @@ export function Home() {
+ 
+   // Show recruiter dashboard for recruiters
+   if (userRole === "recruiter") {
+-    return <RecruiterDashboard />;
++    return (
++      <React.Suspense fallback={null}>
++        <RecruiterDashboard />
++      </React.Suspense>
++    );
+   }
+ 
+   // Show regular home for participants
+diff --git a/frontend/src/pages/frontOffice/pages/WorldMap.jsx b/frontend/src/pages/frontOffice/pages/WorldMap.jsx
+index 01bba52..ee29d91 100644
+--- a/frontend/src/pages/frontOffice/pages/WorldMap.jsx
++++ b/frontend/src/pages/frontOffice/pages/WorldMap.jsx
+@@ -122,7 +122,7 @@ export default function WorldMap() {
+                   </div>
+ 
+                   <div
+-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${isLocked ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg"
++                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${isLocked ? "bg-slate-800 text-slate-400" : "bg-blue-600 text-white shadow-lg"
+                       }`}
+                   >
+                     {isLocked ? <Lock className="w-4 h-4" /> : <ChevronRight className="w-5 h-5" />}

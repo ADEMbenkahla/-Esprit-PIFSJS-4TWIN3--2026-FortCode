@@ -55,6 +55,7 @@ function LegacyStagesRedirect() {
   return <Navigate to={`/training/${stageId}`} replace />;
 }
 
+
 function AppContent() {
   const location = useLocation();
   const hideNavbarRoutes = ["/", "/register", "/forgot-password", "/verify-email", "/auth/callback"];
@@ -102,7 +103,7 @@ function AppContent() {
           <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
           <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
           <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
-          <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
+                    <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
           <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />
           <Route path="/dashboard" element={<FrontOfficeOnlyRoute><UserDashboard /></FrontOfficeOnlyRoute>} />
           <Route path="/armory" element={<FrontOfficeOnlyRoute><Armory /></FrontOfficeOnlyRoute>} />

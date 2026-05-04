@@ -1,0 +1,742 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/frontend/src/pages/backOffice/AdminStages.jsx b/frontend/src/pages/backOffice/AdminStages.jsx
+index ce13c08..66f5a66 100644
+--- a/frontend/src/pages/backOffice/AdminStages.jsx
++++ b/frontend/src/pages/backOffice/AdminStages.jsx
+@@ -1,4 +1,4 @@
+-import React, { useEffect, useState } from "react";
++import React, { useEffect, useState, useMemo } from "react";
+ import Swal from "sweetalert2";
+ import Sidebar from "./components/Sidebar";
+ import { adminStagesApi, adminChallengesApi } from "../../services/api";
+@@ -20,8 +20,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
+       <div className="bg-surface-dark border border-purple-900/20 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+         <div className="p-6 border-b border-purple-900/20 flex justify-between items-center shrink-0">
+           <h2 className="text-xl font-bold text-white">{title}</h2>
+-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white">
+-            <span className="material-icons-outlined">close</span>
++          <button type="button" onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-white">
++            <span className="material-icons-outlined" aria-hidden="true">close</span>
+           </button>
+         </div>
+         <div className="p-6 overflow-y-auto flex-1">{children}</div>
+@@ -147,13 +147,13 @@ export default function AdminStages() {
+     }
+   };
+ 
+-  const filteredPick = allChallenges.filter(
++  const filteredPick = useMemo(() => allChallenges.filter(
+     (c) =>
+       !pickerQuery ||
+       c.title.toLowerCase().includes(pickerQuery.toLowerCase())
+-  );
++  ), [allChallenges, pickerQuery]);
+ 
+-  const prerequisiteOptions = stages.filter((s) => !editingId || String(s._id) !== String(editingId));
++  const prerequisiteOptions = useMemo(() => stages.filter((s) => !editingId || String(s._id) !== String(editingId)), [stages, editingId]);
+ 
+   return (
+     <div className="flex h-screen bg-background-dark font-body text-gray-200 overflow-hidden">
+@@ -169,7 +169,7 @@ export default function AdminStages() {
+             onClick={openCreate}
+             className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium"
+           >
+-            <span className="material-icons-outlined">add</span>
++            <span className="material-icons-outlined" aria-hidden="true">add</span>
+             Add stage
+           </button>
+         </div>
+@@ -202,17 +202,19 @@ export default function AdminStages() {
+                       <td className="p-4 text-right space-x-2">
+                         <button
+                           type="button"
++                          aria-label="Edit Stage"
+                           onClick={() => openEdit(st)}
+                           className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg"
+                         >
+-                          <span className="material-icons-outlined text-sm">edit</span>
++                          <span className="material-icons-outlined text-sm" aria-hidden="true">edit</span>
+                         </button>
+                         <button
+                           type="button"
++                          aria-label="Delete Stage"
+                           onClick={() => deleteStage(st._id)}
+                           className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"
+                         >
+-                          <span className="material-icons-outlined text-sm">delete</span>
++                          <span className="material-icons-outlined text-sm" aria-hidden="true">delete</span>
+                         </button>
+                       </td>
+                     </tr>
+@@ -228,8 +230,9 @@ export default function AdminStages() {
+         <form onSubmit={saveStage} className="space-y-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="md:col-span-2 space-y-2">
+-              <label className="text-sm text-gray-300">Title</label>
++              <label htmlFor="stage-title" className="text-sm text-gray-300">Title</label>
+               <input
++                id="stage-title"
+                 required
+                 value={form.title}
+                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+@@ -237,8 +240,9 @@ export default function AdminStages() {
+               />
+             </div>
+             <div className="md:col-span-2 space-y-2">
+-              <label className="text-sm text-gray-300">Description</label>
++              <label htmlFor="stage-description" className="text-sm text-gray-300">Description</label>
+               <textarea
++                id="stage-description"
+                 value={form.description}
+                 onChange={(e) => setForm({ ...form, description: e.target.value })}
+                 rows={3}
+@@ -246,8 +250,9 @@ export default function AdminStages() {
+               />
+             </div>
+             <div className="space-y-2">
+-              <label className="text-sm text-gray-300">Difficulty</label>
++              <label htmlFor="stage-difficulty" className="text-sm text-gray-300">Difficulty</label>
+               <select
++                id="stage-difficulty"
+                 value={form.difficulty}
+                 onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"
+@@ -259,8 +264,9 @@ export default function AdminStages() {
+               </select>
+             </div>
+             <div className="space-y-2">
+-              <label className="text-sm text-gray-300">Order</label>
++              <label htmlFor="stage-order" className="text-sm text-gray-300">Order</label>
+               <input
++                id="stage-order"
+                 type="number"
+                 required
+                 min={1}
+@@ -270,8 +276,9 @@ export default function AdminStages() {
+               />
+             </div>
+             <div className="space-y-2">
+-              <label className="text-sm text-gray-300">Category</label>
++              <label htmlFor="stage-category" className="text-sm text-gray-300">Category</label>
+               <select
++                id="stage-category"
+                 value={form.category}
+                 onChange={(e) => setForm({ ...form, category: e.target.value })}
+                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"
+@@ -281,8 +288,9 @@ export default function AdminStages() {
+               </select>
+             </div>
+             <div className="space-y-2">
+-              <label className="text-sm text-gray-300">Prerequisite stage</label>
++              <label htmlFor="stage-prereq" className="text-sm text-gray-300">Prerequisite stage</label>
+               <select
++                id="stage-prereq"
+                 value={form.prerequisiteStageId}
+                 onChange={(e) => setForm({ ...form, prerequisiteStageId: e.target.value })}
+                 className="w-full bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-white"
+diff --git a/frontend/src/pages/backOffice/Challenges.tsx b/frontend/src/pages/backOffice/Challenges.tsx
+index ae5332f..7b71f7c 100644
+--- a/frontend/src/pages/backOffice/Challenges.tsx
++++ b/frontend/src/pages/backOffice/Challenges.tsx
+@@ -14,7 +14,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
+         <div className="p-6 border-b border-purple-900/20 flex justify-between items-center">
+           <h2 className="text-xl font-bold text-white">{title}</h2>
+           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+-            <span className="material-icons-outlined">close</span>
++            <span aria-hidden="true" className="material-icons-outlined">close</span>
+           </button>
+         </div>
+         <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
+@@ -242,7 +242,7 @@ export default function Challenges() {
+             onClick={openAddModal}
+             className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium"
+           >
+-            <span className="material-icons-outlined">add</span>
++            <span aria-hidden="true" className="material-icons-outlined">add</span>
+             New Challenge
+           </button>
+         </div>
+@@ -302,14 +302,14 @@ export default function Challenges() {
+                           className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg"
+                           title="Edit"
+                         >
+-                          <span className="material-icons-outlined text-sm">edit</span>
++                          <span aria-hidden="true" className="material-icons-outlined text-sm">edit</span>
+                         </button>
+                         <button
+                           onClick={() => handleDelete(challenge._id)}
+                           className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"
+                           title="Delete"
+                         >
+-                          <span className="material-icons-outlined text-sm">delete</span>
++                          <span aria-hidden="true" className="material-icons-outlined text-sm">delete</span>
+                         </button>
+                       </td>
+                     </tr>
+@@ -333,8 +333,8 @@ export default function Challenges() {
+             {aiOpen ? (
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                 <div className="md:col-span-2">
+-                  <label className="text-xs text-gray-400">Prompt</label>
+-                  <textarea
++                  <label className="text-xs text-gray-400" htmlFor="prompt_7775">Prompt</label>
++<textarea id="prompt_7775" 
+                     value={aiPrompt}
+                     onChange={(e) => setAiPrompt(e.target.value)}
+                     rows={2}
+@@ -343,8 +343,8 @@ export default function Challenges() {
+                   />
+                 </div>
+                 <div>
+-                  <label className="text-xs text-gray-400">Difficulty</label>
+-                  <select value={aiDifficulty} onChange={(e) => setAiDifficulty(e.target.value)} className={inputClass}>
++                  <label className="text-xs text-gray-400" htmlFor="difficulty_72403">Difficulty</label>
++<select id="difficulty_72403" value={aiDifficulty} onChange={(e) => setAiDifficulty(e.target.value)} className={inputClass}>
+                     <option value="easy">Easy</option>
+                     <option value="medium">Medium</option>
+                     <option value="hard">Hard</option>
+@@ -367,24 +367,24 @@ export default function Challenges() {
+         <form onSubmit={handleSubmit} className="space-y-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="md:col-span-2">
+-              <label className="text-sm text-gray-300">Title</label>
+-              <input name="title" value={formData.title} onChange={handleInputChange} required className={inputClass} />
++              <label className="text-sm text-gray-300" htmlFor="title_19990">Title</label>
++<input id="title_19990" name="title" value={formData.title} onChange={handleInputChange} required className={inputClass} />
+             </div>
+             <div className="md:col-span-2">
+-              <label className="text-sm text-gray-300">Description</label>
+-              <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} required className={`${inputClass} resize-none`} />
++              <label className="text-sm text-gray-300" htmlFor="descriptio_51970">Description</label>
++<textarea id="descriptio_51970" name="description" value={formData.description} onChange={handleInputChange} rows={3} required className={`${inputClass} resize-none`} />
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">Category</label>
+-              <input name="category" value={formData.category} onChange={handleInputChange} className={inputClass} />
++              <label className="text-sm text-gray-300" htmlFor="category_52398">Category</label>
++<input id="category_52398" name="category" value={formData.category} onChange={handleInputChange} className={inputClass} />
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">XP Reward</label>
+-              <input type="number" name="xpReward" value={formData.xpReward} onChange={handleInputChange} className={inputClass} />
++              <label className="text-sm text-gray-300" htmlFor="xpreward_34913">XP Reward</label>
++<input id="xpreward_34913" type="number" name="xpReward" value={formData.xpReward} onChange={handleInputChange} className={inputClass} />
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">Difficulty</label>
+-              <select name="difficulty" value={formData.difficulty} onChange={handleInputChange} className={inputClass}>
++              <label className="text-sm text-gray-300" htmlFor="difficulty_58719">Difficulty</label>
++<select id="difficulty_58719" name="difficulty" value={formData.difficulty} onChange={handleInputChange} className={inputClass}>
+                 <option value="easy">Easy</option>
+                 <option value="medium">Medium</option>
+                 <option value="hard">Hard</option>
+@@ -392,8 +392,8 @@ export default function Challenges() {
+               </select>
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">Language</label>
+-              <select name="language" value={formData.language} onChange={handleInputChange} className={inputClass}>
++              <label className="text-sm text-gray-300" htmlFor="language_72005">Language</label>
++<select id="language_72005" name="language" value={formData.language} onChange={handleInputChange} className={inputClass}>
+                 <option value="javascript">JavaScript</option>
+                 <option value="typescript">TypeScript</option>
+                 <option value="python">Python</option>
+@@ -405,15 +405,15 @@ export default function Challenges() {
+               </select>
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">Type</label>
+-              <select name="type" value={formData.type} onChange={handleInputChange} className={inputClass}>
++              <label className="text-sm text-gray-300" htmlFor="type_41381">Type</label>
++<select id="type_41381" name="type" value={formData.type} onChange={handleInputChange} className={inputClass}>
+                 <option value="Stage">Stage</option>
+                 <option value="Battle">Battle</option>
+               </select>
+             </div>
+             <div>
+-              <label className="text-sm text-gray-300">Training Stage</label>
+-              <select name="stageId" value={formData.stageId} onChange={handleInputChange} disabled={formData.type === "Battle"} className={`${inputClass} disabled:opacity-50`}>
++              <label className="text-sm text-gray-300" htmlFor="trainingst_7414">Training Stage</label>
++<select id="trainingst_7414" name="stageId" value={formData.stageId} onChange={handleInputChange} disabled={formData.type === "Battle"} className={`${inputClass} disabled:opacity-50`}>
+                 <option value="">Pool (unassigned)</option>
+                 {stages.map((s) => (
+                   <option key={s._id} value={s._id}>
+@@ -423,16 +423,16 @@ export default function Challenges() {
+               </select>
+             </div>
+             <div className="md:col-span-2">
+-              <label className="text-sm text-gray-300">Starter Code</label>
+-              <textarea name="starterCode" value={formData.starterCode} onChange={handleInputChange} rows={4} className={`${inputClass} resize-none font-mono text-sm`} />
++              <label className="text-sm text-gray-300" htmlFor="startercod_66773">Starter Code</label>
++<textarea id="startercod_66773" name="starterCode" value={formData.starterCode} onChange={handleInputChange} rows={4} className={`${inputClass} resize-none font-mono text-sm`} />
+             </div>
+             <div className="md:col-span-2">
+-              <label className="text-sm text-gray-300">Tests (JSON)</label>
+-              <textarea name="testCasesJson" value={formData.testCasesJson} onChange={handleInputChange} rows={6} className={`${inputClass} resize-none font-mono text-xs`} />
++              <label className="text-sm text-gray-300" htmlFor="testsjson_52778">Tests (JSON)</label>
++<textarea id="testsjson_52778" name="testCasesJson" value={formData.testCasesJson} onChange={handleInputChange} rows={6} className={`${inputClass} resize-none font-mono text-xs`} />
+             </div>
+             <div className="md:col-span-2">
+-              <label className="text-sm text-gray-300">Constraints (Optional)</label>
+-              <textarea name="constraints" value={formData.constraints} onChange={handleInputChange} rows={2} className={`${inputClass} resize-none`} />
++              <label className="text-sm text-gray-300" htmlFor="constraint_64822">Constraints (Optional)</label>
++<textarea id="constraint_64822" name="constraints" value={formData.constraints} onChange={handleInputChange} rows={2} className={`${inputClass} resize-none`} />
+             </div>
+           </div>
+ 
+diff --git a/frontend/src/pages/backOffice/Dashboard.tsx b/frontend/src/pages/backOffice/Dashboard.tsx
+index 35a1b03..0e8812f 100644
+--- a/frontend/src/pages/backOffice/Dashboard.tsx
++++ b/frontend/src/pages/backOffice/Dashboard.tsx
+@@ -90,10 +90,10 @@ const Dashboard: React.FC = () => {
+                                     >
+                                         <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${card.gradient} opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-500`} />
+                                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center mb-3 shadow-lg`}>
+-                                            <span className="material-icons-outlined text-white text-xl">{card.icon}</span>
++                                            <span className="material-icons-outlined text-white text-xl" aria-hidden="true">{card.icon}</span>
+                                         </div>
+                                         <p className="text-3xl font-black text-white tracking-tight">{card.value}</p>
+-                                        <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wider">{card.label}</p>
++                                        <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">{card.label}</p>
+                                     </div>
+                                 ))}
+                             </div>
+@@ -103,10 +103,10 @@ const Dashboard: React.FC = () => {
+ 
+                                 {/* Role Distribution */}
+                                 <div className="bg-surface-dark rounded-2xl border border-white/10 p-6">
+-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
+-                                        <span className="material-icons-outlined text-primary text-lg">pie_chart</span>
++                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
++                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">pie_chart</span>
+                                         Role Distribution
+-                                    </h3>
++                                    </h2>
+                                     <div className="space-y-4">
+                                         {[
+                                             { label: "Participants", count: stats.participants, color: "bg-blue-500", pct: stats.totalUsers ? Math.round((stats.participants / stats.totalUsers) * 100) : 0 },
+@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
+                                             <div key={role.label}>
+                                                 <div className="flex justify-between text-sm mb-1.5">
+                                                     <span className="text-gray-400 font-medium">{role.label}</span>
+-                                                    <span className="text-white font-bold">{role.count} <span className="text-gray-600 font-normal">({role.pct}%)</span></span>
++                                                    <span className="text-white font-bold">{role.count} <span className="text-gray-400 font-normal">({role.pct}%)</span></span>
+                                                 </div>
+                                                 <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+                                                     <div
+@@ -134,14 +134,14 @@ const Dashboard: React.FC = () => {
+                                             <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                                             <div>
+                                                 <p className="text-white font-bold text-lg">{stats.activeUsers}</p>
+-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Active</p>
++                                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Active</p>
+                                             </div>
+                                         </div>
+                                         <div className="flex items-center gap-3">
+                                             <div className="w-3 h-3 rounded-full bg-red-400" />
+                                             <div>
+                                                 <p className="text-white font-bold text-lg">{stats.inactiveUsers}</p>
+-                                                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Inactive</p>
++                                                <p className="text-[10px] text-gray-400 uppercase tracking-widest">Inactive</p>
+                                             </div>
+                                         </div>
+                                     </div>
+@@ -149,10 +149,10 @@ const Dashboard: React.FC = () => {
+ 
+                                 {/* Activity Chart (last 7 days) */}
+                                 <div className="bg-surface-dark rounded-2xl border border-white/10 p-6">
+-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
+-                                        <span className="material-icons-outlined text-primary text-lg">bar_chart</span>
++                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-5 flex items-center gap-2">
++                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">bar_chart</span>
+                                         Activity (Last 7 Days)
+-                                    </h3>
++                                    </h2>
+                                     <div className="flex items-end gap-2 h-40">
+                                         {stats.activityPerDay.map((day) => {
+                                             const heightPct = (day.count / maxActivity) * 100;
+@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
+                                                             style={{ height: `${Math.max(heightPct, 4)}%` }}
+                                                         />
+                                                     </div>
+-                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">{dayLabel}</span>
++                                                    <span className="text-[10px] text-gray-400 uppercase font-bold">{dayLabel}</span>
+                                                 </div>
+                                             );
+                                         })}
+@@ -175,10 +175,10 @@ const Dashboard: React.FC = () => {
+                                     <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+                                         <div>
+                                             <p className="text-2xl font-black text-white">{stats.totalLogs.toLocaleString()}</p>
+-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Total Logs</p>
++                                            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Total Logs</p>
+                                         </div>
+                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+-                                            <span className="material-icons-outlined text-primary text-sm">speed</span>
++                                            <span className="material-icons-outlined text-primary text-sm" aria-hidden="true">speed</span>
+                                             <span className="text-xs text-primary font-bold">
+                                                 {stats.activityPerDay.length > 0 ? Math.round(stats.activityPerDay.reduce((s, d) => s + d.count, 0) / stats.activityPerDay.length) : 0}/day avg
+                                             </span>
+@@ -190,11 +190,11 @@ const Dashboard: React.FC = () => {
+                             {/* === RECENT ACTIVITY FEED === */}
+                             <div className="bg-surface-dark rounded-2xl border border-white/10 overflow-hidden">
+                                 <div className="p-5 border-b border-white/5 flex items-center justify-between">
+-                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+-                                        <span className="material-icons-outlined text-primary text-lg">timeline</span>
++                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
++                                        <span className="material-icons-outlined text-primary text-lg" aria-hidden="true">timeline</span>
+                                         Recent Activity
+-                                    </h3>
+-                                    <span className="text-[10px] text-gray-600 uppercase tracking-widest">Live Feed</span>
++                                    </h2>
++                                    <span className="text-[10px] text-gray-400 uppercase tracking-widest">Live Feed</span>
+                                 </div>
+                                 <div className="divide-y divide-white/5">
+                                     {stats.recentActivity.map((log) => (
+@@ -204,7 +204,8 @@ const Dashboard: React.FC = () => {
+                                                 <div className="w-full h-full rounded-full bg-surface-dark flex items-center justify-center overflow-hidden">
+                                                     <img
+                                                         src={log.user?.avatar || `https://ui-avatars.com/api/?name=${log.user?.username || "U"}&background=random&size=36`}
+-                                                        alt=""
++                                                        alt={`${log.user?.username || "User"} avatar`}
++                                                        loading="lazy"
+                                                         className="w-full h-full object-cover"
+                                                     />
+                                                 </div>
+@@ -219,20 +220,20 @@ const Dashboard: React.FC = () => {
+                                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${methodColor(log.method)}`}>
+                                                         {log.method}
+                                                     </span>
+-                                                    <span className="text-xs text-gray-500 font-mono truncate">{log.route}</span>
++                                                    <span className="text-xs text-gray-400 font-mono truncate">{log.route}</span>
+                                                 </div>
+-                                                <p className="text-[11px] text-gray-600 mt-0.5">{log.ip}</p>
++                                                <p className="text-[11px] text-gray-400 mt-0.5">{log.ip}</p>
+                                             </div>
+ 
+                                             {/* Time */}
+-                                            <span className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">
++                                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                                                 {format(new Date(log.timestamp), "HH:mm:ss")}
+                                             </span>
+                                         </div>
+                                     ))}
+ 
+                                     {stats.recentActivity.length === 0 && (
+-                                        <div className="p-8 text-center text-gray-600 text-sm">
++                                        <div className="p-8 text-center text-gray-400 text-sm">
+                                             No recent activity recorded.
+                                         </div>
+                                     )}
+@@ -240,7 +241,7 @@ const Dashboard: React.FC = () => {
+                             </div>
+                         </>
+                     ) : (
+-                        <div className="flex-1 flex items-center justify-center text-gray-500">
++                        <div className="flex-1 flex items-center justify-center text-gray-400">
+                             <p>Failed to load dashboard data.</p>
+                         </div>
+                     )}
+diff --git a/frontend/src/pages/backOffice/RoleRequests.tsx b/frontend/src/pages/backOffice/RoleRequests.tsx
+index 0d6aa1d..5cec925 100644
+--- a/frontend/src/pages/backOffice/RoleRequests.tsx
++++ b/frontend/src/pages/backOffice/RoleRequests.tsx
+@@ -93,8 +93,8 @@ export default function RoleRequests() {
+           {/* Message */}
+           {message.text && (
+             <div className={`mb-6 p-4 rounded-lg border ${message.type === 'success'
+-                ? 'bg-green-500/10 border-green-500/30 text-green-400'
+-                : 'bg-red-500/10 border-red-500/30 text-red-400'
++              ? 'bg-green-500/10 border-green-500/30 text-green-400'
++              : 'bg-red-500/10 border-red-500/30 text-red-400'
+               }`}>
+               {message.text}
+             </div>
+@@ -102,7 +102,7 @@ export default function RoleRequests() {
+ 
+           {/* Filters */}
+           <div className="mb-6 flex items-center gap-4 bg-surface-dark/50 p-4 rounded-lg border border-purple-900/30 flex-wrap overflow-x-hidden">
+-            <Filter className="w-5 h-5 text-gray-500" />
++            <Filter className="w-5 h-5 text-gray-400" />
+             <div className="flex gap-2 flex-wrap">
+               {[
+                 { value: 'all', label: 'All' },
+@@ -114,8 +114,8 @@ export default function RoleRequests() {
+                   key={filter.value}
+                   onClick={() => setStatusFilter(filter.value)}
+                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === filter.value
+-                      ? 'bg-primary text-white'
+-                      : 'bg-background-dark/50 text-gray-400 hover:bg-background-dark/70 border border-purple-900/20'
++                    ? 'bg-primary text-white'
++                    : 'bg-background-dark/50 text-gray-400 hover:bg-background-dark/70 border border-purple-900/20'
+                     }`}
+                 >
+                   {filter.label}
+@@ -136,8 +136,8 @@ export default function RoleRequests() {
+             </div>
+           ) : requests.length === 0 ? (
+             <div className="text-center py-12 bg-background-dark/50 rounded-lg border border-purple-900/30">
+-              <Shield className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+-              <p className="text-gray-500">No requests found</p>
++              <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
++              <p className="text-gray-400">No requests found</p>
+             </div>
+           ) : (
+             <div className="grid gap-4">
+@@ -150,14 +150,15 @@ export default function RoleRequests() {
+                     <div className="flex items-center gap-3">
+                       <img
+                         src={request.userId?.avatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=default'}
+-                        alt={request.userId?.username}
++                        alt={request.userId?.username || "Requester Avatar"}
++                        loading="lazy"
+                         className="w-12 h-12 rounded-full border-2 border-purple-900/50"
+                       />
+                       <div>
+                         <h3 className="text-lg font-semibold text-white">
+                           {request.userId?.nickname || request.userId?.username || 'Unknown user'}
+                         </h3>
+-                        <p className="text-sm text-gray-500">
++                        <p className="text-sm text-gray-400">
+                           @{request.userId?.username} • {request.userId?.email}
+                         </p>
+                       </div>
+@@ -167,7 +168,7 @@ export default function RoleRequests() {
+ 
+                   <div className="space-y-4">
+                     <div className="w-full">
+-                      <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Justification:</span>
++                      <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Justification:</span>
+                       <p className="text-gray-200 mt-1 leading-relaxed break-words whitespace-pre-wrap w-full">{request.justification}</p>
+                     </div>
+ 
+@@ -193,7 +194,7 @@ export default function RoleRequests() {
+                     {request.aiDecision && request.aiDecision !== 'NONE' && (
+                       <div className="grid grid-cols-2 gap-4 p-4 bg-surface-dark/30 rounded-lg border border-purple-900/20">
+                         <div className="space-y-1 min-w-0">
+-                          <span className="text-xs text-gray-500 uppercase font-bold">Document Score</span>
++                          <span className="text-xs text-gray-400 uppercase font-bold">Document Score</span>
+                           <div className="flex items-center gap-2">
+                             <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
+                               <div
+@@ -207,7 +208,7 @@ export default function RoleRequests() {
+                           </div>
+                         </div>
+                         <div className="space-y-1">
+-                          <span className="text-xs text-gray-500 uppercase font-bold">Text Score</span>
++                          <span className="text-xs text-gray-400 uppercase font-bold">Text Score</span>
+                           <div className="flex items-center gap-2">
+                             <div className="flex-1 h-2 bg-background-dark rounded-full overflow-hidden">
+                               <div
+@@ -233,7 +234,7 @@ export default function RoleRequests() {
+                       </div>
+                     )}
+ 
+-                    <div className="flex gap-4 text-xs text-gray-600">
++                    <div className="flex gap-4 text-xs text-gray-400">
+                       <span>Created: {new Date(request.createdAt).toLocaleString()}</span>
+                       {request.reviewedAt && (
+                         <span>Analyzed: {new Date(request.reviewedAt).toLocaleString()}</span>
+@@ -246,7 +247,7 @@ export default function RoleRequests() {
+                         <button
+                           onClick={() => handleAIReview(request._id)}
+                           disabled={processing}
+-                          className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
++                          className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-400 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg shadow-purple-900/20 active:scale-95"
+                         >
+                           {processing ? (
+                             <Loader2 className="w-6 h-6 animate-spin" />
+@@ -257,7 +258,7 @@ export default function RoleRequests() {
+                             </>
+                           )}
+                         </button>
+-                        
++
+                         <div className="flex gap-4">
+                           <button
+                             onClick={() => handleDecision(request._id, 'approve')}
+diff --git a/frontend/src/pages/backOffice/Settings.tsx b/frontend/src/pages/backOffice/Settings.tsx
+index b055251..4cdae01 100644
+--- a/frontend/src/pages/backOffice/Settings.tsx
++++ b/frontend/src/pages/backOffice/Settings.tsx
+@@ -1,10 +1,10 @@
+-import React, { useState } from 'react';
++import React, { useState, Suspense, lazy } from 'react';
+ import Sidebar from './components/Sidebar';
+ import Header from './components/Header';
+ import { Camera, User, Sparkles, ShieldCheck } from 'lucide-react';
+ import { AvatarPicker } from './components/AvatarPicker';
+ import { useSettings } from '../../context/SettingsContext';
+-import FaceAuthModal from '../../components/FaceAuthModal';
++const FaceAuthModal = lazy(() => import('../../components/FaceAuthModal'));
+ import { useSoundEffects } from '../../hooks/useSoundEffects';
+ import Swal from 'sweetalert2';
+ 
+@@ -71,23 +71,23 @@ const Settings: React.FC = () => {
+                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors duration-500" />
+ 
+                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+-                                <span className="material-icons-outlined text-primary text-lg">person</span>
++                                <span aria-hidden="true" className="material-icons-outlined text-primary text-lg">person</span>
+                                 Profile Information
+                             </h3>
+ 
+                             <div className="grid md:grid-cols-2 gap-8">
+                                 {/* Avatar Selection */}
+                                 <div className="space-y-4">
+-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Choose Avatar</label>
++                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1" htmlFor="chooseavat_88894">Choose Avatar</label>
+                                     <AvatarPicker currentAvatar={avatar} onSelect={handleAvatarSelect} />
+                                 </div>
+ 
+                                 {/* Username Section */}
+                                 <div className="space-y-6">
+                                     <div className="space-y-4">
+-                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Username</label>
+-                                        <div className="relative group/input">
+-                                            <input
++                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Username</label>
++<div className="relative group/input">
++<input id="chooseavat_88894" 
+                                                 type="text"
+                                                 value={tempUsername}
+                                                 onChange={(e) => setTempUsername(e.target.value)}
+@@ -114,7 +114,7 @@ const Settings: React.FC = () => {
+                                         </div>
+                                         <div>
+                                             <p className="text-sm font-bold text-white">{username}</p>
+-                                            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-medium">Display Identity</p>
++                                            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Display Identity</p>
+                                         </div>
+                                     </div>
+                                 </div>
+@@ -126,7 +126,7 @@ const Settings: React.FC = () => {
+                             <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-accent-purple/10 rounded-full blur-3xl group-hover:bg-accent-purple/20 transition-colors duration-500" />
+ 
+                             <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
+-                                <span className="material-icons-outlined text-primary text-lg">security</span>
++                                <span aria-hidden="true" className="material-icons-outlined text-primary text-lg">security</span>
+                                 Security & Authentication
+                             </h3>
+ 
+@@ -137,7 +137,7 @@ const Settings: React.FC = () => {
+                                     </div>
+                                     <div>
+                                         <h4 className="text-white font-bold">Facial Recognition (Face ID)</h4>
+-                                        <p className="text-xs text-gray-500 max-w-md mt-1">
++                                        <p className="text-xs text-gray-400 max-w-md mt-1">
+                                             Enhance your account security using software-based facial recognition. This allows you to login using your webcam.
+                                         </p>
+                                         <div className="flex items-center gap-2 mt-3">
+@@ -153,7 +153,7 @@ const Settings: React.FC = () => {
+                                     onClick={() => setIsFaceModalOpen(true)}
+                                     className="px-8 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary text-white text-sm font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2"
+                                 >
+-                                    <span className="material-icons-outlined text-lg">{faceRegistered ? 'refresh' : 'add_a_photo'}</span>
++                                    <span aria-hidden="true" className="material-icons-outlined text-lg">{faceRegistered ? 'refresh' : 'add_a_photo'}</span>
+                                     {faceRegistered ? 'Update Face Scan' : 'Register My Face'}
+                                 </button>
+                             </div>
+@@ -164,7 +164,7 @@ const Settings: React.FC = () => {
+                                         <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                         <p className="text-xs font-bold text-gray-300">Biometric Security</p>
+                                     </div>
+-                                    <p className="text-[10px] text-gray-500 leading-relaxed">
++                                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                                         Your facial biometric data is processed locally as vectors (descriptors) and stored securely on our servers for authentication matching.
+                                     </p>
+                                 </div>
+@@ -173,7 +173,7 @@ const Settings: React.FC = () => {
+                                         <Sparkles className="w-4 h-4 text-primary" />
+                                         <p className="text-xs font-bold text-gray-300">Fast Access</p>
+                                     </div>
+-                                    <p className="text-[10px] text-gray-500 leading-relaxed">
++                                    <p className="text-[10px] text-gray-400 leading-relaxed">
+                                         Once registered, you can bypass traditional password entry by simply looking at your camera during the login process.
+                                     </p>
+                                 </div>
+@@ -181,43 +181,47 @@ const Settings: React.FC = () => {
+                         </section>
+ 
+                         <div className="pt-6 flex justify-center">
+-                            <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em] font-bold">FortCode Security Systems • v2.0</p>
++                            <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-bold">FortCode Security Systems • v2.0</p>
+                         </div>
+                     </div>
+                 </div>
+             </main>
+ 
+-            <FaceAuthModal
+-                isOpen={isFaceModalOpen}
+-                onClose={() => setIsFaceModalOpen(false)}
+-                mode="register"
+-                onCapture={async (descriptor) => {
+-                    try {
+-                        setLoading(true);
+-                        await registerFace(descriptor);
+-                        playSuccess();
+-                        Swal.fire({
+-                            title: 'Registered!',
+-                            text: 'Your face has been successfully linked to your account.',
+-                            icon: 'success',
+-                            background: '#1a1a2e',
+-                            color: '#fff',
+-                            confirmButtonColor: '#7c3aed'
+-                        });
+-                        setIsFaceModalOpen(false);
+-                    } catch (err: any) {
+-                        Swal.fire({
+-                            title: 'Error',
+-                            text: err.message || 'Face registration failed',
+-                            icon: 'error',
+-                            background: '#1a1a2e',
+-                            color: '#fff'
+-                        });
+-                    } finally {
+-                        setLoading(false);
+-                    }
+-                }}
+-            />
++            <Suspense fallback={null}>
++                {isFaceModalOpen && (
++                    <FaceAuthModal
++                        isOpen={isFaceModalOpen}
++                        onClose={() => setIsFaceModalOpen(false)}
++                        mode="register"
++                        onCapture={async (descriptor) => {
++                            try {
++                                setLoading(true);
++                                await registerFace(descriptor);
++                                playSuccess();
++                                Swal.fire({
++                                    title: 'Registered!',
++                                    text: 'Your face has been successfully linked to your account.',
++                                    icon: 'success',
++                                    background: '#1a1a2e',
++                                    color: '#fff',
++                                    confirmButtonColor: '#7c3aed'
++                                });
++                                setIsFaceModalOpen(false);
++                            } catch (err: any) {
++                                Swal.fire({
++                                    title: 'Error',
++                                    text: err.message || 'Face registration failed',
++                                    icon: 'error',
++                                    background: '#1a1a2e',
++                                    color: '#fff'
++                                });
++                            } finally {
++                                setLoading(false);
++                            }
++                        }}
++                    />
++                )}
++            </Suspense>
+         </div>
+     );
+ };

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shield, Sword, Cpu, Trophy, ChevronRight, Lock, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ScrollButton } from "../components/ui/ScrollButton";
 import { stagesApi } from "../../../services/api";
 
 export default function WorldMap() {
+  const location = useLocation();
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,18 +15,24 @@ export default function WorldMap() {
     let cancelled = false;
     (async () => {
       try {
+        // Forcer rechargement des données fraîches
+        setLoading(true);
         const { data } = await stagesApi.me({ category: "mission" });
-        if (!cancelled) setStages(data);
+        if (!cancelled) {
+          setStages(data);
+          setLoading(false);
+        }
       } catch (err) {
-        if (!cancelled) setError(err.response?.data?.message || err.message);
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(err.response?.data?.message || err.message);
+          setLoading(false);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [location.pathname]); // Recharger à chaque changement de route
 
   const getIcon = (order) => {
     switch (order) {
@@ -82,7 +89,7 @@ export default function WorldMap() {
               className="relative z-10 my-8 w-full flex justify-center"
             >
               <Link
-                to={isLocked ? "#" : `/training/${stage._id}`}
+                to={isLocked ? "#" : `/stage/${stage._id}`}
                 className={isLocked ? "cursor-not-allowed" : ""}
               >
                 <motion.div

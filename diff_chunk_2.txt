@@ -1,0 +1,314 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/frontend/src/pages/MyActivity.tsx b/frontend/src/pages/MyActivity.tsx
+index aadccb9..8dd200e 100644
+--- a/frontend/src/pages/MyActivity.tsx
++++ b/frontend/src/pages/MyActivity.tsx
+@@ -85,7 +85,7 @@ const MyActivity: React.FC = () => {
+                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                         <div>
+                             <h2 className="text-2xl font-bold text-white font-display">My Activity History</h2>
+-                            <p className="text-sm text-gray-500">View your recent actions and sessions</p>
++                            <p className="text-sm text-gray-400">View your recent actions and sessions</p>
+                         </div>
+                         <button
+                             onClick={handleClearFilters}
+@@ -136,14 +136,14 @@ const MyActivity: React.FC = () => {
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                             </div>
+                         ) : logs.length === 0 ? (
+-                            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2">
+-                                <span className="material-icons-outlined text-4xl">history_toggle_off</span>
++                            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
++                                <span aria-hidden="true" className="material-icons-outlined text-4xl">history_toggle_off</span>
+                                 <p>No activity logs found matching your filters.</p>
+                             </div>
+                         ) : (
+                             <div className="overflow-x-auto flex-1">
+                                 <table className="w-full text-left border-collapse">
+-                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-500 font-bold tracking-wider">
++                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-400 font-bold tracking-wider">
+                                         <tr>
+                                             <th className="p-4 border-b border-purple-900/20">Date/Time</th>
+                                             <th className="p-4 border-b border-purple-900/20">Action</th>
+@@ -174,7 +174,7 @@ const MyActivity: React.FC = () => {
+                                                 <td className="p-4 text-sm text-gray-400">
+                                                     <div className="flex flex-col">
+                                                         <span>{log.browser}</span>
+-                                                        <span className="text-xs text-gray-600">{log.os} • {log.device}</span>
++                                                        <span className="text-xs text-gray-400">{log.os} • {log.device}</span>
+                                                     </div>
+                                                 </td>
+                                                 <td className="p-4 text-sm text-purple-300 font-mono">
+@@ -188,7 +188,7 @@ const MyActivity: React.FC = () => {
+                         )}
+ 
+                         <div className="p-4 border-t border-purple-900/20 flex items-center justify-between bg-background-dark/30">
+-                            <span className="text-xs text-gray-500">
++                            <span className="text-xs text-gray-400">
+                                 Page <span className="text-white font-bold">{page}</span> of <span className="text-white font-bold">{totalPages}</span>
+                                 <span className="mx-2">•</span>
+                                 Total: {totallogs} logs
+diff --git a/frontend/src/pages/ResetPassword.jsx b/frontend/src/pages/ResetPassword.jsx
+index efe178f..15ba280 100644
+--- a/frontend/src/pages/ResetPassword.jsx
++++ b/frontend/src/pages/ResetPassword.jsx
+@@ -87,9 +87,9 @@ function ResetPassword() {
+                     <img src={logoImg} alt="FortCode Logo" />
+                 </div>
+ 
+-                <label>New Password</label>
+-                <div className="password-container">
+-                    <input
++                <label htmlFor="newpasswor_67737">New Password</label>
++<div className="password-container">
++<input id="newpasswor_67737" 
+                         type="password"
+                         placeholder="••••••••"
+                         value={password}
+@@ -97,9 +97,9 @@ function ResetPassword() {
+                     />
+                 </div>
+ 
+-                <label>Confirm Password</label>
+-                <div className="password-container">
+-                    <input
++                <label htmlFor="confirmpas_5032">Confirm Password</label>
++<div className="password-container">
++<input id="confirmpas_5032" 
+                         type="password"
+                         placeholder="••••••••"
+                         value={confirmPassword}
+diff --git a/frontend/src/pages/VerifyEmail.jsx b/frontend/src/pages/VerifyEmail.jsx
+index 47ce160..8e9e4a2 100644
+--- a/frontend/src/pages/VerifyEmail.jsx
++++ b/frontend/src/pages/VerifyEmail.jsx
+@@ -169,8 +169,8 @@ function VerifyEmail() {
+                     We sent a verification code to <br /><strong style={{ color: "#fff" }}>{email}</strong>
+                 </p>
+ 
+-                <label>Verification Code</label>
+-                <input
++                <label htmlFor="verificati_31357">Verification Code</label>
++<input id="verificati_31357" 
+                     type="text"
+                     placeholder="Enter 6-digit code"
+                     value={code}
+diff --git a/frontend/src/pages/backOffice/ActivityDetail.tsx b/frontend/src/pages/backOffice/ActivityDetail.tsx
+index b25dce9..86b01b6 100644
+--- a/frontend/src/pages/backOffice/ActivityDetail.tsx
++++ b/frontend/src/pages/backOffice/ActivityDetail.tsx
+@@ -62,7 +62,7 @@ const ActivityDetail: React.FC = () => {
+                         onClick={() => navigate('/admin/activity')}
+                         className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
+                     >
+-                        <span className="material-icons-outlined text-sm">arrow_back</span>
++                        <span aria-hidden="true" className="material-icons-outlined text-sm">arrow_back</span>
+                         Back to Activity Logs
+                     </button>
+ 
+@@ -70,7 +70,7 @@ const ActivityDetail: React.FC = () => {
+                         <div className="flex justify-between items-start mb-8">
+                             <div>
+                                 <h1 className="text-2xl font-bold text-white mb-2">Activity Details</h1>
+-                                <p className="text-gray-500 font-mono text-xs">{log._id}</p>
++                                <p className="text-gray-400 font-mono text-xs">{log._id}</p>
+                             </div>
+                             <span className="px-3 py-1 bg-white/5 rounded-full text-xs font-mono text-gray-400 border border-white/10">
+                                 {format(new Date(log.timestamp), 'PPP pp')}
+@@ -81,7 +81,7 @@ const ActivityDetail: React.FC = () => {
+                             {/* User Info */}
+                             <div className="space-y-6">
+                                 <section>
+-                                    <h3 className="text-xs uppercase font-bold text-gray-500 tracking-widest mb-4">User Information</h3>
++                                    <h3 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-4">User Information</h3>
+                                     <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10 flex items-center gap-4">
+                                         {log.user ? (
+                                             <>
+@@ -90,18 +90,18 @@ const ActivityDetail: React.FC = () => {
+                                                 </div>
+                                                 <div>
+                                                     <div className="font-bold text-white text-lg">{log.user.name || log.user.username}</div>
+-                                                    <div className="text-sm text-gray-500">{log.user.email}</div>
+-                                                    <div className="text-xs text-gray-600 font-mono mt-1">ID: {log.user._id}</div>
++                                                    <div className="text-sm text-gray-400">{log.user.email}</div>
++                                                    <div className="text-xs text-gray-400 font-mono mt-1">ID: {log.user._id}</div>
+                                                 </div>
+                                             </>
+                                         ) : (
+-                                            <span className="text-gray-500 italic">Unauthenticated User / Guest</span>
++                                            <span className="text-gray-400 italic">Unauthenticated User / Guest</span>
+                                         )}
+                                     </div>
+                                 </section>
+ 
+                                 <section>
+-                                    <h3 className="text-xs uppercase font-bold text-gray-500 tracking-widest mb-4">Request Details</h3>
++                                    <h3 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-4">Request Details</h3>
+                                     <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10 space-y-3">
+                                         <div className="flex justify-between">
+                                             <span className="text-gray-400 text-sm">Method</span>
+@@ -126,25 +126,25 @@ const ActivityDetail: React.FC = () => {
+                             {/* Device Info */}
+                             <div className="space-y-6">
+                                 <section>
+-                                    <h3 className="text-xs uppercase font-bold text-gray-500 tracking-widest mb-4">Device & Environment</h3>
++                                    <h3 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-4">Device & Environment</h3>
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10 text-center">
+-                                            <div className="text-gray-500 text-xs mb-1">Browser</div>
++                                            <div className="text-gray-400 text-xs mb-1">Browser</div>
+                                             <div className="font-bold text-white">{log.browser}</div>
+                                         </div>
+                                         <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10 text-center">
+-                                            <div className="text-gray-500 text-xs mb-1">Operating System</div>
++                                            <div className="text-gray-400 text-xs mb-1">Operating System</div>
+                                             <div className="font-bold text-white">{log.os}</div>
+                                         </div>
+                                         <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10 text-center col-span-2">
+-                                            <div className="text-gray-500 text-xs mb-1">Device Type</div>
++                                            <div className="text-gray-400 text-xs mb-1">Device Type</div>
+                                             <div className="font-bold text-white capitalize">{log.device}</div>
+                                         </div>
+                                     </div>
+                                 </section>
+ 
+                                 <section>
+-                                    <h3 className="text-xs uppercase font-bold text-gray-500 tracking-widest mb-4">Raw User Agent</h3>
++                                    <h3 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-4">Raw User Agent</h3>
+                                     <div className="bg-background-dark/50 p-4 rounded-xl border border-purple-900/10">
+                                         <code className="text-[10px] text-gray-400 font-mono break-all leading-relaxed">
+                                             {log.userAgent}
+diff --git a/frontend/src/pages/backOffice/ActivityLogs.tsx b/frontend/src/pages/backOffice/ActivityLogs.tsx
+index f88c981..d0bc4a3 100644
+--- a/frontend/src/pages/backOffice/ActivityLogs.tsx
++++ b/frontend/src/pages/backOffice/ActivityLogs.tsx
+@@ -105,7 +105,7 @@ const ActivityLogs: React.FC = () => {
+                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                         <div>
+                             <h2 className="text-2xl font-bold text-white font-display">Activity Logs</h2>
+-                            <p className="text-sm text-gray-500">Monitor user actions and system events</p>
++                            <p className="text-sm text-gray-400">Monitor user actions and system events</p>
+                         </div>
+                         <button
+                             onClick={handleClearFilters}
+@@ -119,29 +119,33 @@ const ActivityLogs: React.FC = () => {
+                     <div className="bg-surface-dark p-4 rounded-xl border border-purple-900/20 grid grid-cols-1 md:grid-cols-4 gap-3">
+                         <input
+                             type="text"
++                            aria-label="Filter by Route"
+                             placeholder="Route (e.g. /api/auth)"
+                             value={route}
+                             onChange={(e) => setRoute(e.target.value)}
+-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
++                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                         />
+                         <input
+                             type="text"
++                            aria-label="Filter by IP Address"
+                             placeholder="IP Address"
+                             value={ip}
+                             onChange={(e) => setIp(e.target.value)}
+-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
++                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                         />
+                         <input
+                             type="date"
++                            aria-label="Filter Start Date"
+                             value={dateFrom}
+                             onChange={(e) => setDateFrom(e.target.value)}
+-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:border-primary transition-colors"
++                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                         />
+                         <input
+                             type="date"
++                            aria-label="Filter End Date"
+                             value={dateTo}
+                             onChange={(e) => setDateTo(e.target.value)}
+-                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-400 focus:outline-none focus:border-primary transition-colors"
++                            className="bg-background-dark border border-purple-900/30 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-primary transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                         />
+                     </div>
+ 
+@@ -158,14 +162,14 @@ const ActivityLogs: React.FC = () => {
+                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                             </div>
+                         ) : logs.length === 0 ? (
+-                            <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-2">
+-                                <span className="material-icons-outlined text-4xl">history_toggle_off</span>
++                            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2">
++                                <span className="material-icons-outlined text-4xl" aria-hidden="true">history_toggle_off</span>
+                                 <p>No activity logs found matching your filters.</p>
+                             </div>
+                         ) : (
+                             <div className="overflow-x-auto flex-1">
+                                 <table className="w-full text-left border-collapse">
+-                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-500 font-bold tracking-wider">
++                                    <thead className="bg-background-dark/50 text-xs uppercase text-gray-400 font-bold tracking-wider">
+                                         <tr>
+                                             <th className="p-4 border-b border-purple-900/20">Date/Time</th>
+                                             <th className="p-4 border-b border-purple-900/20">User</th>
+@@ -186,10 +190,10 @@ const ActivityLogs: React.FC = () => {
+                                                         {log.user ? (
+                                                             <div className="text-sm">
+                                                                 <div className="font-bold text-white">{log.user.name || log.user.username || 'System'}</div>
+-                                                                <div className="text-xs text-gray-500">{log.user.email}</div>
++                                                                <div className="text-xs text-gray-400">{log.user.email}</div>
+                                                             </div>
+                                                         ) : (
+-                                                            <span className="text-gray-500 italic text-sm">Guest / Unknown</span>
++                                                            <span className="text-gray-400 italic text-sm">Guest / Unknown</span>
+                                                         )}
+                                                     </div>
+                                                 </td>
+@@ -210,7 +214,7 @@ const ActivityLogs: React.FC = () => {
+                                                 <td className="p-4 text-sm text-gray-400">
+                                                     <div className="flex flex-col">
+                                                         <span>{log.browser}</span>
+-                                                        <span className="text-xs text-gray-600">{log.os} • {log.device}</span>
++                                                        <span className="text-xs text-gray-400">{log.os} • {log.device}</span>
+                                                     </div>
+                                                 </td>
+                                                 <td className="p-4 text-sm text-purple-300 font-mono">
+@@ -222,7 +226,7 @@ const ActivityLogs: React.FC = () => {
+                                                         className="p-2 hover:bg-primary/20 text-gray-400 hover:text-primary rounded-lg transition-all"
+                                                         title="View Details"
+                                                     >
+-                                                        <span className="material-icons-outlined">visibility</span>
++                                                        <span aria-hidden="true" className="material-icons-outlined">visibility</span>
+                                                     </button>
+                                                 </td>
+                                             </tr>
+@@ -234,7 +238,7 @@ const ActivityLogs: React.FC = () => {
+ 
+                         {/* Pagination Footer */}
+                         <div className="p-4 border-t border-purple-900/20 flex items-center justify-between bg-background-dark/30">
+-                            <span className="text-xs text-gray-500">
++                            <span className="text-xs text-gray-400">
+                                 Page <span className="text-white font-bold">{page}</span> of <span className="text-white font-bold">{totalPages}</span>
+                                 <span className="mx-2">•</span>
+                                 Total: {totallogs} logs
+@@ -242,15 +246,17 @@ const ActivityLogs: React.FC = () => {
+                             <div className="flex gap-2">
+                                 <button
+                                     disabled={page === 1}
++                                    aria-label="Previous Page"
+                                     onClick={() => setPage(p => Math.max(1, p - 1))}
+-                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
++                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                                 >
+                                     Previous
+                                 </button>
+                                 <button
+                                     disabled={page === totalPages}
++                                    aria-label="Next Page"
+                                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+-                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
++                                    className="px-3 py-1 bg-surface-dark border border-purple-900/30 rounded text-xs text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+                                 >
+                                     Next
+                                 </button>

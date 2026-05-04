@@ -118,7 +118,7 @@ export const TrainingLevel = () => {
       const { data } = await stagesApi.run(stageId, selectedChallenge._id, code);
 
       if (data.passed) {
-        setOutput("⚡ Analyzing execution...\n\n" + data.outputSnapshot);
+        setOutput("✓ All tests passed successfully!\n\n⚡ Analyzing execution...\n\n" + data.outputSnapshot);
       } else {
         const errors = (data.testResults || [])
           .filter(r => !r.passed)
@@ -197,11 +197,11 @@ export const TrainingLevel = () => {
 
       Swal.fire({
         icon: 'success',
-        title: data.stageCompleted ? 'Stage Mastered!' : 'Exercise Completed',
+        title: data.stageCompleted ? 'Training Completed!' : 'Exercise Completed',
         html: `
           <div class="mb-4 text-xs opacity-80">
             ${data.stageCompleted
-            ? "You've successfully finished all exercises in this stage!"
+            ? "You've successfully finished this training stage!"
             : `Results analyzed. Quality Score: ${data.sonar?.qualityScore || 0}/100`}
           </div>
           ${xp ? `
@@ -212,7 +212,7 @@ export const TrainingLevel = () => {
         color: '#fff',
         timer: data.stageCompleted ? undefined : 4000,
         showConfirmButton: !!data.stageCompleted,
-        confirmButtonText: data.stageCompleted ? 'Return to Map' : undefined,
+        confirmButtonText: data.stageCompleted ? 'Return to Training' : undefined,
         didOpen: () => {
           if (xp) {
             setTimeout(() => {
@@ -255,9 +255,9 @@ export const TrainingLevel = () => {
         if (data.stageCompleted) {
           setShowReport(false);
           if (result.isConfirmed) {
-            navigate('/map');
+            navigate('/training');
           } else {
-            navigate(`/ training / ${stageId} `);
+            navigate(`/training/${stageId}`);
           }
         }
       });

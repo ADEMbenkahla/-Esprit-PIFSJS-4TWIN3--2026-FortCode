@@ -1,0 +1,41 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/Back/package.json b/Back/package.json
+index 53fb3fe..59f6c0a 100644
+--- a/Back/package.json
++++ b/Back/package.json
+@@ -16,6 +16,7 @@
+     "@simplewebauthn/server": "^13.3.0",
+     "axios": "^1.14.0",
+     "bcryptjs": "^3.0.3",
++    "compression": "^1.8.1",
+     "cors": "^2.8.6",
+     "dotenv": "^17.2.4",
+     "express": "^5.2.1",
+diff --git a/frontend/package.json b/frontend/package.json
+index fa198ff..6c332e1 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -5,9 +5,10 @@
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
++    "dev:fast": "vite build && vite preview --port 5173",
+     "build": "vite build",
+     "lint": "eslint .",
+-    "preview": "vite preview"
++    "preview": "vite preview --port 5173"
+   },
+   "dependencies": {
+     "@monaco-editor/react": "^4.7.0",
+@@ -52,4 +53,4 @@
+     "typescript": "^5.9.3",
+     "vite": "^7.3.1"
+   }
+-}
++}
+\ No newline at end of file

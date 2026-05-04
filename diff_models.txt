@@ -1,0 +1,29 @@
+commit e3ba552d6ac0c55382a29757918e8e039591c4da
+Author: Adem Ben Kahla <adembenkahla02bk@gmail.com>
+Date:   Sun Apr 26 16:11:36 2026 +0100
+
+    SM-Improve Performance & Accessibility
+
+diff --git a/Back/src/models/Activity.js b/Back/src/models/Activity.js
+index 869f9e0..e2816c8 100644
+--- a/Back/src/models/Activity.js
++++ b/Back/src/models/Activity.js
+@@ -44,4 +44,6 @@ const activitySchema = new mongoose.Schema({
+   }
+ });
+ 
++activitySchema.index({ timestamp: -1 });
++
+ module.exports = mongoose.model('Activity', activitySchema);
+diff --git a/Back/src/models/User.js b/Back/src/models/User.js
+index fa8592f..b2de3b8 100644
+--- a/Back/src/models/User.js
++++ b/Back/src/models/User.js
+@@ -145,4 +145,7 @@ const userSchema = new mongoose.Schema({
+   faceRegistered: { type: Boolean, default: false }
+ }, { timestamps: true });
+ 
++userSchema.index({ email: 1 });
++userSchema.index({ role: 1, isActive: 1 });
++
+ module.exports = mongoose.model("User", userSchema);
