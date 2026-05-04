@@ -41,10 +41,25 @@
     "supertest": "^7.2.2"
   },
   "jest": {
-    "setupFilesAfterEnv": [
-      "<rootDir>/__tests__/setup.js"
-    ],
+    "setupFilesAfterEnv": ["<rootDir>/__tests__/setup.js"],
     "testEnvironment": "node",
-    "testTimeout": 30000
+    "testTimeout": 30000,
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "controllers/**/*.js",
+      "services/**/*.js",
+      "utils/**/*.js",
+      "models/**/*.js",
+      "middlewares/**/*.js",
+      "routes/**/*.js",
+      "!**/node_modules/**",
+      "!**/__tests__/**",
+      "!**/coverage/**",
+      "!**/*.config.js",
+      "!server.js",
+      "!prisma/**"
+    ],
+    "coverageReporters": ["lcov", "text", "html", "json"],
+    "coverageDirectory": "coverage"
   }
 }
