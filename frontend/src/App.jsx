@@ -37,12 +37,13 @@ const VirtualRoom = lazy(() => import("./pages/frontOffice/pages/VirtualRoom"));
 const RequestRecruiterRole = lazy(() => import("./pages/frontOffice/pages/RequestRecruiterRole"));
 const TrainingLevel = lazy(() => import("./pages/frontOffice/pages/TrainingLevel").then(m => ({ default: m.TrainingLevel })));
 
-import { Navbar } from "./pages/frontOffice/components/layout/Navbar";
-import { Footer } from "./pages/frontOffice/components/layout/Footer";
+const Navbar = lazy(() => import("./pages/frontOffice/components/layout/Navbar").then(m => ({ default: m.Navbar })));
+const Footer = lazy(() => import("./pages/frontOffice/components/layout/Footer").then(m => ({ default: m.Footer })));
+const AccessibilityMenu = lazy(() => import("./components/AccessibilityMenu"));
+
 import { SidebarProvider } from "./context/SidebarContext";
 import { SettingsProvider, useSettings } from "./context/SettingsContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import AccessibilityMenu from "./components/AccessibilityMenu";
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-950">
@@ -75,7 +76,10 @@ function AppContent() {
 
   return (
     <>
-      {!shouldHideNavbar && <Navbar />}
+      <Suspense fallback={null}>
+        {!shouldHideNavbar && <Navbar />}
+      </Suspense>
+
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Login />} />
@@ -96,14 +100,14 @@ function AppContent() {
             }
           />
 
-          {/* Front Office Routes — only participants & recruiters; admin is redirected to back office */}
+          {/* Front Office Routes */}
           <Route path="/home" element={<FrontOfficeOnlyRoute><Home /></FrontOfficeOnlyRoute>} />
           <Route path="/map" element={<FrontOfficeOnlyRoute><WorldMap3D /></FrontOfficeOnlyRoute>} />
           <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
           <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
           <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
           <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
-                    <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
+          <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
           <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />
           <Route path="/dashboard" element={<FrontOfficeOnlyRoute><UserDashboard /></FrontOfficeOnlyRoute>} />
           <Route path="/armory" element={<FrontOfficeOnlyRoute><Armory /></FrontOfficeOnlyRoute>} />
@@ -113,7 +117,7 @@ function AppContent() {
           <Route path="/level/:id" element={<FrontOfficeOnlyRoute><div>Challenge Page Coming Soon!</div></FrontOfficeOnlyRoute>} />
           <Route path="/request-recruiter" element={<FrontOfficeOnlyRoute><RequestRecruiterRole /></FrontOfficeOnlyRoute>} />
 
-          {/* Back Office & Admin — only admin; participants/recruiters redirected to /home */}
+          {/* Back Office & Admin */}
           <Route path="/backoffice/dashboard" element={<AdminOnlyRoute><Dashboard /></AdminOnlyRoute>} />
           <Route path="/backoffice/users" element={<AdminOnlyRoute><UserTracker /></AdminOnlyRoute>} />
           <Route path="/backoffice/virtual-rooms" element={<AdminOnlyRoute><VirtualRooms /></AdminOnlyRoute>} />
@@ -126,9 +130,14 @@ function AppContent() {
           <Route path="/my-activity" element={<MyActivity />} />
         </Routes>
       </Suspense>
-      {!shouldHideNavbar && <Footer />}
 
-      <AccessibilityMenu />
+      <Suspense fallback={null}>
+        {!shouldHideNavbar && <Footer />}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <AccessibilityMenu />
+      </Suspense>
 
       <ReadingGuideLine />
     </>

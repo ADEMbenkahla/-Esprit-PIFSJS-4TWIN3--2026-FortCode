@@ -45,15 +45,32 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom', 'react-router-dom'],
-                    three: ['three', 'react-unity-webgl'],
-                    monaco: ['monaco-editor', '@monaco-editor/react'],
-                    ui: ['lucide-react', 'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-label']
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('three')) {
+                            return 'three-core';
+                        }
+                        if (id.includes('react-unity-webgl')) {
+                            return 'unity';
+                        }
+                        if (id.includes('monaco-editor')) {
+                            return 'monaco';
+                        }
+                        if (id.includes('face-api.js')) {
+                            return 'face-api';
+                        }
+                        if (id.includes('lucide-react')) {
+                            return 'icons';
+                        }
+                        if (id.includes('framer-motion')) {
+                            return 'animations';
+                        }
+                        // Avoid splitting React core libs manually to prevent circular dependencies
+                    }
                 }
             }
         },
-        chunkSizeWarningLimit: 1000
+        chunkSizeWarningLimit: 1200
     },
 
     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
