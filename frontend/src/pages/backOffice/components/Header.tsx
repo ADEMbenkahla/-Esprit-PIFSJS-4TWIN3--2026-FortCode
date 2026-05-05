@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSidebar } from '../../../context/SidebarContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../../config';
 
 interface HeaderProps {
   title?: string;
@@ -27,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
 
-        const response = await fetch("http://localhost:5000/api/role-requests?status=pending", {
+        const response = await fetch(`${API_BASE_URL}/role-requests?status=pending`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -3,6 +3,7 @@ import logoImg from "../assets/logo.png";
 import "./pages.css";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 function ForgotPassword() {
     const navigate = useNavigate();
@@ -38,7 +39,7 @@ function ForgotPassword() {
 
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/forgot-password", {
+            const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

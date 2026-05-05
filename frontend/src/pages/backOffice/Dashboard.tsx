@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import { format } from "date-fns";
 import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
+import { API_BASE_URL } from "../../config";
 
 interface ActivityLog {
     _id: string;
@@ -35,7 +36,7 @@ const Dashboard: React.FC = () => {
         const fetchStats = async () => {
             try {
                 const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-                const res = await fetch("http://localhost:5000/api/admin/dashboard/stats", {
+                const res = await fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const data = await res.json();

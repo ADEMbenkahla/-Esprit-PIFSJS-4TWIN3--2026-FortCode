@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import { API_BASE_URL } from '../config';
 
 const SettingsContext = createContext();
 
@@ -64,7 +65,7 @@ export const SettingsProvider = ({ children }) => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -215,7 +216,7 @@ export const SettingsProvider = ({ children }) => {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
 
-      await fetch('http://localhost:5000/api/auth/profile', {
+      await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -293,7 +294,7 @@ export const SettingsProvider = ({ children }) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
-    const response = await fetch('http://localhost:5000/api/auth/2fa/setup', {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/setup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -315,7 +316,7 @@ export const SettingsProvider = ({ children }) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
-    const response = await fetch('http://localhost:5000/api/auth/2fa/verify', {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -338,7 +339,7 @@ export const SettingsProvider = ({ children }) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
-    const response = await fetch('http://localhost:5000/api/auth/2fa/disable', {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/disable`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -361,7 +362,7 @@ export const SettingsProvider = ({ children }) => {
     // Sync avatar separately (not in settings object)
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/profile', {
+      fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -378,7 +379,7 @@ export const SettingsProvider = ({ children }) => {
     // Sync username separately (not in settings object)
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/profile', {
+      fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -393,7 +394,7 @@ export const SettingsProvider = ({ children }) => {
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
-    const response = await fetch('http://localhost:5000/api/auth/profile', {
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -450,7 +451,7 @@ export const SettingsProvider = ({ children }) => {
 
     const token = localStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/profile', {
+      fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -504,7 +505,7 @@ export const SettingsProvider = ({ children }) => {
       if (!token) throw new Error('Not authenticated');
 
       // 1. Get options from server
-      const optionsRes = await fetch('http://localhost:5000/api/auth/webauthn/register-options', {
+      const optionsRes = await fetch(`${API_BASE_URL}/auth/webauthn/register-options`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const options = await optionsRes.json();
@@ -513,7 +514,7 @@ export const SettingsProvider = ({ children }) => {
       const attResp = await startRegistration(options);
 
       // 3. Verify response with server
-      const verificationRes = await fetch('http://localhost:5000/api/auth/webauthn/register-verify', {
+      const verificationRes = await fetch(`${API_BASE_URL}/auth/webauthn/register-verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -534,7 +535,7 @@ export const SettingsProvider = ({ children }) => {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
-      const response = await fetch('http://localhost:5000/api/auth/face/register', {
+      const response = await fetch(`${API_BASE_URL}/auth/face/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

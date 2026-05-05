@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import logo from '../../../assets/logo.png';
 import { useSidebar } from '../../../context/SidebarContext';
 import { useSocket } from '../../../context/SocketContext';
+import { API_BASE_URL } from '../../../config';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Sidebar: React.FC = () => {
         }
 
         // 2. Fetch fresh data from database
-        const response = await fetch("http://localhost:5000/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

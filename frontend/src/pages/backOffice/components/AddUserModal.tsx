@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Swal from 'sweetalert2';
 import { AvatarPicker } from './AvatarPicker';
+import { API_BASE_URL } from '../../../config';
 
 interface AddUserModalProps {
     isOpen: boolean;
@@ -36,7 +37,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
         try {
             const token = sessionStorage.getItem("token") || localStorage.getItem("token");
             const body = { username, email, password, role, avatar };
-            const response = await fetch('http://localhost:5000/api/auth/admin/users', {
+            const response = await fetch(`${API_BASE_URL}/auth/admin/users`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

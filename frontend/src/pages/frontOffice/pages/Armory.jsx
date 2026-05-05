@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card';
 import { ScrollButton } from '../components/ui/ScrollButton';
 import { useSettings } from "../../../context/SettingsContext";
 import { RankBadge } from '../components/Gamification/RankBadge';
+import { API_BASE_URL } from "../../../config";
 
 const RANK_THRESHOLDS = [
   { rank: "Radiant", xp: 100000 },
@@ -32,7 +33,7 @@ export default function Armory() {
       try {
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
-        const response = await fetch("http://localhost:5000/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (response.ok) {

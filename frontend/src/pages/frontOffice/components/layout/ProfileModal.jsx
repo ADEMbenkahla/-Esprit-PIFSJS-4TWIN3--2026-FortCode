@@ -13,6 +13,7 @@ import Swal from "sweetalert2";
 import { AvatarPicker } from "./AvatarPicker";
 import { Briefcase, Video, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react";
 import { getMyVirtualRoomRequest, deleteMyAccount } from "../../../../services/api";
+import { API_BASE_URL } from "../../../../config";
 
 export function ProfileModal({ isOpen, onClose, userData, onUpdateSuccess }) {
     const [formData, setFormData] = useState({
@@ -61,7 +62,7 @@ export function ProfileModal({ isOpen, onClose, userData, onUpdateSuccess }) {
 
         try {
             const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/auth/profile", {
+            const response = await fetch(`${API_BASE_URL}/auth/profile`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
