@@ -146,6 +146,12 @@ export const stagesApi = {
     explain: (code: string, language: string, level: string = 'simple', challengeId?: string) => api.post('/stages/ai/explain', { code, language, level, challengeId }),
 };
 
+export const missionsApi = {
+    me: (params: ApiParams = {}) => api.get('/missions/me', { params }),
+    get: (id: string) => api.get(`/missions/${id}`),
+    submit: (missionId: string, challengeId: string, code: string) => api.post(`/missions/${missionId}/challenges/${challengeId}/submit`, { code }),
+};
+
 export const adminStagesApi = {
     list: () => api.get('/stages'),
     create: (payload: ApiPayload) => api.post('/stages', payload),

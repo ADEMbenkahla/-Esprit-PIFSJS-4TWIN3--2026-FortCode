@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { stagesApi } from "../../../services/api";
+import { missionsApi } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
 import { Castle, Cpu, Lock, Shield, Sword, Trophy } from "lucide-react";
 
@@ -21,7 +21,7 @@ export default function WorldMap3D() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await stagesApi.me();
+        const { data } = await missionsApi.me();
         if (!cancelled) setStages(data);
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message);
@@ -485,7 +485,7 @@ export default function WorldMap3D() {
         if (hits.length && hits[0].instanceId != null) {
           const meta = stageMeta[hits[0].instanceId];
           if (meta && !meta.locked) {
-            navigate(`/training/${meta.id}`);
+            navigate(`/map/mission/${meta.id}`);
           }
         }
       };

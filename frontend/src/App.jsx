@@ -36,6 +36,8 @@ const UnityCastlePage = lazy(() => import("./pages/frontOffice/pages/UnityCastle
 const VirtualRoom = lazy(() => import("./pages/frontOffice/pages/VirtualRoom"));
 const RequestRecruiterRole = lazy(() => import("./pages/frontOffice/pages/RequestRecruiterRole"));
 const TrainingLevel = lazy(() => import("./pages/frontOffice/pages/TrainingLevel").then(m => ({ default: m.TrainingLevel })));
+const MissionDetail = lazy(() => import("./pages/frontOffice/pages/MissionDetail"));
+const MissionLevel = lazy(() => import("./pages/frontOffice/pages/MissionLevel").then(m => ({ default: m.MissionLevel })));
 
 const Navbar = lazy(() => import("./pages/frontOffice/components/layout/Navbar").then(m => ({ default: m.Navbar })));
 const Footer = lazy(() => import("./pages/frontOffice/components/layout/Footer").then(m => ({ default: m.Footer })));
@@ -66,6 +68,7 @@ function AppContent() {
     location.pathname.startsWith("/backoffice") ||
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/training/") ||
+    location.pathname.startsWith("/map/mission/") ||
     location.pathname.startsWith("/stages/") ||
     location.pathname.startsWith("/my-activity") ||
     location.pathname.startsWith("/virtual-room") ||
@@ -106,6 +109,8 @@ function AppContent() {
           <Route path="/training" element={<FrontOfficeOnlyRoute><TrainingGrounds /></FrontOfficeOnlyRoute>} />
           <Route path="/training/:stageId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><TrainingLevel /></FrontOfficeOnlyRoute>} />
           <Route path="/training/:stageId" element={<FrontOfficeOnlyRoute><StageDetail /></FrontOfficeOnlyRoute>} />
+          <Route path="/map/mission/:missionId" element={<FrontOfficeOnlyRoute><MissionDetail /></FrontOfficeOnlyRoute>} />
+          <Route path="/map/mission/:missionId/challenge/:challengeId" element={<FrontOfficeOnlyRoute><MissionLevel /></FrontOfficeOnlyRoute>} />
           <Route path="/stages/:stageId" element={<FrontOfficeOnlyRoute><LegacyStagesRedirect /></FrontOfficeOnlyRoute>} />
           <Route path="/arena" element={<FrontOfficeOnlyRoute><DuelLobby /></FrontOfficeOnlyRoute>} />
           <Route path="/arena/battle/:matchId" element={<FrontOfficeOnlyRoute><LiveBattle /></FrontOfficeOnlyRoute>} />

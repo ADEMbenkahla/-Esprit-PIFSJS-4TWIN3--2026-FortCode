@@ -28,7 +28,7 @@ const stageSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["training", "mission"],
+      enum: ["training"],
       default: "training",
     },
     prerequisiteStageId: {

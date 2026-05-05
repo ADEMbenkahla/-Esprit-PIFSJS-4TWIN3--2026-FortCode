@@ -44,6 +44,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/admin/activity", require("./routes/activityRoutes"));
 app.use("/api/admin/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/stages", require("./routes/stageRoutes"));
+app.use("/api/missions", require("./routes/missionRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
 app.use("/api", require("./routes/virtualRoomRoutes"));
 app.use("/api/battle-rooms", require("./routes/battleRoomRoutes"));
