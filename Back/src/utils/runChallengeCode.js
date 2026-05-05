@@ -90,6 +90,8 @@ function runMockValidator(language, userCode) {
   };
 }
 
+const { spawnSync } = require("child_process");
+
 function runPythonTests(userCode, testCases) {
   const results = [];
   const start = Date.now();
@@ -99,31 +101,65 @@ function runPythonTests(userCode, testCases) {
   }
 
   for (const tc of testCases) {
-    const assertion = (tc.assertion || "").toLowerCase();
-    const cleanCode = (userCode || "").replace(/\s+/g, "").toLowerCase();
+    const name = tc.name || "Test";
+    const assertion = (tc.assertion || "").trim();
 
-    // Basic heuristic: check if function name and return pattern exist
-    // Example assertion: "square(5) === 25"
-    // We check if "def square" is in code and if it looks correct
-    let passed = false;
-    if (assertion.includes("square")) {
-      passed = cleanCode.includes("defsquare") && (cleanCode.includes("**2") || cleanCode.includes("*n"));
-    } else if (assertion.includes("hello")) {
-      passed = cleanCode.includes("defhello") && cleanCode.includes("pythoniscool");
-    } else {
-      // Fallback for others
-      passed = userCode.length > 20;
+    // Construct a Python script that defines the user's function and then asserts the condition.
+    // We use a try-except block to capture assertion errors.
+    const script = `
+import sys
+import json
+
+def run_test():
+    try:
+${userCode.split('\n').map(line => '        ' + line).join('\n')}
+        
+        # Test Assertion
+        result = ${assertion.replace(/===/g, '==').replace(/!==/g, '!=')}
+        if result:
+            print(json.dumps({"passed": True}))
+        else:
+            print(json.dumps({"passed": False, "error": "Assertion failed: ${assertion}"}))
+    except Exception as e:
+        print(json.dumps({"passed": False, "error": str(e)}))
+
+if __name__ == "__main__":
+    run_test()
+`;
+
+    try {
+      const pyProcess = spawnSync("python", ["-c", script], { encoding: "utf8", timeout: 3000 });
+
+      if (pyProcess.error) {
+        results.push({ name, passed: false, error: pyProcess.error.message });
+        continue;
+      }
+
+      if (pyProcess.status !== 0) {
+        // Might be a syntax error or crash
+        const errMsg = pyProcess.stderr.trim() || pyProcess.stdout.trim() || "Python execution failed";
+        results.push({ name, passed: false, error: errMsg });
+        continue;
+      }
+
+      try {
+        const output = JSON.parse(pyProcess.stdout.trim());
+        results.push({ name, passed: output.passed, error: output.error || null });
+      } catch (parseErr) {
+        results.push({ name, passed: false, error: "Malformed output from Python runner" });
+      }
+    } catch (err) {
+      results.push({ name, passed: false, error: err.message });
     }
-
-    results.push({ name: tc.name, passed, error: passed ? null : "Logic mismatch (Python validation)" });
   }
 
-  return {
-    passed: results.every(r => r.passed),
-    testResults: results,
-    executionTimeMs: Date.now() - start,
-    outputSnapshot: results.every(r => r.passed) ? "Code validated successfully." : "Test case mismatch.",
-  };
+  const executionTimeMs = Date.now() - start;
+  const passed = results.length > 0 && results.every((r) => r.passed);
+  const outputSnapshot = results.every(r => r.passed)
+    ? "All tests passed successfully!"
+    : results.map(r => `${r.passed ? '✓' : '✗'} ${r.name}${r.error ? ': ' + r.error : ''}`).join('\n');
+
+  return { passed, testResults: results, executionTimeMs, outputSnapshot };
 }
 
 function runChallengeCode(language, userCode, testCases) {

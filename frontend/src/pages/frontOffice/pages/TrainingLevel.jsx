@@ -191,7 +191,7 @@ export const TrainingLevel = () => {
       setOutput(logLines);
 
       const { xp } = data;
-      
+
       // Stage training always gives 100% XP on success
       const resultType = 'win';
 
@@ -238,7 +238,7 @@ export const TrainingLevel = () => {
                   </div>
                 `;
                 container.innerHTML = xpBarHtml;
-                
+
                 // Animate the bar (100% for training success)
                 setTimeout(() => {
                   const bar = document.getElementById('training-xp-bar');
@@ -273,7 +273,7 @@ export const TrainingLevel = () => {
       setOutput(`❌ Error: ${msg} \n\n${err.response?.data?.output || ""} `);
 
       const xp = err.response?.data?.xp;
-      
+
       // Stage failure gives 20% XP
       const resultType = 'defeat';
 
@@ -307,7 +307,7 @@ export const TrainingLevel = () => {
                   </div>
                 `;
                 container.innerHTML = xpBarHtml;
-                
+
                 // Animate the bar (20% for training failure)
                 setTimeout(() => {
                   const bar = document.getElementById('training-xp-bar-fail');
@@ -635,13 +635,13 @@ export const TrainingLevel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</h3>
-                      <div className={`inline - flex items - center gap - 2 px - 3 py - 1 rounded - full border text - [10px] font - bold uppercase tracking - widest ${submissionResult.passed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'} `}>
-                        {submissionResult.passed ? 'Result: Optimal' : 'Result: Logic Error'}
+                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${(submissionResult.passed || completed.some(c => String(c.challengeId || c) === String(selectedChallenge?._id))) ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                        {(submissionResult.passed || completed.some(c => String(c.challengeId || c) === String(selectedChallenge?._id))) ? 'Result: Optimal' : 'Result: Logic Error'}
                       </div>
                     </div>
                     <div className="text-right">
                       <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">XP Reward</h3>
-                      <p className="text-xl font-black text-emerald-400">+{submissionResult.xpAwarded ?? 0}</p>
+                      <p className="text-xl font-black text-emerald-400">+{submissionResult.xpAwarded || selectedChallenge?.xpReward || 0}</p>
                     </div>
                   </div>
 

@@ -532,6 +532,34 @@ exports.runChallenge = async (req, res) => {
     }
 
     const run = runChallengeCode(challenge.language, code || "", challenge.testCases || []);
+
+    // Persist failed "Run Tests" attempts so star calculation on submit is accurate.
+    let progress = await UserStageProgress.findOne({ userId, stageId });
+    if (!progress) {
+      progress = new UserStageProgress({ userId, stageId, completedChallenges: [], status: "available" });
+    }
+    if (!progress.failedAttemptsByChallenge) progress.failedAttemptsByChallenge = new Map();
+    if (!progress.lastCodeByChallenge) progress.lastCodeByChallenge = new Map();
+
+    const failKey = String(challenge._id);
+    const currentFails = Number(progress.failedAttemptsByChallenge.get(failKey) || 0);
+    const lastCode = String(progress.lastCodeByChallenge.get(failKey) || "");
+    const currentCode = String(code || "").trim();
+    const isMeaningfulCode = currentCode.length > 0;
+    const isDuplicate = currentCode === lastCode;
+
+    if (!run.passed) {
+      if (isMeaningfulCode && !isDuplicate) {
+        progress.failedAttemptsByChallenge.set(failKey, currentFails + 1);
+        progress.lastCodeByChallenge.set(failKey, currentCode);
+        await progress.save();
+      }
+    } else if (isMeaningfulCode) {
+      // Keep latest tested code to prevent duplicate-fail spam counting.
+      progress.lastCodeByChallenge.set(failKey, currentCode);
+      await progress.save();
+    }
+
     res.json({
       passed: run.passed,
       testResults: run.testResults,
@@ -611,13 +639,15 @@ exports.submitChallenge = async (req, res) => {
         progress.failedAttemptsByChallenge.set(failKey, nextFails);
         const cidStr = challengeId.toString();
         if (!progress.lastSubmissionReport) progress.lastSubmissionReport = new Map();
-        progress.lastSubmissionReport.set(cidStr, {
+        const report = {
           fullAiAnalysis,
           sonar,
           executionTimeMs: run.executionTimeMs,
           output: run.outputSnapshot,
-          code: currentCode
-        });
+          code: currentCode,
+          passed: run.passed
+        };
+        progress.lastSubmissionReport.set(cidStr, report);
 
         await progress.save();
 
@@ -723,77 +753,58 @@ exports.submitChallenge = async (req, res) => {
       progress.starsByChallenge.set(cidStr, stars);
     }
 
+    if (isNewCompletion) {
+      progress.completedChallenges.push(challenge._id);
+    }
+
+    let xpResult = null;
+    if (isNewCompletion) {
+      try {
+        xpResult = await gamificationService.awardXP(userId, challenge.xpReward || 50, {
+          category: "stage",
+          stageId,
+          challengeId: challenge._id,
+        });
+      } catch (err) {
+        console.error("XP Award Error:", err);
+      }
+    }
+
     // Save persistent report
     if (!progress.lastSubmissionReport) progress.lastSubmissionReport = new Map();
-    progress.lastSubmissionReport.set(cidStr, {
+    const report = {
       fullAiAnalysis,
       sonar,
       executionTimeMs: run.executionTimeMs,
       output: run.outputSnapshot,
-      code: currentCode
-    });
+      code: currentCode,
+      passed: run.passed,
+      xpAwarded: xpResult?.gainedXP || 0
+    };
+    progress.lastSubmissionReport.set(cidStr, report);
 
-    if (isNewCompletion) {
-      progress.completedChallenges.push(challenge._id);
+    // Reset failure counter BEFORE saving (so it's persisted)
+    if (currentFails > 0) {
+      progress.failedAttemptsByChallenge.set(failKey, 0);
+      progress.lastCodeByChallenge.set(failKey, currentCode);
     }
 
     const stageFresh = await Stage.findById(stageId);
     recomputeProgressFields(progress, stageFresh);
     await progress.save();
 
-    let xpResult = null;
-    if (isNewCompletion) {
-      try {
-        xpResult = await gamificationService.addXP(userId, challenge.xpReward || 100, "stage");
-      } catch (err) {
-        console.error("XP Award Error:", err);
-      }
-    }
+    console.log("[STUCK DETECTOR] Success - userId:", userId, "challengeId:", challengeId, "stars:", stars, "totalAttempts:", totalAttempts);
 
-    let nextStageUnlocked = false;
-    if (progress.status === "completed") {
-      const next = await Stage.find({
-        prerequisiteStageId: stageId,
-        category: stageFresh.category,
-      })
-        .sort({ order: 1 })
-        .select("_id");
-      nextStageUnlocked = next.length > 0;
-    }
-
-    // Passed: reset failure counter and last code for this challenge.
-    if (currentFails > 0) {
-      progress.failedAttemptsByChallenge.set(failKey, 0);
-      progress.lastCodeByChallenge.set(failKey, currentCode);
-    }
-
-    console.log("[STUCK DETECTOR] Success submission - userId:", userId, "challengeId:", challengeId, "stuckLevel: 0", "autoHintTrigger: false");
-
-    const submissionId = `${challengeId}-${Date.now()}`;
-
-    res.json({
-      message: "Submission accepted",
+    return res.json({
+      message: "Tests passed! Challenge complete.",
       passed: true,
-      xpAwarded: xpResult?.xpAdded || 0,
-      xpReward: challenge.xpReward || 100,
       testResults: run.testResults,
       executionTimeMs: run.executionTimeMs,
       outputSnapshot: run.outputSnapshot,
       sonar,
       aiFeedback,
       fullAiAnalysis,
-      isStuck: false,
-      failedSubmissionsInRow: 0,
-      stuckLevel: 0,
-      autoHintTrigger: false,
-      submissionId,
-      progress: {
-        status: progress.status,
-        progressPercent: progress.progressPercent,
-        completedChallenges: progress.completedChallenges,
-        completedAt: progress.completedAt,
-      },
-      stageCompleted: progress.status === "completed",
+      stars,
       xp: xpResult ? {
         gainedXP: xpResult.gainedXP,
         points: xpResult.points,
@@ -801,7 +812,14 @@ exports.submitChallenge = async (req, res) => {
         levelUp: xpResult.levelUp,
         newBadges: xpResult.newBadges || []
       } : null,
-      nextStageUnlocked,
+      stageCompleted: progress.status === "completed",
+      report,
+      progress: {
+        status: progress.status,
+        progressPercent: progress.progressPercent,
+        completedChallenges: progress.completedChallenges,
+        completedAt: progress.completedAt,
+      },
     });
   } catch (err) {
     console.error(err);

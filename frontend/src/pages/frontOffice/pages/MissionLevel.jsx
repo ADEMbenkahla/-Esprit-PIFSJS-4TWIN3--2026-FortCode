@@ -17,6 +17,9 @@ export const MissionLevel = () => {
     const [output, setOutput] = useState("");
     const [isRunning, setIsRunning] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [submissionResult, setSubmissionResult] = useState(null);
+    const [showReport, setShowReport] = useState(false);
+    const [activeReportTab, setActiveReportTab] = useState("overview");
 
     const fetchMissionData = async () => {
         try {
@@ -51,7 +54,12 @@ export const MissionLevel = () => {
             const found = mission.challenges.find(c => String(c?._id) === String(challengeId));
             if (found && String(found._id) !== String(selectedChallenge?._id)) {
                 setSelectedChallenge(found);
-                setCode(found.starterCode || "");
+                setCode(found.savedReport?.code || found.starterCode || "");
+                if (found.savedReport) {
+                    setSubmissionResult(found.savedReport);
+                } else {
+                    setSubmissionResult(null);
+                }
                 setOutput("");
             }
         }
@@ -64,32 +72,33 @@ export const MissionLevel = () => {
 
         try {
             const { data } = await missionsApi.submit(missionId, selectedChallenge._id, code);
+            // Success (200): tests passed
             setOutput("✓ Target neutralized. Verification successful.");
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Objective Complete',
-                text: 'Tactical solution verified and uploaded.',
-                background: '#0f172a',
-                color: '#fff',
-                confirmButtonColor: '#3b82f6'
-            }).then(() => {
-                fetchMissionData();
-                if (data.stageCompleted) {
-                    navigate(`/map/mission/${missionId}`);
-                }
-            });
+            setCompleted(data.progress?.completedChallenges || []);
+            setSubmissionResult(data.report);
+            setShowReport(true);
+            fetchMissionData();
         } catch (err) {
             console.error("Submit error:", err);
-            const msg = err.response?.data?.message || "Tactical error detected.";
-            setOutput(`❌ Error: ${msg}`);
-            Swal.fire({
-                icon: 'error',
-                title: 'Mission Compromised',
-                text: 'Logic failure in tactical execution.',
-                background: '#0f172a',
-                color: '#fff'
-            });
+            const responseData = err.response?.data;
+
+            // The backend now returns 400 when tests fail (with report inside)
+            if (responseData?.report) {
+                setSubmissionResult(responseData.report);
+                setShowReport(true);
+            }
+
+            // Update completed list even on failure (progress might have changed)
+            if (responseData?.progress?.completedChallenges) {
+                setCompleted(responseData.progress.completedChallenges);
+            }
+
+            if (responseData?.passed === false) {
+                setOutput("❌ Tests did not pass. Check the Mission Report for details.");
+            } else {
+                const msg = responseData?.message || "Tactical error detected.";
+                setOutput(`❌ Error: ${msg}`);
+            }
         } finally {
             setIsUpdating(false);
         }
@@ -120,6 +129,15 @@ export const MissionLevel = () => {
                 </div>
 
                 <div className="flex gap-3">
+                    {(submissionResult || selectedChallenge?.savedReport) && (
+                        <button
+                            onClick={() => setShowReport(true)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-slate-700"
+                        >
+                            <Zap size={18} className="text-amber-400" />
+                            View Intelligence
+                        </button>
+                    )}
                     <button
                         onClick={submitSolution}
                         disabled={isUpdating}
@@ -141,13 +159,22 @@ export const MissionLevel = () => {
                                     key={c._id}
                                     onClick={() => navigate(`/map/mission/${missionId}/challenge/${c._id}`)}
                                     className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${String(selectedChallenge?._id) === String(c._id)
-                                            ? 'bg-blue-500/10 border-blue-500/40 text-blue-200'
-                                            : 'bg-slate-900/60 border-slate-800 hover:border-slate-600'
+                                        ? 'bg-blue-500/10 border-blue-500/40 text-blue-200'
+                                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-600'
                                         }`}
                                 >
-                                    <div className="flex items-center gap-3">
-                                        {completed.some(comp => String(comp.challengeId || comp) === String(c._id)) ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Circle size={16} className="text-slate-700" />}
-                                        <span className="text-xs font-bold">{c.title}</span>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-3">
+                                            {completed.some(comp => String(comp.challengeId || comp) === String(c._id)) ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Circle size={16} className="text-slate-700" />}
+                                            <span className="text-xs font-bold">{c.title}</span>
+                                        </div>
+                                        {completed.some(comp => String(comp.challengeId || comp) === String(c._id)) && (
+                                            <div className="flex gap-0.5 ml-7">
+                                                {[...Array(3)].map((_, i) => (
+                                                    <Star key={i} size={10} className={`${i < (c.stars || 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-800'}`} />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <Sword size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
@@ -201,6 +228,192 @@ export const MissionLevel = () => {
                     </div>
                 </div>
             </div>
+
+            {showReport && submissionResult && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md">
+                    <div className="max-w-4xl w-full bg-slate-900 border border-blue-900/40 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(37,99,235,0.2)] flex flex-col md:flex-row max-h-[90vh]">
+                        <div className="w-full md:w-1/3 p-8 border-r border-blue-500/10 bg-slate-900/50 flex flex-col">
+                            <div className="mb-8">
+                                <p className="text-[10px] font-black tracking-[0.4em] text-blue-500 uppercase mb-3 italic">Combat Analysis</p>
+                                <h2 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">Mission Report</h2>
+                            </div>
+
+                            <div className="flex flex-col gap-2 mb-8">
+                                {["overview", "bugs", "resources"].map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveReportTab(tab)}
+                                        className={`px-5 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-left transition-all border ${activeReportTab === tab
+                                            ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_30px_rgba(37,99,235,0.4)] translate-x-2'
+                                            : 'bg-slate-800/80 border-slate-700 text-slate-500 hover:text-slate-300'
+                                            }`}
+                                    >
+                                        {tab === 'bugs' && (submissionResult.fullAiAnalysis?.bugs?.length > 0) && (
+                                            <span className="float-right bg-rose-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px] animate-pulse">
+                                                {submissionResult.fullAiAnalysis.bugs.length}
+                                            </span>
+                                        )}
+                                        {tab === 'overview' ? 'SITREP' : tab}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-end">
+                                <button
+                                    onClick={() => setShowReport(false)}
+                                    className="w-full py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border border-slate-700"
+                                >
+                                    Acknowledge
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 p-10 overflow-y-auto bg-slate-950/40 flex flex-col">
+                            {activeReportTab === "overview" && (
+                                <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-500">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-2">
+                                            <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Tactical Status</h3>
+                                            <div className={`inline-flex items-center gap-3 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${(submissionResult.passed || completed.some(c => String(c.challengeId || c) === String(selectedChallenge?._id))) ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
+                                                <div className={`w-2 h-2 rounded-full ${(submissionResult.passed || completed.some(c => String(c.challengeId || c) === String(selectedChallenge?._id))) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`} />
+                                                {(submissionResult.passed || completed.some(c => String(c.challengeId || c) === String(selectedChallenge?._id))) ? 'Optimal Execution' : 'Logic Compromised'}
+                                            </div>
+                                        </div>
+                                        <div className="text-right space-y-1">
+                                            <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Merit Points</h3>
+                                            <p className="text-4xl font-black text-blue-400 italic">+{submissionResult.xpAwarded || selectedChallenge?.xpReward || 0}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="flex flex-col items-center justify-center p-8 bg-slate-900/80 rounded-3xl border border-blue-900/20 shadow-inner">
+                                            <div className="relative mb-6">
+                                                <svg className="w-32 h-32 transform -rotate-90">
+                                                    <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                                                    <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent"
+                                                        strokeDasharray={Math.PI * 120}
+                                                        strokeDashoffset={Math.PI * 120 * (1 - (submissionResult.sonar?.qualityScore || 0) / 100)}
+                                                        className="text-blue-500 transition-all duration-1000 ease-out"
+                                                    />
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-4xl font-black text-white italic">{submissionResult.sonar?.qualityScore || 0}</span>
+                                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Combat Index</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 px-5 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black text-blue-400 tracking-widest">
+                                                <Play size={12} fill="currentColor" />
+                                                {submissionResult.executionTimeMs || 0}MS RESPONSE
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-3">
+                                            <div className="p-4 bg-slate-900/40 rounded-2xl border border-slate-800 flex justify-between items-center group hover:border-blue-500/20 transition-all">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase">Latency</span>
+                                                <span className="text-sm font-black text-white italic">{submissionResult.executionTimeMs || 0}ms</span>
+                                            </div>
+                                            <div className="p-4 bg-slate-900/40 rounded-2xl border border-slate-800 flex justify-between items-center group hover:border-emerald-500/20 transition-all">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase">Reliability</span>
+                                                <span className="text-sm font-black text-emerald-400 italic">GRADE A</span>
+                                            </div>
+                                            <div className="p-4 bg-slate-900/40 rounded-2xl border border-slate-800 flex justify-between items-center group hover:border-blue-500/20 transition-all">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase">Complexity</span>
+                                                <span className="text-sm font-black text-blue-400 italic">NOMINAL</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Tactical Briefing</h3>
+                                        <div className="p-6 bg-blue-500/5 border-l-4 border-blue-500 rounded-r-2xl text-sm text-slate-300 italic leading-relaxed font-medium">
+                                            "{submissionResult.fullAiAnalysis?.bugSummary || "Heuristic scan complete. Tactical performance meets mission parameters."}"
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeReportTab === "bugs" && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+                                    <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Vulnerability Assessment</h3>
+                                    {submissionResult.fullAiAnalysis?.bugs?.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {submissionResult.fullAiAnalysis.bugs.map((bug, i) => (
+                                                <div key={i} className="p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 group hover:bg-rose-500/10 transition-all">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="px-3 py-1 rounded bg-rose-500 text-white text-[9px] font-black uppercase">SECTOR {bug.line}</span>
+                                                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{bug.type}</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-base font-black text-rose-100 mb-3 uppercase italic tracking-tight">{bug.message}</p>
+                                                    <div className="pl-6 border-l-2 border-rose-500/30 space-y-5">
+                                                        <div className="space-y-2">
+                                                            <p className="text-[9px] font-black text-rose-500/60 uppercase tracking-widest italic">Intelligence Breakdown</p>
+                                                            <p className="text-xs text-slate-400 leading-relaxed font-medium">{bug.explanation}</p>
+                                                        </div>
+                                                        {bug.suggestion && (
+                                                            <div className="space-y-2">
+                                                                <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest italic">Tactical Solution</p>
+                                                                <pre className="p-4 bg-slate-900 rounded-xl text-[11px] font-mono text-emerald-400 overflow-x-auto border border-emerald-500/10 shadow-inner">
+                                                                    {bug.suggestion}
+                                                                </pre>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-20 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl">
+                                            <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-6 opacity-20" />
+                                            <p className="text-xs font-black text-emerald-500 uppercase tracking-widest">Tactical Purity Maintained</p>
+                                            <p className="text-[10px] text-slate-600 mt-2 italic">"No logic anomalies detected in current execution pass."</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeReportTab === "resources" && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-500">
+                                    <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Strategic Intelligence</h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {submissionResult.fullAiAnalysis?.recommendations?.length > 0 ? (
+                                            submissionResult.fullAiAnalysis.recommendations.map((res, i) => (
+                                                <a
+                                                    key={i}
+                                                    href={res.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="group p-6 bg-slate-900/50 rounded-3xl border border-blue-900/20 hover:border-blue-500/40 transition-all hover:bg-slate-900 relative overflow-hidden"
+                                                >
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`px-3 py-1 rounded text-[9px] font-black uppercase ${res.type === 'video' ? 'bg-rose-500/20 text-rose-500' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                                {res.type}
+                                                            </span>
+                                                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{res.difficulty} LEVEL</span>
+                                                        </div>
+                                                        <Play size={16} className="text-blue-500 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0" />
+                                                    </div>
+                                                    <h4 className="text-lg font-black text-white mb-3 group-hover:text-blue-400 transition-colors uppercase italic italic tracking-tight">{res.title}</h4>
+                                                    <div className="pt-4 border-t border-slate-800/50">
+                                                        <p className="text-[9px] font-black text-slate-600 uppercase mb-2 tracking-widest">Tactical Advantage</p>
+                                                        <p className="text-xs text-slate-400 leading-relaxed italic">"{res.reason}"</p>
+                                                    </div>
+                                                </a>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-20 bg-slate-900/50 border border-slate-800 rounded-3xl text-[10px] font-black text-slate-600 uppercase tracking-widest italic">
+                                                Intel channel inactive. Awaiting next tactical success.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

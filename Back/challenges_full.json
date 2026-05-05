@@ -1,0 +1,103 @@
+[dotenv@17.2.4] injecting env (22) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[
+  {
+    "_id": "69dba5c16011029ab0778770",
+    "title": "Sum of Two Numbers",
+    "description": "Write a function that returns the sum of a and b.",
+    "language": "javascript",
+    "testCases": [
+      {
+        "name": "Test 1",
+        "assertion": ""
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce357255",
+    "title": "Training: JS String Reverser",
+    "description": "Create a function 'reverseString(str)' that returns the string reversed.",
+    "language": "javascript",
+    "testCases": [
+      {
+        "name": "reverse test",
+        "assertion": "reverseString('hello') === 'olleh'"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce357256",
+    "title": "Training: JS Array Length Finder",
+    "description": "Create a function 'getLength(arr)' that returns the length of an array.",
+    "language": "javascript",
+    "testCases": [
+      {
+        "name": "length test",
+        "assertion": "getLength([1,2,3]) === 3"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce357257",
+    "title": "Training: Python Number Checker",
+    "description": "Create a function 'isPositive(n)' that returns True if n > 0, False otherwise.",
+    "language": "python",
+    "testCases": [
+      {
+        "name": "positive test",
+        "assertion": "isPositive(5) == True"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce357258",
+    "title": "Training: Python List Max Finder",
+    "description": "Create a function 'findMax(lst)' that returns the maximum value in a list.",
+    "language": "python",
+    "testCases": [
+      {
+        "name": "max test",
+        "assertion": "findMax([1,5,3]) == 5"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce357259",
+    "title": "Mission: Dragon Fire Calculator",
+    "description": "Calculate dragon damage: multiply all numbers in array.\nExample: [2,3,4] => 24",
+    "language": "javascript",
+    "testCases": [
+      {
+        "name": "dragon damage",
+        "assertion": "calculateDragonDamage([2,3,4]) === 24"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce35725a",
+    "title": "Mission: Magic Spell Power",
+    "description": "Calculate spell power using fibonacci sequence: nth fibonacci number.",
+    "language": "python",
+    "testCases": [
+      {
+        "name": "spell power",
+        "assertion": "calculateSpellPower(7) == 13"
+      }
+    ]
+  },
+  {
+    "_id": "69f6033afd1d6f8cce35725b",
+    "title": "Mission: Portal Energy Generator",
+    "description": "Generate portal energy using prime number summation: sum of first n primes.",
+    "language": "javascript",
+    "testCases": [
+      {
+        "name": "portal 3",
+        "assertion": "generatePortalEnergy(3) === 10"
+      },
+      {
+        "name": "portal 1",
+        "assertion": "generatePortalEnergy(1) === 2"
+      }
+    ]
+  }
+]

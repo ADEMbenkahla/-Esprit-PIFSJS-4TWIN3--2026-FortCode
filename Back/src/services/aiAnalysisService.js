@@ -16,7 +16,7 @@ class AiAnalysisService {
      * Uses a Senior Architect persona and Chain-of-Thought reasoning for deeper insights.
      */
     async performFullAnalysis(code, language, challengeDescription) {
-        if (!this.apiKey) return this.getFallbackAnalysis();
+        if (!this.apiKey) return this.getFallbackAnalysis(code, language, challengeDescription);
 
         const prompt = `### ROLE: Senior Software Architect & Pedagogical Mentor
         ### TASK: Perform a deep technical audit of the following code.
@@ -77,12 +77,86 @@ class AiAnalysisService {
         }
     }
 
-    getFallbackMetrics() {
-        return { reliability_rating: 3, security_rating: 4, sqale_rating: 3, bugs: 0, vulnerabilities: 0, code_smells: 1, qualityScore: 70 };
+    getFallbackMetrics(code = "") {
+        const lines = code.split('\n').filter(l => l.trim()).length;
+        const score = lines > 20 ? 65 : lines > 5 ? 85 : 95; // Short simple solutions are often cleaner
+        return {
+            reliability_rating: 3,
+            security_rating: 4,
+            sqale_rating: 3,
+            bugs: 0,
+            vulnerabilities: 0,
+            code_smells: Math.max(1, Math.floor(lines / 10)),
+            qualityScore: score
+        };
     }
 
-    getFallbackAnalysis() {
-        return { bugs: [], bugSummary: "AI analysis currently unavailable.", metrics: this.getFallbackMetrics(), explanation: null, recommendations: [], weakAreas: [] };
+    getFallbackAnalysis(code = "", language = "javascript", challengeTitle = "") {
+        const recommendations = this.getStaticRecommendations(language, challengeTitle);
+        const bugs = this.getStaticBugHeuristics(code, language);
+
+        return {
+            bugs: bugs,
+            bugSummary: bugs.length > 0 ? "Potential logic or structural issues detected by static scan." : "Code structure appears sound according to basic heuristics.",
+            metrics: this.getFallbackMetrics(code),
+            explanation: {
+                overview: "Heuristic analysis: Code was scanned for common patterns and complexity.",
+                steps: [
+                    { step: "Syntax Check", logic: "Verified structure and basic language keywords.", highlight: "Success" }
+                ],
+                complexity: code.length > 200 ? "Medium complexity" : "Low complexity",
+                keyConcepts: [language.toUpperCase(), "Algorithmic Logic"]
+            },
+            recommendations: recommendations,
+            weakAreas: bugs.map(b => b.message)
+        };
+    }
+
+    getStaticBugHeuristics(code, language) {
+        const issues = [];
+        const lines = code.split('\n');
+
+        if (language === 'javascript' || language === 'js') {
+            if (code.includes('var ')) issues.push({ line: 1, type: "performance", message: "Use of 'var' detected", explanation: "Modern JS prefers 'let' or 'const' for better scope control.", suggestion: "// Replace var with const/let" });
+            if (code.includes(' == ')) issues.push({ line: 1, type: "logic", message: "Loose equality (==) detected", explanation: "Strict equality (===) prevents unexpected type coercion.", suggestion: "// Use === instead of ==" });
+            if (code.includes('console.log(')) issues.push({ line: 1, type: "performance", message: "Production log detected", explanation: "Cleanup console.log statements before finalizing logic.", suggestion: "// Remove console.log" });
+        }
+
+        if (language === 'python' || language === 'py') {
+            if (code.includes('range(len(')) issues.push({ line: 1, type: "performance", message: "Non-idiomatic iteration", explanation: "In Python, prefer 'for item in list' or 'enumerate()' over 'range(len())'.", suggestion: "for i, val in enumerate(list):" });
+            if (code.includes('print(') && !code.includes('return ')) issues.push({ line: 1, type: "logic", message: "Print instead of Return", explanation: "Functions in tests usually need to 'return' a value, not just print it.", suggestion: "return result # instead of print(result)" });
+        }
+
+        if (code.match(/\{[\s]*\}/) || code.match(/:[\s]*pass/)) {
+            issues.push({ line: 1, type: "logic", message: "Empty block detected", explanation: "The logic contains an empty block (pass or {}), which might mean incomplete implementation.", suggestion: "// Implement missing logic" });
+        }
+
+        if (code.length > 500) issues.push({ line: 1, type: "performance", message: "High method length", explanation: "Large functions are harder to maintain and test.", suggestion: "// Break into smaller helper functions" });
+
+        return issues;
+    }
+
+    getStaticRecommendations(language, title) {
+        const base = [];
+
+        if (language === 'javascript' || language === 'js') {
+            base.push({ title: "JS Best Practices", url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide", type: "article", difficulty: "Junior", reason: "Fundamental JS patterns" });
+            base.push({ title: "ES6+ Features", url: "https://es6-features.org/", type: "article", difficulty: "Mid", reason: "Modernize your code" });
+        }
+        if (language === 'python' || language === 'py') {
+            base.push({ title: "Pythonic Code (PEP 8)", url: "https://peps.python.org/pep-0008/", type: "article", difficulty: "Mid", reason: "Follow community standards" });
+            base.push({ title: "Think Python", url: "https://greenteapress.com/wp/think-python-2e/", type: "article", difficulty: "Junior", reason: "Deep dive into logic" });
+        }
+
+        if (title.toLowerCase().includes('array') || title.toLowerCase().includes('list')) {
+            base.push({ title: "Data Structures Guide", url: "https://visualgo.net/en/list", type: "article", difficulty: "Mid", reason: "Visualize array operations" });
+        }
+
+        if (title.toLowerCase().includes('math') || title.toLowerCase().includes('calc')) {
+            base.push({ title: "Computer Science Algorithms", url: "https://algs4.cs.princeton.edu/home/", type: "article", difficulty: "Senior", reason: "Deep math optimizations" });
+        }
+
+        return base;
     }
 
     async queryAi(prompt) {
