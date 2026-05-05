@@ -4,7 +4,7 @@ const User = require("./models/User");
 const Match = require("./models/Match");
 const Challenge = require("./models/Challenge");
 const { runChallengeCode } = require("./utils/runChallengeCode");
-const { detectCodeOrigin } = require("./services/mlDetectionAgent");
+const complexityService = require("./services/complexityService");
 const aiJudgeService = require("./services/aiJudgeService");
 
 let io;
@@ -215,13 +215,17 @@ const initSocket = (server) => {
                     const lang = language || 'javascript';
                     const challengeData = match.challenge?.data?.[lang];
                     const testResults = runChallengeCode(lang, code, challengeData?.testCases || []);
-                    const mlResult = await detectCodeOrigin(code);
+                    
+                    // Utiliser le service unifié pour les deux analyses
+                    const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
+                    const mlResult = combinedAnalysis.mlDetection;
 
                     // 2. Atomic update of attacker state
                     const isAi = mlResult.label === "IA" || mlResult.label === "Plagiat";
                     const updateAttacker = {};
                     updateAttacker[`players.${idx}.code`] = code;
                     updateAttacker[`players.${idx}.mlDetection`] = { prediction: mlResult.prediction, label: mlResult.label };
+                    updateAttacker[`players.${idx}.complexityAnalysis`] = combinedAnalysis.complexityAnalysis;
 
                     const updatedMatch = await Match.findOneAndUpdate(
                         { _id: matchId },
@@ -374,16 +378,33 @@ const initSocket = (server) => {
                                 } else if (pct2 > pct1) {
                                     winnerId = p2Id;
                                 } else if (pct1 === 100 && pct2 === 100) {
-                                    // Both are 100% correct, use tie-breakers
-                                    if (match.players[0].health > match.players[1].health) {
-                                        winnerId = p1Id;
-                                    } else if (match.players[1].health > match.players[0].health) {
-                                        winnerId = p2Id;
+                                    // Both are 100% correct, use complexity-based tie-breakers
+                                    const player1Submission = {
+                                        mlDetection: match.players[0].mlDetection,
+                                        complexityAnalysis: match.players[0].complexityAnalysis,
+                                        submittedAt: match.players[0].finishedAt
+                                    };
+                                    const player2Submission = {
+                                        mlDetection: match.players[1].mlDetection,
+                                        complexityAnalysis: match.players[1].complexityAnalysis,
+                                        submittedAt: match.players[1].finishedAt
+                                    };
+                                    
+                                    const comparisonResult = complexityService.compareSubmissions(player1Submission, player2Submission);
+                                    if (comparisonResult < 0) {
+                                        winnerId = p1Id; // Player 1 wins
+                                    } else if (comparisonResult > 0) {
+                                        winnerId = p2Id; // Player 2 wins
                                     } else {
-                                        const time1 = match.players[0].finishedAt ? new Date(match.players[0].finishedAt).getTime() : Infinity;
-                                        const time2 = match.players[1].finishedAt ? new Date(match.players[1].finishedAt).getTime() : Infinity;
-                                        if (time1 < time2) winnerId = p1Id;
-                                        else if (time2 < time1) winnerId = p2Id;
+                                        // Complete tie - use health as final tiebreaker
+                                        if (match.players[0].health > match.players[1].health) {
+                                            winnerId = p1Id;
+                                        } else if (match.players[1].health > match.players[0].health) {
+                                            winnerId = p2Id;
+                                        } else {
+                                            // Ultimate tie - draw
+                                            winnerId = "draw";
+                                        }
                                     }
                                 } else {
                                     // Both were equal but NOT 100% (e.g. both 0% or both 50%) -> DRAW

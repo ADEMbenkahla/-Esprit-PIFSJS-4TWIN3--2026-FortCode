@@ -7,9 +7,9 @@ const jwt = require("jsonwebtoken");
 const sendEmail = require("../utils/sendEmail");
 const { fetchSonarStub, fetchAiFeedback } = require("../utils/stageAnalysis");
 const { runChallengeCode } = require("../utils/runChallengeCode");
-const { detectCodeOrigin } = require("../services/mlDetectionAgent");
 const { generateExercises, httpStatusForAiError } = require("../services/aiExerciseService");
 const aiJudgeService = require("../services/aiJudgeService");
+const complexityService = require("../services/complexityService");
 
 const getRecruiterId = (req) => req.user && (req.user.id || req.user._id);
 const getUserId = (req) => req.user && (req.user.id || req.user._id);
@@ -1055,12 +1055,11 @@ exports.submitParticipantBattleCode = async (req, res) => {
     const code = String(req.body.code || "");
     const testRun = runChallengeCode(room.challenge?.language, code, room.challenge?.testCases || []);
     const correctness = computeCorrectnessFromRun(testRun);
-    const analysis = await analyzeBattleCode(code, room.challenge?.language, room.challenge?.title, {
-      roomId: room._id,
-      participantId,
-      projectName: `${room.title || "battle-room"}-visitor-${participantId}`,
-    });
-    const mlDetection = await detectCodeOrigin(code);
+
+    const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
+    const mlDetection = combinedAnalysis.mlDetection;
+    const complexityAnalysis = combinedAnalysis.complexityAnalysis;
+
     const finalScore = computeFinalScore({
       qualityScore: analysis.qualityScore,
       correctnessScore: correctness.correctnessScore,
