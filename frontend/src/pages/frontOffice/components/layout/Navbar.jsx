@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, UserPlus, Code2, Mail } from "lucide-react";
+import { Shield, Castle, Map, Sword, Cpu, User, Trophy, LogOut, Settings, Menu, X, Video, Briefcase, UserPlus, Code2, Mail, Home } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useSocket } from "../../../../context/SocketContext";
 import { useSoundEffects } from "../../../../hooks/useSoundEffects";
@@ -260,12 +260,21 @@ export function Navbar() {
     if (result.isConfirmed) {
       try {
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-        const response = await fetch("http://localhost:5000/api/stages/reset-progress", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}` }
-        });
+        const [stagesReset, missionsReset] = await Promise.allSettled([
+          fetch("http://localhost:5000/api/stages/reset-progress", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          fetch("http://localhost:5000/api/missions/reset-progress", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+          })
+        ]);
 
-        if (response.ok) {
+        const stagesOk = stagesReset.status === "fulfilled" && stagesReset.value.ok;
+        const missionsOk = missionsReset.status === "fulfilled" && missionsReset.value.ok;
+
+        if (stagesOk && missionsOk) {
           localStorage.removeItem("levelProgress");
           for (let i = 1; i <= 4; i += 1) {
             localStorage.removeItem(`level${i}_challenges`);
@@ -283,9 +292,18 @@ export function Navbar() {
           }).then(() => {
             navigate("/map");
           });
+        } else {
+          throw new Error("Unable to reset all progress domains (training/map).");
         }
       } catch (err) {
         console.error("Reset failed:", err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Reset Failed',
+          text: err.message || 'Could not reset all progress.',
+          background: '#1a1a2e',
+          color: '#fff'
+        });
       }
     }
   };
@@ -444,6 +462,7 @@ export function Navbar() {
           {(userData?.role === "recruiter" || userData?.role === "admin") && (
             <NavItem to="/home" icon={<Briefcase className="w-4 h-4" />} label="Dashboard" onClick={playClick} />
           )}
+          <NavItem to="/home" icon={<Home className="w-4 h-4" />} label="Home" onClick={playClick} />
           <NavItem to="/map" icon={<Map className="w-4 h-4" />} label="Map" onClick={playClick} />
           <NavItem to="/training" icon={<Sword className="w-4 h-4" />} label="Training" onClick={playClick} />
           <NavItem to="/arena" icon={<Cpu className="w-4 h-4" />} label="Arena" onClick={playClick} />
@@ -661,6 +680,12 @@ export function Navbar() {
                     onClick={handleMobileMenuClose}
                   />
                 )}
+                <MobileNavItem
+                  to="/home"
+                  icon={<Home className="w-5 h-5" />}
+                  label="Home"
+                  onClick={handleMobileMenuClose}
+                />
                 <MobileNavItem
                   to="/map"
                   icon={<Map className="w-5 h-5" />}

@@ -20,6 +20,7 @@ export const MissionLevel = () => {
     const [submissionResult, setSubmissionResult] = useState(null);
     const [showReport, setShowReport] = useState(false);
     const [activeReportTab, setActiveReportTab] = useState("overview");
+    const [canSubmit, setCanSubmit] = useState(false);
 
     const fetchMissionData = async () => {
         try {
@@ -61,9 +62,43 @@ export const MissionLevel = () => {
                     setSubmissionResult(null);
                 }
                 setOutput("");
+                setCanSubmit(false);
             }
         }
     }, [challengeId, mission?.challenges]);
+
+    useEffect(() => {
+        setCanSubmit(false);
+    }, [code, selectedChallenge?._id]);
+
+    const runCode = async () => {
+        if (isRunning || !selectedChallenge?._id) return;
+        setIsRunning(true);
+        setOutput("Running mission tests on server...");
+        setCanSubmit(false);
+
+        try {
+            const { data } = await missionsApi.run(missionId, selectedChallenge._id, code);
+            if (data.passed) {
+                setOutput(`✓ All tests passed successfully!\n\n${data.outputSnapshot || ""}`);
+                setCanSubmit(true);
+            } else {
+                const errors = (data.testResults || [])
+                    .filter((r) => !r.passed)
+                    .map((r) => `❌ ${r.name}: ${r.error}`)
+                    .join("\n");
+                setOutput(`${errors || "❌ Tests failed."}\n\n${data.outputSnapshot || ""}`);
+                setCanSubmit(false);
+            }
+        } catch (err) {
+            console.error("Run mission tests error:", err);
+            const msg = err.response?.data?.message || err.message;
+            setOutput(`⚠️ System Error: ${msg}`);
+            setCanSubmit(false);
+        } finally {
+            setIsRunning(false);
+        }
+    };
 
     const submitSolution = async () => {
         if (isUpdating) return;
@@ -77,7 +112,63 @@ export const MissionLevel = () => {
             setCompleted(data.progress?.completedChallenges || []);
             setSubmissionResult(data.report);
             setShowReport(true);
+            setCanSubmit(false);
             fetchMissionData();
+
+            const xp = data?.xpResult || null;
+            const fallbackGainedXP = Number(data?.report?.xpAwarded || 0);
+            await Swal.fire({
+                icon: 'success',
+                title: data.stageCompleted ? 'Mission Completed!' : 'Challenge Completed',
+                html: `
+                  <div class="mb-4 text-xs opacity-80">
+                    ${data.stageCompleted
+                        ? "Mission complete. The next stage is now available on the map."
+                        : "Challenge validated successfully."
+                    }
+                  </div>
+                  <div id="mission-xp-container"></div>
+                `,
+                background: '#1a1a2e',
+                color: '#fff',
+                timer: data.stageCompleted ? undefined : 3500,
+                showConfirmButton: !!data.stageCompleted,
+                confirmButtonText: data.stageCompleted ? 'Back to Map' : undefined,
+                didOpen: () => {
+                    setTimeout(() => {
+                        const container = document.getElementById('mission-xp-container');
+                        if (!container) return;
+                        const points = Number(xp?.points || 0);
+                        const gainedXP = Number(xp?.gainedXP || fallbackGainedXP || 0);
+                        const level = Number(xp?.level || 1);
+                        const progress = xp?.points
+                            ? Math.max(0, Math.min(100, (points % 500) / 5))
+                            : Math.max(5, Math.min(100, gainedXP));
+                        container.innerHTML = `
+                          <div class="mt-4 p-4 bg-blue-900/40 rounded-2xl border border-blue-500/20">
+                            <div class="flex justify-between items-center mb-2">
+                              <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Level ${level}</div>
+                              <div class="text-[10px] text-emerald-400 font-bold">+${gainedXP} XP</div>
+                            </div>
+                            <div class="h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                              <div id="mission-xp-bar" class="h-full bg-blue-500 shadow-[0_0_8px_rgba(37,99,235,0.5)] transition-all duration-1000 ease-out" style="width: 0%"></div>
+                            </div>
+                            <div class="text-[9px] text-slate-500 mt-1 text-right">${xp?.points ? `${points % 500}/500 to next level` : "XP updated"}</div>
+                            ${xp?.levelUp ? `<div class="text-xs text-yellow-400 font-bold mt-2 animate-bounce">LEVEL UP! 🎊</div>` : ''}
+                          </div>
+                        `;
+                        setTimeout(() => {
+                            const bar = document.getElementById('mission-xp-bar');
+                            if (bar) bar.style.width = `${progress}%`;
+                        }, 100);
+                    }, 80);
+                }
+            });
+
+            if (data.stageCompleted) {
+                setShowReport(false);
+                navigate('/map');
+            }
         } catch (err) {
             console.error("Submit error:", err);
             const responseData = err.response?.data;
@@ -99,6 +190,7 @@ export const MissionLevel = () => {
                 const msg = responseData?.message || "Tactical error detected.";
                 setOutput(`❌ Error: ${msg}`);
             }
+            setCanSubmit(false);
         } finally {
             setIsUpdating(false);
         }
@@ -139,8 +231,16 @@ export const MissionLevel = () => {
                         </button>
                     )}
                     <button
+                        onClick={runCode}
+                        disabled={isRunning || isUpdating}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-slate-700 disabled:opacity-50"
+                    >
+                        {isRunning ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                        Run Tests
+                    </button>
+                    <button
                         onClick={submitSolution}
-                        disabled={isUpdating}
+                        disabled={isUpdating || isRunning || !canSubmit}
                         className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] disabled:opacity-50"
                     >
                         <Target size={18} />

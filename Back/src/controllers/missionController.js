@@ -188,15 +188,19 @@ exports.submitMissionChallenge = async (req, res) => {
                 progress.completedChallenges.push(new mongoose.Types.ObjectId(cidStr));
             }
 
-            const totalChallenges = mission.challenges.length;
+            const totalChallenges = Math.max(1, (mission.challenges || []).filter(Boolean).length);
             const completedCount = progress.completedChallenges.length;
-            progress.progressPercent = Math.round((completedCount / totalChallenges) * 100);
 
-            if (progress.progressPercent === 100) {
+            // Mission map rule: first successful exercise completes the mission and unlocks next one.
+            const markMissionCompleted = completedCount >= 1;
+            if (markMissionCompleted) {
+                progress.progressPercent = 100;
                 progress.status = "completed";
                 progress.completedAt = new Date();
             } else {
-                progress.status = "in-progress";
+                progress.progressPercent = Math.round((completedCount / totalChallenges) * 100);
+                progress.status = completedCount > 0 ? "in-progress" : "available";
+                progress.completedAt = null;
             }
 
             // Grant full XP on success
@@ -263,6 +267,78 @@ exports.submitMissionChallenge = async (req, res) => {
         });
     } catch (err) {
         console.error("Submit mission failure:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+/** Run tests only (mission flow) */
+exports.runMissionChallenge = async (req, res) => {
+    try {
+        const userId = toUserId(req);
+        const { missionId, challengeId } = req.params;
+        const { code } = req.body;
+
+        const mission = await Mission.findById(missionId).populate("challenges");
+        if (!mission) return res.status(404).json({ message: "Mission not found" });
+
+        const challenge = await Challenge.findById(challengeId);
+        if (!challenge || !mission.challenges.some((c) => String(c._id) === String(challengeId))) {
+            return res.status(404).json({ message: "Challenge not found in mission" });
+        }
+
+        const run = runChallengeCode(challenge.language, code || "", challenge.testCases || []);
+
+        // Persist failed run attempts so submit can rely on real user attempts.
+        let progress = await UserMissionProgress.findOne({ userId, missionId });
+        if (!progress) {
+            progress = new UserMissionProgress({
+                userId,
+                missionId,
+                status: "in-progress",
+                completedChallenges: [],
+                starsByChallenge: {},
+            });
+        }
+        if (!progress.failedAttemptsByChallenge) progress.failedAttemptsByChallenge = new Map();
+        if (!progress.lastCodeByChallenge) progress.lastCodeByChallenge = new Map();
+
+        const failKey = String(challenge._id);
+        const currentFails = Number(progress.failedAttemptsByChallenge.get(failKey) || 0);
+        const lastCode = String(progress.lastCodeByChallenge.get(failKey) || "");
+        const currentCode = String(code || "").trim();
+        const isMeaningfulCode = currentCode.length > 0;
+        const isDuplicate = currentCode === lastCode;
+
+        if (!run.passed) {
+            if (isMeaningfulCode && !isDuplicate) {
+                progress.failedAttemptsByChallenge.set(failKey, currentFails + 1);
+                progress.lastCodeByChallenge.set(failKey, currentCode);
+                await progress.save();
+            }
+        } else if (isMeaningfulCode) {
+            progress.lastCodeByChallenge.set(failKey, currentCode);
+            await progress.save();
+        }
+
+        return res.json({
+            passed: run.passed,
+            testResults: run.testResults,
+            executionTimeMs: run.executionTimeMs,
+            outputSnapshot: run.outputSnapshot,
+        });
+    } catch (err) {
+        console.error("Run mission challenge failure:", err);
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.resetAllMissionProgress = async (req, res) => {
+    try {
+        const userId = toUserId(req);
+        await UserMissionProgress.deleteMany({ userId });
+        res.json({ message: "All mission progress reset" });
+    } catch (err) {
+        console.error("Reset mission progress failure:", err);
         res.status(500).json({ message: err.message });
     }
 };

@@ -149,6 +149,7 @@ export const stagesApi = {
 export const missionsApi = {
     me: (params: ApiParams = {}) => api.get('/missions/me', { params }),
     get: (id: string) => api.get(`/missions/${id}`),
+    run: (missionId: string, challengeId: string, code: string) => api.post(`/missions/${missionId}/challenges/${challengeId}/run`, { code }),
     submit: (missionId: string, challengeId: string, code: string) => api.post(`/missions/${missionId}/challenges/${challengeId}/submit`, { code }),
 };
 

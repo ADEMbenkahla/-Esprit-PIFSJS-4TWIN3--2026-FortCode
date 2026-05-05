@@ -320,14 +320,15 @@ export default function WorldMap3D() {
       let previousCompleted = true;
       for (let i = 0; i < count; i++) {
         const stage = orderedStages[i];
-        const backendLocked = stage.participantStatus === "locked";
-        const backendCompleted = stage.participantStatus === "completed";
+        const backendStatus = stage.participantStatus || stage.status || "available";
+        const backendLocked = backendStatus === "locked";
+        const backendCompleted = backendStatus === "completed";
         const sequentialLocked = i === 0 ? false : !previousCompleted;
         const effectiveLocked = backendLocked || sequentialLocked;
 
         const effectiveStatus = effectiveLocked
           ? "locked"
-          : stage.participantStatus || "available";
+          : backendStatus;
 
         const tt = count <= 1 ? 0 : i / (count - 1);
         const p = roadCurve.getPointAt(tt);
