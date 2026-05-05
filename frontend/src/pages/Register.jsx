@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import logoImg from "../assets/logo.png";
 import "./pages.css";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { API_BASE_URL } from "../config";
 
 import Swal from "sweetalert2";
 
@@ -89,7 +90,7 @@ function Register() {
         ...(isGoogleUser && { googleId })
       };
 
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,7 +195,7 @@ function Register() {
         <div className="divider">OR CONTINUE WITH</div>
 
         <button
-          onClick={() => window.location.href = 'http://127.0.0.1:5000/api/auth/google'}
+          onClick={() => window.location.href = `${API_BASE_URL}/auth/google`}
           className="google">
           Google
         </button>

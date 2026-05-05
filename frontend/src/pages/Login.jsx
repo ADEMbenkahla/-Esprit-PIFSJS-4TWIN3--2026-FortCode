@@ -6,6 +6,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { getUserRole } from "../guards/RouteGuards";
 import { decodeJwtPayload } from "../services/token";
+import { BACKEND_URL, API_BASE_URL } from "../config";
 
 import Swal from "sweetalert2";
 
@@ -71,7 +72,7 @@ function Login() {
     console.log("DEBUG: Sending Login Request:", { identifier, password });
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -190,7 +191,7 @@ function Login() {
   const handleFaceLogin = async (descriptor) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/auth/face/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/face/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: identifier, descriptor }),
@@ -254,7 +255,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login/2fa", {
+      const response = await fetch(`${API_BASE_URL}/auth/login/2fa`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -442,7 +443,7 @@ function Login() {
             <div className="divider">OR CONTINUE WITH</div>
 
             <button
-              onClick={() => window.location.href = 'http://127.0.0.1:5000/api/auth/google'}
+              onClick={() => window.location.href = `${API_BASE_URL}/auth/google`}
               className="google">
               Google
             </button>

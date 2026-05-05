@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { User } from '../types';
 import { AvatarPicker } from './AvatarPicker';
+import { API_BASE_URL } from '../../../config';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -53,7 +54,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, onUserUp
 
             console.log("DEBUG: Sending Update Body:", body);
 
-            const response = await fetch(`http://localhost:5000/api/auth/admin/users/${user?._id}`, {
+            const response = await fetch(`${API_BASE_URL}/auth/admin/users/${user?._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

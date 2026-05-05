@@ -6,7 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 
-const SOCKET_URL = window.location.hostname === 'localhost' ? "http://localhost:5000" : "http://127.0.0.1:5000";
+import { BACKEND_URL, API_BASE_URL } from '../../../../config';
 
 import { getCurrentMatch } from '../../../../services/api';
 
@@ -26,8 +26,8 @@ export default function DuelLobby() {
             return;
         }
 
-        console.log("Initializing Socket to:", SOCKET_URL);
-        const newSocket = io(SOCKET_URL, {
+        console.log("Initializing Socket to:", BACKEND_URL);
+        const newSocket = io(BACKEND_URL, {
             auth: { token }
         });
 
@@ -66,7 +66,7 @@ export default function DuelLobby() {
             setUser(payload);
 
             // Fetch full profile for level verification
-            fetch('http://localhost:5000/api/auth/profile', {
+            fetch(`${API_BASE_URL}/auth/profile`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => res.json())

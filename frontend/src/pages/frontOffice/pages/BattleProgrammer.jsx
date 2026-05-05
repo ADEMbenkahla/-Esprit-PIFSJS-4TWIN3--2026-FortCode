@@ -8,6 +8,7 @@ import {
   runParticipantBattleCode,
   submitParticipantBattleCode,
 } from "../../../services/api";
+import { BACKEND_URL } from "../../../config";
 
 const getRemainingMs = (startedAt, timeLimitMinutes, now = Date.now()) => {
   if (!startedAt || !timeLimitMinutes) return null;
@@ -450,7 +451,7 @@ export default function BattleProgrammer() {
           <p className="text-slate-500 text-xs mt-1">Recruiter: {room.recruiter?.username || room.recruiter?.nickname || "Unknown"}</p>
           {room.challenge?.statementAttachment?.url && (
             <a
-              href={`http://localhost:5000${room.challenge.statementAttachment.url}`}
+              href={`${BACKEND_URL}${room.challenge.statementAttachment.url}`}
               target="_blank"
               rel="noreferrer"
               className="inline-block mt-3 text-sm text-blue-300 hover:text-blue-200"
@@ -518,7 +519,7 @@ export default function BattleProgrammer() {
                           {room.challenge.statementAttachment.originalName || "Attached file"}
                         </p>
                         <a
-                          href={`http://localhost:5000${room.challenge.statementAttachment.url}`}
+                          href={`${BACKEND_URL}${room.challenge.statementAttachment.url}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-block mt-2 text-sm text-blue-300 hover:text-blue-200"

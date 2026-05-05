@@ -4,6 +4,7 @@ import "./pages.css";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config";
 
 function VerifyEmail() {
     const { connect } = useSocket();
@@ -46,7 +47,7 @@ function VerifyEmail() {
 
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/verify-email", {
+            const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -116,7 +117,7 @@ function VerifyEmail() {
     const handleResend = async () => {
         setResending(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/resend-verification", {
+            const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

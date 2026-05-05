@@ -3,6 +3,7 @@ import { Shield, Filter, Loader2, MessageSquare, FileText, Download } from 'luci
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import api from '../../services/api';
+import { BACKEND_URL } from "../../config";
 
 export default function RoleRequests() {
   const [requests, setRequests] = useState([]);
@@ -179,7 +180,7 @@ export default function RoleRequests() {
                           <span className="text-sm font-medium text-gray-300">Proof Document</span>
                         </div>
                         <a
-                          href={`http://localhost:5000${request.proofDocument}`}
+                          href={`${BACKEND_URL}${request.proofDocument}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 hover:bg-purple-900/30 rounded-lg transition-colors text-blue-400"

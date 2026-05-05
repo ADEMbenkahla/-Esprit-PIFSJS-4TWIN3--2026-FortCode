@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ScrollButton } from '../components/ui/ScrollButton';
 import { getParticipantBattleRooms } from '../../../services/api';
+import { API_BASE_URL } from "../../../config";
 const RecruiterDashboard = React.lazy(() => import('./RecruiterDashboard').then(m => ({ default: m.RecruiterDashboard })));
 
 export function Home() {
@@ -15,7 +16,7 @@ export function Home() {
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
 
-        const response = await fetch("http://localhost:5000/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }

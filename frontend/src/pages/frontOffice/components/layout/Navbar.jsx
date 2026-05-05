@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 import { requestVirtualRoom, getMyVirtualRoomRequest } from "../../../../services/api";
 import { ProfileModal } from "./ProfileModal";
 import { RankBadge } from "../Gamification/RankBadge";
+import { API_BASE_URL } from "../../../../config";
 
 export function Navbar() {
   const [userData, setUserData] = useState(null);
@@ -50,7 +51,7 @@ export function Navbar() {
         }
 
         console.log("🔍 Fetching profile avec token...");
-        const response = await fetch("http://localhost:5000/api/auth/profile", {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -173,7 +174,7 @@ export function Navbar() {
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         if (!token) return;
 
-        const response = await fetch("http://localhost:5000/api/auth/refresh-token", {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`
@@ -261,11 +262,11 @@ export function Navbar() {
       try {
         const token = sessionStorage.getItem("token") || localStorage.getItem("token");
         const [stagesReset, missionsReset] = await Promise.allSettled([
-          fetch("http://localhost:5000/api/stages/reset-progress", {
+          fetch(`${API_BASE_URL}/stages/reset-progress`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token}` }
           }),
-          fetch("http://localhost:5000/api/missions/reset-progress", {
+          fetch(`${API_BASE_URL}/missions/reset-progress`, {
             method: "POST",
             headers: { "Authorization": `Bearer ${token}` }
           })

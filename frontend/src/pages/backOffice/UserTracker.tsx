@@ -8,6 +8,7 @@ const EditUserModal = lazy(() => import("./components/EditUserModal"));
 import { User } from "./types";
 import { useSocket } from "../../context/SocketContext";
 import { ScrollButton } from "../frontOffice/components/ui/ScrollButton";
+import { API_BASE_URL } from "../../config";
 
 const UserTracker: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -25,7 +26,7 @@ const UserTracker: React.FC = () => {
   const fetchUsers = useCallback(async () => {
     try {
       const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-      const url = new URL("http://localhost:5000/api/auth/admin/users");
+      const url = new URL(`${API_BASE_URL}/auth/admin/users`);
       url.searchParams.append("page", currentPage.toString());
       url.searchParams.append("limit", pageSize.toString());
       if (searchQuery) url.searchParams.append("search", searchQuery);

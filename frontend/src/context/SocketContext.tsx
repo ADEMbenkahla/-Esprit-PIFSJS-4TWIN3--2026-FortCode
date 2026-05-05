@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { BACKEND_URL } from '../config';
 import { clearStoredAuth, getStoredToken, isTokenExpired } from '../services/token';
 
 interface SocketContextType {
@@ -38,7 +39,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             socketRef.current.disconnect();
         }
 
-        const newSocket = io('http://localhost:5000', {
+        const newSocket = io(BACKEND_URL, {
             auth: { token },
             reconnection: false,
         });

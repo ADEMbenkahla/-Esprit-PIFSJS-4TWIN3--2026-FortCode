@@ -121,10 +121,10 @@ def load_model():
             if isinstance(data, dict):
                 model = data.get('model')
                 tfidf_vec = data.get('tfidf')
-                print(f"✅ Model loaded. Accuracy on test: {data.get('test_accuracy', 'N/A')}")
+                print(f"[OK] Model loaded. Accuracy on test: {data.get('test_accuracy', 'N/A')}")
             else:
                 model = data
-            print("✅ Model and Vectorizer loaded successfully.")
+            print("[OK] Model and Vectorizer loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
     else:
@@ -170,4 +170,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(port=5002, debug=True)

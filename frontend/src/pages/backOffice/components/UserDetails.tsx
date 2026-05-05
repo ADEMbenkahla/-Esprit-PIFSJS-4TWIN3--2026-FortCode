@@ -1,6 +1,7 @@
 import React from 'react';
 import { User } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../../../config';
 
 interface UserDetailsProps {
   user: User;
@@ -18,7 +19,7 @@ const UserDetails: React.FC<UserDetailsProps> = ({ user, onClose, onUserUpdated 
   const handleToggleStatus = async () => {
     try {
       const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/auth/admin/users/${user._id}/toggle`, {
+      const response = await fetch(`${API_BASE_URL}/auth/admin/users/${user._id}/toggle`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`

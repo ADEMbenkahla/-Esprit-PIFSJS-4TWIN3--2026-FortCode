@@ -3,6 +3,7 @@ import { Shield, Send, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Uploa
 import { Card } from '../components/ui/Card';
 import api from '../../../services/api';
 import { refreshUserProfile } from '../../../services/userService';
+import { BACKEND_URL } from "../../../config";
 
 export default function RequestRecruiterRole() {
   const pollIntervalRef = useRef(null);
@@ -309,7 +310,7 @@ export default function RequestRecruiterRole() {
                       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mt-2">
                         <span className="text-slate-300 font-semibold text-sm block mb-2">📎 Attached Document:</span>
                         <a
-                          href={`http://localhost:5000${request.proofDocument}`}
+                          href={`${BACKEND_URL}${request.proofDocument}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all hover:shadow-lg text-sm"
