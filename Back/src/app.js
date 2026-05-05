@@ -38,7 +38,11 @@ app.use(passport.session());
 const activityLogger = require("./middlewares/activityLogger");
 app.use(activityLogger);
 
-// Routes
+// Routes// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
+
 app.use("/api/auth", require("./routes/googleAuthRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/admin/activity", require("./routes/activityRoutes"));

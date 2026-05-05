@@ -1,0 +1,492 @@
+
+> frontend@0.0.0 test
+> vitest --coverage --run src/__tests__/components/UiFolder.test.jsx
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.5 [39m[90mC:/Users/windows 10/Desktop/fotcode_test/-Esprit-PIFSJS-4TWIN3--2026-FortCode/frontend[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+[90mstderr[2m | src/__tests__/components/UiFolder.test.jsx[2m > [22m[2mUI folder coverage for /pages/frontOffice/components/ui[2m > [22m[2mSelect and Separator wrappers render
+[22m[39mReceived `true` for a non-boolean attribute `decorative`.
+
+If you want to write it to the DOM, pass a string instead: decorative="true" or decorative={value.toString()}.
+
+[90mstderr[2m | src/__tests__/components/UiFolder.test.jsx[2m > [22m[2mUI folder coverage for /pages/frontOffice/components/ui[2m > [22m[2mSidebar provider and skeleton render
+[22m[39mReact does not recognize the `delayDuration` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `delayduration` instead. If you accidentally passed it from a parent component, remove it from the DOM element.
+
+[90mstderr[2m | src/__tests__/components/UiFolder.test.jsx[2m > [22m[2mUI folder coverage for /pages/frontOffice/components/ui[2m > [22m[2mInputOTP and selected components render
+[22m[39mReact does not recognize the `containerClassName` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `containerclassname` instead. If you accidentally passed it from a parent component, remove it from the DOM element.
+
+ [31m❯[39m src/__tests__/components/UiFolder.test.jsx [2m([22m[2m19 tests[22m[2m | [22m[31m12 failed[39m[2m)[22m[33m 813[2mms[22m[39m
+     [32m✓[39m Button renders[32m 49[2mms[22m[39m
+     [32m✓[39m Alert wrapper renders[32m 17[2mms[22m[39m
+     [32m✓[39m AspectRatio and Avatar render[32m 16[2mms[22m[39m
+[31m     [31m×[31m Checkbox and Toggle wrappers render[39m[32m 96[2mms[22m[39m
+[31m     [31m×[31m Accordion, Collapsible and Breadcrumb render[39m[32m 22[2mms[22m[39m
+     [32m✓[39m Form item renders without form context[32m 18[2mms[22m[39m
+     [32m✓[39m Context menu components render with slots[32m 11[2mms[22m[39m
+[31m     [31m×[31m Dialog, Drawer, Popover and Sheet wrappers render[39m[32m 155[2mms[22m[39m
+[31m     [31m×[31m Tooltip and HoverCard render[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m Select and Menu components render[39m[32m 20[2mms[22m[39m
+[31m     [31m×[31m Command and Carousel render[39m[32m 17[2mms[22m[39m
+[31m     [31m×[31m Chart container renders with config[39m[32m 15[2mms[22m[39m
+[31m     [31m×[31m Input components, label, textarea and pagination render[39m[32m 157[2mms[22m[39m
+[31m     [31m×[31m Resizable and ScrollArea wrappers render[39m[32m 16[2mms[22m[39m
+[31m     [31m×[31m Select and Separator wrappers render[39m[32m 16[2mms[22m[39m
+[31m     [31m×[31m Sidebar provider and skeleton render[39m[32m 32[2mms[22m[39m
+     [32m✓[39m Slider, Table, Tabs and Toggle components render[32m 114[2mms[22m[39m
+[31m     [31m×[31m InputOTP and selected components render[39m[32m 19[2mms[22m[39m
+     [32m✓[39m Use mobile hook and utils cn helper work[32m 7[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 12 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mCheckbox and Toggle wrappers render
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements by: [data-testid="radix-root"]
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"peer bg-input-background dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"[39m
+  [33mdata-slot[39m=[32m"checkbox"[39m
+  [33mdata-testid[39m=[32m"radix-root"[39m
+  [33mid[39m=[32m"checkbox-test"[39m
+[36m>[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"flex items-center justify-center text-current transition-none"[39m
+    [33mdata-slot[39m=[32m"checkbox-indicator"[39m
+    [33mdata-testid[39m=[32m"radix-indicator"[39m
+  [36m>[39m
+    [36m<svg[39m
+      [33maria-hidden[39m=[32m"true"[39m
+      [33mclass[39m=[32m"lucide lucide-check size-3.5"[39m
+      [33mfill[39m=[32m"none"[39m
+      [33mheight[39m=[32m"24"[39m
+      [33mstroke[39m=[32m"currentColor"[39m
+      [33mstroke-linecap[39m=[32m"round"[39m
+      [33mstroke-linejoin[39m=[32m"round"[39m
+      [33mstroke-width[39m=[32m"2"[39m
+      [33mviewBox[39m=[32m"0 0 24 24"[39m
+      [33mwidth[39m=[32m"24"[39m
+      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+    [36m>[39m
+      [36m<path[39m
+        [33md[39m=[32m"M20 6 9 17l-5-5"[39m
+      [36m/>[39m
+    [36m</svg>[39m
+  [36m</div>[39m
+[36m</div>[39m
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap bg-transparent h-9 px-2 min-w-9"[39m
+  [33mdata-slot[39m=[32m"toggle"[39m
+  [33mdata-testid[39m=[32m"radix-root"[39m
+[36m/>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"peer bg-input-background dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"[39m
+      [33mdata-slot[39m=[32m"checkbox"[39m
+      [33mdata-testid[39m=[32m"radix-root"[39m
+      [33mid[39m=[32m"checkbox-test"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center justify-center text-current transition-none"[39m
+        [33mdata-slot[39m=[32m"checkbox-indicator"[39m
+        [33mdata-testid[39m=[32m"radix-indicator"[39m
+      [36m>[39m
+        [36m<svg[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"lucide lucide-check size-3.5"[39m
+          [33mfill[39m=[32m"none"[39m
+          [33mheight[39m=[32m"24"[39m
+          [33mstroke[39m=[32m"currentColor"[39m
+          [33mstroke-linecap[39m=[32m"round"[39m
+          [33mstroke-linejoin[39m=[32m"round"[39m
+          [33mstroke-width[39m=[32m"2"[39m
+          [33mviewBox[39m=[32m"0 0 24 24"[39m
+          [33mwidth[39m=[32m"24"[39m
+          [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+        [36m>[39m
+          [36m<path[39m
+            [33md[39m=[32m"M20 6 9 17l-5-5"[39m
+          [36m/>[39m
+        [36m</svg>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap bg-transparent h-9 px-2 min-w-9"[39m
+      [33mdata-slot[39m=[32m"toggle"[39m
+      [33mdata-testid[39m=[32m"radix-root"[39m
+    [36m/>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m getElementError node_modules/@testing-library/dom/dist/query-helpers.js:[2m20:35[22m[39m
+[90m [2m❯[22m getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:[2m23:10[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m55:13[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/__tests__/components/UiFolder.test.jsx:[2m255:25[22m[39m
+    [90m253|[39m
+    [90m254|[39m     [35mconst[39m toggleRender [33m=[39m [34mrender[39m([33m<[39m[33mToggle[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m255|[39m     [34mexpect[39m(toggleRender[33m.[39m[34mgetByTestId[39m([32m'radix-root'[39m))[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   |[39m                         [31m^[39m
+    [90m256|[39m
+    [90m257|[39m     [35mconst[39m switchRender [33m=[39m [34mrender[39m([33m<[39m[33mSwitch[39m [33m/[39m[33m>[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mAccordion, Collapsible and Breadcrumb render
+[31m[1mError[22m: [vitest] No "Header" export is defined on the "@radix-ui/react-accordion" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("@radix-ui/react-accordion"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m AccordionTrigger src/pages/frontOffice/components/ui/accordion.tsx:[2m34:25[22m[39m
+    [90m 32|[39m }[33m:[39m [33mReact[39m[33m.[39m[33mComponentProps[39m[33m<[39m[35mtypeof[39m [33mAccordionPrimitive[39m[33m.[39m[33mTrigger[39m[33m>[39m) {
+    [90m 33|[39m   [35mreturn[39m (
+    [90m 34|[39m     [33m<[39m[33mAccordionPrimitive[39m[33m.[39m[33mHeader[39m [33mclassName[39m[33m=[39m[32m"flex"[39m[33m>[39m
+    [90m   |[39m                         [31m^[39m
+    [90m 35|[39m       [33m<[39m[33mAccordionPrimitive[39m[33m.[39m[33mTrigger[39m
+    [90m 36|[39m         [33mdata-slot[39m[33m=[39m[32m"accordion-trigger"[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mDialog, Drawer, Popover and Sheet wrappers render
+[31m[1mError[22m: [vitest] No "Close" export is defined on the "@radix-ui/react-dialog" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("@radix-ui/react-dialog"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m DialogContent src/pages/frontOffice/components/ui/dialog.tsx:[2m66:26[22m[39m
+
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mTooltip and HoverCard render
+[31m[1mError[22m: [vitest] No "Arrow" export is defined on the "@radix-ui/react-tooltip" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("@radix-ui/react-tooltip"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m TooltipContent src/pages/frontOffice/components/ui/tooltip.tsx:[2m55:27[22m[39m
+    [90m 53|[39m       [33m>[39m
+    [90m 54|[39m         [33m{[39mchildren[33m}[39m
+    [90m 55|[39m         <TooltipPrimitive.Arrow className="bg-primary fill-primary z-5…
+    [90m   |[39m                           [31m^[39m
+    [90m 56|[39m       [33m<[39m[33m/[39m[33mTooltipPrimitive[39m[33m.[39m[33mContent[39m[33m>[39m
+    [90m 57|[39m     [33m<[39m[33m/[39m[33mTooltipPrimitive[39m[33m.[39m[33mPortal[39m[33m>[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mSelect and Menu components render
+[31m[1mError[22m: [vitest] No "Portal" export is defined on the "@radix-ui/react-select" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("@radix-ui/react-select"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m SelectContent src/pages/frontOffice/components/ui/select.tsx:[2m64:22[22m[39m
+    [90m 62|[39m }[33m:[39m [33mReact[39m[33m.[39m[33mComponentProps[39m[33m<[39m[35mtypeof[39m [33mSelectPrimitive[39m[33m.[39m[33mContent[39m[33m>[39m) {
+    [90m 63|[39m   [35mreturn[39m (
+    [90m 64|[39m     [33m<[39m[33mSelectPrimitive[39m[33m.[39m[33mPortal[39m[33m>[39m
+    [90m   |[39m                      [31m^[39m
+    [90m 65|[39m       [33m<[39m[33mSelectPrimitive[39m[33m.[39m[33mContent[39m
+    [90m 66|[39m         [33mdata-slot[39m[33m=[39m[32m"select-content"[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mCommand and Carousel render
+[31m[1mError[22m: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+
+Check the render method of `CommandInput`.[39m
+[90m [2m❯[22m createFiberFromTypeAndProps node_modules/react-dom/cjs/react-dom-client.development.js:[2m5021:28[22m[39m
+[90m [2m❯[22m createFiberFromElement node_modules/react-dom/cjs/react-dom-client.development.js:[2m5035:14[22m[39m
+[90m [2m❯[22m createChild node_modules/react-dom/cjs/react-dom-client.development.js:[2m6338:26[22m[39m
+[90m [2m❯[22m reconcileChildrenArray node_modules/react-dom/cjs/react-dom-client.development.js:[2m6670:25[22m[39m
+[90m [2m❯[22m reconcileChildFibersImpl node_modules/react-dom/cjs/react-dom-client.development.js:[2m6993:30[22m[39m
+[90m [2m❯[22m node_modules/react-dom/cjs/react-dom-client.development.js:[2m7098:33[22m[39m
+[90m [2m❯[22m reconcileChildren node_modules/react-dom/cjs/react-dom-client.development.js:[2m9701:13[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m12049:13[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mChart container renders with config
+[31m[1mError[22m: [vitest] No "Legend" export is defined on the "recharts" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("recharts"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m src/pages/frontOffice/components/ui/chart.tsx:[2m251:39[22m[39m
+    [90m249|[39m }
+    [90m250|[39m
+    [90m251|[39m [35mconst[39m [33mChartLegend[39m [33m=[39m [33mRechartsPrimitive[39m[33m.[39m[33mLegend[39m[33m;[39m
+    [90m   |[39m                                       [31m^[39m
+    [90m252|[39m
+    [90m253|[39m [35mfunction[39m [33mChartLegendContent[39m({
+[90m [2m❯[22m src/__tests__/components/UiFolder.test.jsx:[2m484:32[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mInput components, label, textarea and pagination render
+[31m[1mTypeError[22m: buttonVariants is not a function[39m
+[36m [2m❯[22m PaginationLink src/pages/frontOffice/components/ui/pagination.tsx:[2m57:9[22m[39m
+    [90m 55|[39m       [33mdata-active[39m[33m=[39m[33m{[39misActive[33m}[39m
+    [90m 56|[39m       [33mclassName[39m[33m=[39m[33m{[39m[34mcn[39m(
+    [90m 57|[39m         [34mbuttonVariants[39m({
+    [90m   |[39m         [31m^[39m
+    [90m 58|[39m           variant[33m:[39m isActive [33m?[39m [32m"outline"[39m [33m:[39m [32m"ghost"[39m[33m,[39m
+    [90m 59|[39m           size[33m,[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+[90m [2m❯[22m renderRootSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17450:11[22m[39m
+[90m [2m❯[22m performWorkOnRoot node_modules/react-dom/cjs/react-dom-client.development.js:[2m16583:35[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mResizable and ScrollArea wrappers render
+[31m[1mError[22m: [vitest] No "Corner" export is defined on the "@radix-ui/react-scroll-area" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+[39m
+vi.mock(import("@radix-ui/react-scroll-area"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+[36m [2m❯[22m ScrollArea src/pages/frontOffice/components/ui/scroll-area.tsx:[2m26:28[22m[39m
+    [90m 24|[39m       [33m<[39m[33m/[39m[33mScrollAreaPrimitive[39m[33m.[39m[33mViewport[39m[33m>[39m
+    [90m 25|[39m       [33m<[39m[33mScrollBar[39m [33m/[39m[33m>[39m
+    [90m 26|[39m       [33m<[39m[33mScrollAreaPrimitive[39m[33m.[39m[33mCorner[39m [33m/[39m[33m>[39m
+    [90m   |[39m                            [31m^[39m
+    [90m 27|[39m     [33m<[39m[33m/[39m[33mScrollAreaPrimitive[39m[33m.[39m[33mRoot[39m[33m>[39m
+    [90m 28|[39m   )[33m;[39m
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mSelect and Separator wrappers render
+[31m[1mTypeError[22m: Cannot set property scrollHeight of [object Element] which has only a getter[39m
+[36m [2m❯[22m src/__tests__/components/UiFolder.test.jsx:[2m571:30[22m[39m
+    [90m569|[39m     window[33m.[39minnerHeight [33m=[39m [34m100[39m[33m;[39m
+    [90m570|[39m     window[33m.[39mscrollTo [33m=[39m () [33m=>[39m {}[33m;[39m
+    [90m571|[39m     document[33m.[39mdocumentElement[33m.[39mscrollHeight [33m=[39m [34m1000[39m[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m572|[39m
+    [90m573|[39m     [34mrender[39m([33m<[39m[33mScrollButton[39m [33m/[39m[33m>[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mSidebar provider and skeleton render
+[31m[1mTestingLibraryElementError[22m: Unable to find an element by: [data-testid="radix-root"]
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mdata-slot[31m=[32m"tooltip-provider"[31m
+      [33mdata-testid[31m=[32m"radix-provider"[31m
+      [33mdelayduration[31m=[32m"0"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full"[31m
+        [33mdata-slot[31m=[32m"sidebar-wrapper"[31m
+        [33mstyle[31m=[32m"--sidebar-width: 16rem; --sidebar-width-icon: 3rem;"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"group peer text-sidebar-foreground hidden md:block"[31m
+          [33mdata-collapsible[31m=[32m""[31m
+          [33mdata-side[31m=[32m"left"[31m
+          [33mdata-slot[31m=[32m"sidebar"[31m
+          [33mdata-state[31m=[32m"expanded"[31m
+          [33mdata-variant[31m=[32m"sidebar"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[side=right]:rotate-180 group-data-[collapsible=icon]:w-(--sidebar-width-icon)"[31m
+            [33mdata-slot[31m=[32m"sidebar-gap"[31m
+          [36m/>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l"[31m
+            [33mdata-slot[31m=[32m"sidebar-container"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"[31m
+              [33mdata-sidebar[31m=[32m"sidebar"[31m
+              [33mdata-slot[31m=[32m"sidebar-inner"[31m
+            [36m>[31m
+              [36m<div>[31m
+                [0mSidebar content[0m
+              [36m</div>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"bg-accent animate-pulse rounded-md"[31m
+      [33mdata-slot[31m=[32m"skeleton"[31m
+    [36m/>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/__tests__/components/UiFolder.test.jsx:[2m604:19[22m[39m
+    [90m602|[39m
+    [90m603|[39m     [34mrender[39m([33m<[39m[33mSkeleton[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m604|[39m     [34mexpect[39m(screen[33m.[39m[34mgetByTestId[39m([32m'radix-root'[39m))[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   |[39m                   [31m^[39m
+    [90m605|[39m   })[33m;[39m
+    [90m606|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/components/UiFolder.test.jsx[2m > [22mUI folder coverage for /pages/frontOffice/components/ui[2m > [22mInputOTP and selected components render
+[31m[1mTestingLibraryElementError[22m: Unable to find an element by: [data-testid="input-otp-separator"]
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"disabled:cursor-not-allowed"[31m
+      [33mcontainerclassname[31m=[32m"flex items-center gap-2 has-disabled:opacity-50"[31m
+      [33mdata-slot[31m=[32m"input-otp"[31m
+      [33mdata-testid[31m=[32m"otp-input"[31m
+    [36m/>[31m
+  [36m</div>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"data-[active=true]:border-ring data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:ring-destructive/20 dark:data-[active=true]:aria-invalid:ring-destructive/40 aria-invalid:border-destructive data-[active=true]:aria-invalid:border-destructive dark:bg-input/30 border-input relative flex h-9 w-9 items-center justify-center border-y border-r text-sm bg-input-background transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md data-[active=true]:z-10 data-[active=true]:ring-[3px]"[31m
+      [33mdata-active[31m=[32m"false"[31m
+      [33mdata-slot[31m=[32m"input-otp-slot"[31m
+    [36m>[31m
+      [0m1[0m
+    [36m</div>[31m
+  [36m</div>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mdata-slot[31m=[32m"input-otp-separator"[31m
+      [33mrole[31m=[32m"separator"[31m
+    [36m>[31m
+      [36m<svg[31m
+        [33maria-hidden[31m=[32m"true"[31m
+        [33mclass[31m=[32m"lucide lucide-minus"[31m
+        [33mfill[31m=[32m"none"[31m
+        [33mheight[31m=[32m"24"[31m
+        [33mstroke[31m=[32m"currentColor"[31m
+        [33mstroke-linecap[31m=[32m"round"[31m
+        [33mstroke-linejoin[31m=[32m"round"[31m
+        [33mstroke-width[31m=[32m"2"[31m
+        [33mviewBox[31m=[32m"0 0 24 24"[31m
+        [33mwidth[31m=[32m"24"[31m
+        [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+      [36m>[31m
+        [36m<path[31m
+          [33md[31m=[32m"M5 12h14"[31m
+        [36m/>[31m
+      [36m</svg>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/__tests__/components/UiFolder.test.jsx:[2m678:19[22m[39m
+    [90m676|[39m
+    [90m677|[39m     [34mrender[39m([33m<[39m[33mInputOTPSeparator[39m [33m/[39m[33m>[39m)[33m;[39m
+    [90m678|[39m     [34mexpect[39m(screen[33m.[39m[34mgetByTestId[39m([32m'input-otp-separator'[39m))[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m   |[39m                   [31m^[39m
+    [90m679|[39m
+    [90m680|[39m     [34mrender[39m([33m<[39m[33mProgress[39m [33mvalue[39m[33m=[39m[33m{[39m[34m25[39m[33m}[39m [33m/[39m[33m>[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m12 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (19)[39m
+[2m   Start at [22m 13:15:43
+[2m   Duration [22m 2.16s[2m (transform 368ms, setup 105ms, import 171ms, tests 813ms, environment 748ms)[22m
+

@@ -12,6 +12,7 @@ const AVATAR_STYLES = [
     { id: 'open-peeps', name: 'Peeps' },
     { id: 'croodles', name: 'Croodles' },
     { id: 'personas', name: 'Personas' }
+    
 ];
 
 export const AvatarPicker = ({ currentAvatar, onSelect }) => {
