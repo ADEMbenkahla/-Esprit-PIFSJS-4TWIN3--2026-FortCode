@@ -13,12 +13,15 @@ class AiJudgeService {
 
     /**
      * Compares two submissions and returns the winner.
-     * @param {Object} p1 { code, username, language }
-     * @param {Object} p2 { code, username, language }
+     * @param {Object} p1 { code, username, language, complexity }
+     * @param {Object} p2 { code, username, language, complexity }
      * @param {String} challengeDescription
      * @returns {Promise<Object>} { winnerIndex (0 or 1), justification }
      */
     async judgeMatch(p1, p2, challengeDescription = "") {
+        const p1Complexity = p1.complexity ? `\nPredicted Complexity: ${p1.complexity}` : "";
+        const p2Complexity = p2.complexity ? `\nPredicted Complexity: ${p2.complexity}` : "";
+
         const prompt = `### ROLE: Technical Judge for Coding Competition
 ### TASK: Compare two solutions to a coding problem and declare a winner based on code quality, efficiency, readability, and best practices.
 
@@ -26,14 +29,14 @@ class AiJudgeService {
 "${challengeDescription}"
 
 ### SUBMISSION 1 (Player: ${p1.username}):
-Language: ${p1.language}
+Language: ${p1.language}${p1Complexity}
 Code:
 \`\`\`${p1.language}
 ${p1.code}
 \`\`\`
 
 ### SUBMISSION 2 (Player: ${p2.username}):
-Language: ${p2.language}
+Language: ${p2.language}${p2Complexity}
 Code:
 \`\`\`${p2.language}
 ${p2.code}
@@ -42,7 +45,7 @@ ${p2.code}
 ### JUDGING CRITERIA:
 1. Correctness: Does the code solve the problem logic?
 2. Cleanliness: Naming conventions, indentation, and structure.
-3. Efficiency: Time and space complexity.
+3. Efficiency: Time and space complexity. Use the "Predicted Complexity" as a strong hint.
 4. Robustness: Handling of edge cases.
 
 Return your decision in STRICT JSON format:

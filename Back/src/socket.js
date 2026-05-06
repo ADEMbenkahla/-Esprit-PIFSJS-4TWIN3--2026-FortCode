@@ -21,7 +21,12 @@ const userSockets = new Map();
 const initSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+            origin: [
+                "http://localhost:5173", 
+                "http://127.0.0.1:5173",
+                process.env.FRONTEND_NGROK_URL,
+                process.env.NGROK_URL // Also allow backend ngrok just in case
+            ].filter(Boolean),
             credentials: true
         }
     });
@@ -90,8 +95,8 @@ const initSocket = (server) => {
                     }
                 }
 
-                // Allow matching with self by filtering by socketId
-                matchmakingQueue[type] = matchmakingQueue[type].filter(p => p.socketId !== socket.id);
+                // Prevenir le matchmaking avec soi-mme (mme userId)
+                matchmakingQueue[type] = matchmakingQueue[type].filter(p => p.userId !== userId);
 
                 if (matchmakingQueue[type].length > 0) {
                     const opponent = matchmakingQueue[type].shift();
@@ -304,7 +309,10 @@ const initSocket = (server) => {
                     const idx = socket.playerIndex;
                     if (idx === undefined) return;
                     console.log(`[Arena] Submit from ${socket.userUsername} (Slot ${idx})`);
-                    const mlResult = await detectCodeOrigin(code);
+                    
+                    // Analyser le code (ML + Complexité)
+                    const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
+                    const mlResult = combinedAnalysis.mlDetection;
 
                     const updateQuery = {};
                     updateQuery[`players.${idx}.finished`] = true;
@@ -312,6 +320,7 @@ const initSocket = (server) => {
                     updateQuery[`players.${idx}.code`] = code;
                     updateQuery[`players.${idx}.language`] = language || "javascript";
                     updateQuery[`players.${idx}.mlDetection`] = { prediction: mlResult.prediction, label: mlResult.label };
+                    updateQuery[`players.${idx}.complexityAnalysis`] = combinedAnalysis.complexityAnalysis;
 
                     const match = await Match.findOneAndUpdate(
                         { _id: matchId },
@@ -377,38 +386,40 @@ const initSocket = (server) => {
                                     winnerId = p1Id;
                                 } else if (pct2 > pct1) {
                                     winnerId = p2Id;
-                                } else if (pct1 === 100 && pct2 === 100) {
-                                    // Both are 100% correct, use complexity-based tie-breakers
-                                    const player1Submission = {
-                                        mlDetection: match.players[0].mlDetection,
-                                        complexityAnalysis: match.players[0].complexityAnalysis,
-                                        submittedAt: match.players[0].finishedAt
-                                    };
-                                    const player2Submission = {
-                                        mlDetection: match.players[1].mlDetection,
-                                        complexityAnalysis: match.players[1].complexityAnalysis,
-                                        submittedAt: match.players[1].finishedAt
-                                    };
+                                } else {
+                                    // Tie detected (same correctness percentage)
+                                    console.log(`[Arena] Tie detected (${pct1}%). Calling AI Judge...`);
                                     
-                                    const comparisonResult = complexityService.compareSubmissions(player1Submission, player2Submission);
-                                    if (comparisonResult < 0) {
-                                        winnerId = p1Id; // Player 1 wins
-                                    } else if (comparisonResult > 0) {
-                                        winnerId = p2Id; // Player 2 wins
+                                    const judgeResult = await aiJudgeService.judgeMatch(
+                                        { 
+                                            code: match.players[0].code, 
+                                            username: match.players[0].username, 
+                                            language: match.players[0].language || "javascript",
+                                            complexity: match.players[0].complexityAnalysis?.complexity 
+                                        },
+                                        { 
+                                            code: match.players[1].code, 
+                                            username: match.players[1].username, 
+                                            language: match.players[1].language || "javascript",
+                                            complexity: match.players[1].complexityAnalysis?.complexity 
+                                        },
+                                        match.challenge?.description || ""
+                                    );
+
+                                    if (judgeResult.winnerIndex === 0) {
+                                        winnerId = p1Id;
+                                    } else if (judgeResult.winnerIndex === 1) {
+                                        winnerId = p2Id;
                                     } else {
-                                        // Complete tie - use health as final tiebreaker
+                                        // Ultimate tie-breaker: health
                                         if (match.players[0].health > match.players[1].health) {
                                             winnerId = p1Id;
                                         } else if (match.players[1].health > match.players[0].health) {
                                             winnerId = p2Id;
                                         } else {
-                                            // Ultimate tie - draw
                                             winnerId = "draw";
                                         }
                                     }
-                                } else {
-                                    // Both were equal but NOT 100% (e.g. both 0% or both 50%) -> DRAW
-                                    winnerId = "draw";
                                 }
                             }
 

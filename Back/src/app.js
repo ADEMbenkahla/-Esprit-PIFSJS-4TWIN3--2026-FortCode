@@ -18,7 +18,8 @@ app.use(cors({
         'http://127.0.0.1:5173', 
         'http://localhost:4173', 
         'http://127.0.0.1:4173',
-        process.env.NGROK_URL
+        process.env.NGROK_URL,
+        process.env.FRONTEND_NGROK_URL
     ].filter(Boolean),
     credentials: true
 }));
