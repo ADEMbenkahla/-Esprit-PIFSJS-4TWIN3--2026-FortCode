@@ -1138,96 +1138,30 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("DEBUG: updateUser Body:", req.body);
     const { username, email, password, role, avatar, rank, level, points } = req.body;
 
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const updateData = {};
 
-    // Update username if provided
-    if (username && username !== user.username) {
-      const existingUsername = await User.findOne({ username, _id: { $ne: userId } });
-      if (existingUsername) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-      updateData.username = username;
-    }
+    const duplicateError = await checkDuplicateUser(userId, username, email);
+    if (duplicateError) return res.status(400).json({ message: duplicateError });
 
-    // Update email if provided
-    if (email && email !== user.email) {
-      const existingEmail = await User.findOne({ email, _id: { $ne: userId } });
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
-      updateData.email = email;
-    }
-
-    // Update password if provided
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
-    }
-
-    // Update role if provided
+    if (username) updateData.username = username;
+    if (email) updateData.email = email;
+    if (password) updateData.password = await bcrypt.hash(password, 10);
+    if (avatar) updateData.avatar = avatar;
+    
     if (role) {
       const validRoles = ["participant", "admin", "recruiter"];
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({
-          message: `Invalid role. Allowed roles: ${validRoles.join(", ")}`
-        });
-      }
+      if (!validRoles.includes(role)) return res.status(400).json({ message: `Invalid role. Allowed roles: ${validRoles.join(", ")}` });
       updateData.role = role;
     }
 
-    // Update avatar if provided
-    if (avatar) {
-      console.log("DEBUG: Avatar detected in request:", avatar);
-      updateData.avatar = avatar;
+    if (rank || points !== undefined || level !== undefined) {
+      updateData.gamification = updateGamificationState(user, { rank, points, level });
     }
-
-    // Initialize gamification if missing
-    if (!user.gamification) {
-      user.gamification = { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
-    }
-
-    // Update rank if provided
-    if (rank) {
-      user.gamification.rank = rank;
-
-      const gamificationService = require("../services/gamificationService");
-      const threshold = gamificationService.RANK_THRESHOLDS.find(t => t.rank === rank);
-      // Synchronize ranked rating if we manually boost their rank (Leave points/level untouched!)
-      if (threshold) {
-        user.gamification.rankedRating = threshold.xp;
-      }
-      updateData.gamification = user.gamification;
-    }
-
-    // Handle XP (points) and Level updates
-    if (points !== undefined || level !== undefined) {
-      if (points !== undefined) {
-        // Manual XP edit takes precedence
-        let newXP = parseInt(points, 10);
-        if (isNaN(newXP) || newXP < 0) newXP = 0;
-        user.gamification.points = newXP;
-        // Sync Level: 1 level every 500 XP
-        user.gamification.level = Math.min(Math.floor(newXP / 500) + 1, 80);
-      } else if (level !== undefined) {
-        // Legacy Level-only edit
-        let newLevel = parseInt(level, 10);
-        if (isNaN(newLevel) || newLevel < 1) newLevel = 1;
-        if (newLevel > 80) newLevel = 80;
-        user.gamification.level = newLevel;
-        // Sync XP: sets to start of level
-        user.gamification.points = (newLevel - 1) * 500;
-      }
-      updateData.gamification = user.gamification;
-    }
-
-    console.log("DEBUG: Applying Update to DB:", updateData);
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -1235,17 +1169,45 @@ exports.updateUser = async (req, res) => {
       { new: true, runValidators: true }
     ).select("-password");
 
-    console.log("DEBUG: Final User in DB after update:", updatedUser.avatar);
-
-    res.json({
-      message: "User updated successfully",
-      user: updatedUser
-    });
-
+    res.json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+async function checkDuplicateUser(userId, username, email) {
+  if (username) {
+    const existing = await User.findOne({ username, _id: { $ne: userId } });
+    if (existing) return "Username already exists";
+  }
+  if (email) {
+    const existing = await User.findOne({ email, _id: { $ne: userId } });
+    if (existing) return "Email already exists";
+  }
+  return null;
+}
+
+function updateGamificationState(user, { rank, points, level }) {
+  const gam = user.gamification || { points: 0, rankedRating: 0, badges: [], level: 1, streak: 0, rank: "Iron" };
+  
+  if (rank) {
+    gam.rank = rank;
+    const gamificationService = require("../services/gamificationService");
+    const threshold = gamificationService.RANK_THRESHOLDS.find(t => t.rank === rank);
+    if (threshold) gam.rankedRating = threshold.xp;
+  }
+
+  if (points !== undefined) {
+    const newXP = Math.max(0, parseInt(points, 10) || 0);
+    gam.points = newXP;
+    gam.level = Math.min(Math.floor(newXP / 500) + 1, 80);
+  } else if (level !== undefined) {
+    const newLevel = Math.min(80, Math.max(1, parseInt(level, 10) || 1));
+    gam.level = newLevel;
+    gam.points = (newLevel - 1) * 500;
+  }
+  return gam;
+}
 
 
 // =============================

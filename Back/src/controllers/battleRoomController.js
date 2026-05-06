@@ -70,7 +70,7 @@ const parseArrayInput = (value) => {
     const parsed = JSON.parse(trimmed);
     return Array.isArray(parsed) ? parsed : [];
   } catch (_e) {
-    return trimmed.split(/[\n,;\s]+/).filter(Boolean);
+    return trimmed.split(/[,;\s]+/).filter(Boolean);
   }
 };
 const parseObjectInput = (value) => {
@@ -1013,88 +1013,25 @@ exports.submitParticipantBattleCode = async (req, res) => {
     }
 
     const code = String(req.body.code || "");
-    const testRun = runChallengeCode(room.challenge?.language, code, room.challenge?.testCases || []);
-    const correctness = computeCorrectnessFromRun(testRun);
-
-    const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
-    const mlDetection = combinedAnalysis.mlDetection;
-    const complexityAnalysis = combinedAnalysis.complexityAnalysis;
-
-    const [sonar, aiFeedback] = await Promise.all([
-      fetchSonarStub(code, room.challenge?.language, {
-        participantId: participantId.toString(),
-        roomId: room._id.toString(),
-        projectName: room.title,
-      }),
-      fetchAiFeedback(code, room.challenge?.title),
-    ]);
-
-    const analysis = {
-      sonar,
-      aiFeedback,
-      qualityScore: sonar.qualityScore,
-      qualityGrade: getQualityGrade(sonar.qualityScore),
-      qualityIssues: sonar.issues || [],
-      securityAlerts: sonar.issues?.filter((i) => i.severity === "CRITICAL" || i.severity === "MAJOR") || [],
-    };
+    const { testRun, correctness, mlDetection, analysis, isAiAutoLoss } = await performSubmissionAnalysis(room, participantId, code);
 
     const finalScore = computeFinalScore({
       qualityScore: analysis.qualityScore,
       correctnessScore: correctness.correctnessScore,
     });
     const offTopic = correctness.correctnessScore != null && correctness.correctnessScore < 50;
-    const isAiAutoLoss = mlDetection && (mlDetection.label === "IA" || mlDetection.label === "Plagiat");
 
-    const updated = await BattleSubmission.findOneAndUpdate(
-      { battleRoom: room._id, participant: participantId },
-      {
-        $set: {
-          code,
-          status: "submitted",
-          submittedAt: new Date(),
-          score: isAiAutoLoss ? 0 : (finalScore != null ? finalScore : 0),
-          executionTimeMs: testRun?.executionTimeMs != null ? Number(testRun.executionTimeMs) : null,
-          outputSnapshot: testRun?.outputSnapshot || "",
-          sonarSummary: analysis.sonar?.summary || "",
-          sonarSource: analysis.sonar?.source || "",
-          sonarProjectKey: analysis.sonar?.projectKey || "",
-          qualityGateStatus: analysis.sonar?.qualityGateStatus || "",
-          sonarMetrics: {
-            bugs: analysis.sonar?.metrics?.bugs != null ? Number(analysis.sonar.metrics.bugs) : null,
-            vulnerabilities: analysis.sonar?.metrics?.vulnerabilities != null ? Number(analysis.sonar.metrics.vulnerabilities) : null,
-            codeSmells: analysis.sonar?.metrics?.code_smells != null ? Number(analysis.sonar.metrics.code_smells) : null,
-            securityRating: analysis.sonar?.metrics?.security_rating || "",
-            reliabilityRating: analysis.sonar?.metrics?.reliability_rating || "",
-            maintainabilityRating: analysis.sonar?.metrics?.sqale_rating || "",
-            securityHotspotsReviewed:
-              analysis.sonar?.metrics?.security_hotspots_reviewed != null
-                ? Number(analysis.sonar.metrics.security_hotspots_reviewed)
-                : null,
-            count_milestones_met: 0,
-            duplications:
-              analysis.sonar?.metrics?.duplicated_lines_density != null
-                ? Number(analysis.sonar.metrics.duplicated_lines_density)
-                : null,
-          },
-          aiFeedback: analysis.aiFeedback?.summary || analysis.aiFeedback?.message || "",
-          qualityScore: isAiAutoLoss ? 0 : analysis.qualityScore,
-          qualityGrade: isAiAutoLoss ? "F" : analysis.qualityGrade,
-          correctnessScore: isAiAutoLoss ? 0 : correctness.correctnessScore,
-          finalScore: isAiAutoLoss ? 0 : finalScore,
-          mlDetection,
-          offTopic: isAiAutoLoss ? true : offTopic,
-          qualityIssues: analysis.qualityIssues,
-          securityAlerts: analysis.securityAlerts,
-          metrics: {
-            passedTests: isAiAutoLoss ? 0 : correctness.passedTests,
-            totalTests: correctness.totalTests,
-          },
-        },
-      },
-      { new: true, upsert: true }
-    ).lean();
+    const updated = await updateBattleSubmission(room._id, participantId, {
+      code,
+      testRun,
+      correctness,
+      mlDetection,
+      analysis,
+      finalScore,
+      isAiAutoLoss,
+      offTopic
+    });
 
-    // Award XP if not AI/Plagiarism
     let xpResult = null;
     if (!isAiAutoLoss) {
       const gamificationService = require("../services/gamificationService");
@@ -1125,25 +1062,105 @@ exports.submitParticipantBattleCode = async (req, res) => {
       },
     });
 
-    // Auto-end logic: If everyone has submitted, end the battle and resolve winner
-    const participantCount = room.participants.length;
-    const submissionCount = await BattleSubmission.countDocuments({
-      battleRoom: room._id,
-      status: "submitted"
-    });
+    await checkAndEndBattleRoom(room);
+  } catch (error) {
+    console.error("Submission error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
-    if (submissionCount >= participantCount) {
-      console.log(`[BattleRoom] All participants submitted. Auto-ending room ${room._id}`);
-      const roomToUpdate = await BattleRoom.findById(room._id);
-      if (roomToUpdate && roomToUpdate.status === "live") {
-        roomToUpdate.status = "ended";
-        roomToUpdate.endedAt = new Date();
-        roomToUpdate.resultsShared = true; // Auto-share for 1v1
-        roomToUpdate.resultsSharedAt = new Date();
-        
-        await internalResolveBattleRoom(roomToUpdate);
-      }
+async function performSubmissionAnalysis(room, participantId, code) {
+  const testRun = runChallengeCode(room.challenge?.language, code, room.challenge?.testCases || []);
+  const correctness = computeCorrectnessFromRun(testRun);
+  const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
+  const mlDetection = combinedAnalysis.mlDetection;
+
+  const [sonar, aiFeedback] = await Promise.all([
+    fetchSonarStub(code, room.challenge?.language, {
+      participantId: participantId.toString(),
+      roomId: room._id.toString(),
+      projectName: room.title,
+    }),
+    fetchAiFeedback(code, room.challenge?.title),
+  ]);
+
+  const analysis = {
+    sonar,
+    aiFeedback,
+    qualityScore: sonar.qualityScore,
+    qualityGrade: getQualityGrade(sonar.qualityScore),
+    qualityIssues: sonar.issues || [],
+    securityAlerts: sonar.issues?.filter((i) => i.severity === "CRITICAL" || i.severity === "MAJOR") || [],
+  };
+
+  const isAiAutoLoss = mlDetection && (mlDetection.label === "IA" || mlDetection.label === "Plagiat");
+  return { testRun, correctness, mlDetection, analysis, isAiAutoLoss };
+}
+
+async function updateBattleSubmission(roomId, participantId, data) {
+  const { code, testRun, correctness, mlDetection, analysis, finalScore, isAiAutoLoss, offTopic } = data;
+  return await BattleSubmission.findOneAndUpdate(
+    { battleRoom: roomId, participant: participantId },
+    {
+      $set: {
+        code,
+        status: "submitted",
+        submittedAt: new Date(),
+        score: isAiAutoLoss ? 0 : (finalScore || 0),
+        executionTimeMs: testRun?.executionTimeMs || null,
+        outputSnapshot: testRun?.outputSnapshot || "",
+        sonarSummary: analysis.sonar?.summary || "",
+        sonarSource: analysis.sonar?.source || "",
+        sonarProjectKey: analysis.sonar?.projectKey || "",
+        qualityGateStatus: analysis.sonar?.qualityGateStatus || "",
+        sonarMetrics: {
+          bugs: analysis.sonar?.metrics?.bugs || null,
+          vulnerabilities: analysis.sonar?.metrics?.vulnerabilities || null,
+          codeSmells: analysis.sonar?.metrics?.code_smells || null,
+          securityRating: analysis.sonar?.metrics?.security_rating || "",
+          reliabilityRating: analysis.sonar?.metrics?.reliability_rating || "",
+          maintainabilityRating: analysis.sonar?.metrics?.sqale_rating || "",
+          securityHotspotsReviewed: analysis.sonar?.metrics?.security_hotspots_reviewed || null,
+          count_milestones_met: 0,
+          duplications: analysis.sonar?.metrics?.duplicated_lines_density || null,
+        },
+        aiFeedback: analysis.aiFeedback?.summary || analysis.aiFeedback?.message || "",
+        qualityScore: isAiAutoLoss ? 0 : analysis.qualityScore,
+        qualityGrade: isAiAutoLoss ? "F" : analysis.qualityGrade,
+        correctnessScore: isAiAutoLoss ? 0 : correctness.correctnessScore,
+        finalScore: isAiAutoLoss ? 0 : finalScore,
+        mlDetection,
+        offTopic: isAiAutoLoss ? true : offTopic,
+        qualityIssues: analysis.qualityIssues,
+        securityAlerts: analysis.securityAlerts,
+        metrics: {
+          passedTests: isAiAutoLoss ? 0 : correctness.passedTests,
+          totalTests: correctness.totalTests,
+        },
+      },
+    },
+    { new: true, upsert: true }
+  ).lean();
+}
+
+async function checkAndEndBattleRoom(room) {
+  const participantCount = room.participants.length;
+  const submissionCount = await BattleSubmission.countDocuments({
+    battleRoom: room._id,
+    status: "submitted"
+  });
+
+  if (submissionCount >= participantCount) {
+    const roomToUpdate = await BattleRoom.findById(room._id);
+    if (roomToUpdate && roomToUpdate.status === "live") {
+      roomToUpdate.status = "ended";
+      roomToUpdate.endedAt = new Date();
+      roomToUpdate.resultsShared = true;
+      roomToUpdate.resultsSharedAt = new Date();
+      await internalResolveBattleRoom(roomToUpdate);
     }
+  }
+}
   } catch (error) {
     console.error("Submission error:", error);
     return res.status(500).json({ message: "Server error", error: error.message });

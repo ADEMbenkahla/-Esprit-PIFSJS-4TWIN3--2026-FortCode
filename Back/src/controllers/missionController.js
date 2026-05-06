@@ -150,13 +150,12 @@ exports.submitMissionChallenge = async (req, res) => {
         const run = runChallengeCode(challenge.language, code || "", challenge.testCases || []);
 
         // 2. Perform Analysis (Sonar + AI)
-        const [sonar, aiFeedback] = await Promise.all([
+        const [sonar] = await Promise.all([
             fetchSonarStub(code, challenge.language, {
                 participantId: userId,
                 missionId,
                 projectName: mission.title,
             }),
-            fetchAiFeedback(code, challenge.title),
         ]);
 
         const fullAiAnalysis = await aiAnalysisService.performFullAnalysis(code, challenge.language, challenge.title);

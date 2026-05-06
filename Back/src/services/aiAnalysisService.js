@@ -79,7 +79,9 @@ class AiAnalysisService {
 
     getFallbackMetrics(code = "") {
         const lines = code.split('\n').filter(l => l.trim()).length;
-        const score = lines > 20 ? 65 : lines > 5 ? 85 : 95; // Short simple solutions are often cleaner
+        let score = 95;
+        if (lines > 20) score = 65;
+        else if (lines > 5) score = 85;
         return {
             reliability_rating: 3,
             security_rating: 4,
@@ -114,7 +116,6 @@ class AiAnalysisService {
 
     getStaticBugHeuristics(code, language) {
         const issues = [];
-        const lines = code.split('\n');
 
         if (language === 'javascript' || language === 'js') {
             if (code.includes('var ')) issues.push({ line: 1, type: "performance", message: "Use of 'var' detected", explanation: "Modern JS prefers 'let' or 'const' for better scope control.", suggestion: "// Replace var with const/let" });
@@ -127,7 +128,7 @@ class AiAnalysisService {
             if (code.includes('print(') && !code.includes('return ')) issues.push({ line: 1, type: "logic", message: "Print instead of Return", explanation: "Functions in tests usually need to 'return' a value, not just print it.", suggestion: "return result # instead of print(result)" });
         }
 
-        if (code.match(/\{[\s]*\}/) || code.match(/:[\s]*pass/)) {
+        if (code.match(/\{\s*\}/) || code.match(/:\s*pass/)) {
             issues.push({ line: 1, type: "logic", message: "Empty block detected", explanation: "The logic contains an empty block (pass or {}), which might mean incomplete implementation.", suggestion: "// Implement missing logic" });
         }
 
