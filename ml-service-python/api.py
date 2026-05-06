@@ -16,10 +16,22 @@ def extract_features(code):
 
 @app.route('/predict',methods=['POST'])
 def predict():
-    code=request.json['code']
-    features=extract_features(code)
-    pred=int(model.predict([features])[0])
+    code=request.json.get('code', '')
     
+    # Heuristique demandée : forcer Humain sauf si le code est long et contient plusieurs commentaires
+    is_long = len(code) > 150
+    comment_count = code.count('//') + code.count('/*') + code.count('#')
+    has_many_comments = comment_count >= 2
+    
+    if is_long and has_many_comments:
+        features=extract_features(code)
+        pred=int(model.predict([features])[0])
+        # S'assurer qu'il soit détecté comme IA ou Plagiat
+        if pred == 0:
+            pred = 1
+    else:
+        pred = 0
+        
     # Mapping des prédictions vers des labels lisibles
     labels = {0: "Humain", 1: "IA", 2: "Plagiat"}
     label = labels.get(pred, "Unknown")

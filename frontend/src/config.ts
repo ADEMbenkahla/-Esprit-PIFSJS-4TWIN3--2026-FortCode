@@ -7,7 +7,7 @@
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 // If we are on ngrok/production, we likely want to talk to the same base URL (or a specific ngrok one)
-const NGROK_BACKEND_URL = 'https://recede-hydration-recharger.ngrok-free.dev'; 
+const NGROK_BACKEND_URL = 'https://recede-hydration-recharger.ngrok-free.dev';
 const LOCAL_BACKEND_URL = 'http://localhost:5000';
 
 export const BACKEND_URL = isLocalhost ? LOCAL_BACKEND_URL : NGROK_BACKEND_URL;
