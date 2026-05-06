@@ -6,6 +6,7 @@ const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
 const fs = require('fs');
 const path = require('path');
+const { getFrontendUrl } = require('../config/urls');
 
 // Initiate Google OAuth
 router.get('/google', passport.authenticate('google', {
@@ -15,7 +16,7 @@ router.get('/google', passport.authenticate('google', {
 // Google OAuth callback
 router.get('/google/callback',
     passport.authenticate('google', {
-        failureRedirect: 'http://localhost:5173/',
+        failureRedirect: `${getFrontendUrl()}/`,
         session: false
     }),
     async (req, res) => {
@@ -76,13 +77,13 @@ router.get('/google/callback',
             );
 
             return res.redirect(
-                `http://localhost:5173/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(newUser.role)}`
+                `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(newUser.role)}`
             );
         }
 
         // 🔥 Check if account is active
         if (!user.isActive) {
-            return res.redirect('http://localhost:5173/?error=deactivated');
+            return res.redirect(`${getFrontendUrl()}/?error=deactivated`);
         }
 
         // Existing user - generate JWT token
@@ -94,7 +95,7 @@ router.get('/google/callback',
 
         // Redirect to frontend with token
         res.redirect(
-            `http://localhost:5173/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(user.role)}`
+            `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(user.role)}`
         );
     }
 );

@@ -1,4 +1,4 @@
-const Mission = require("../models/Mission");
+const Mission = require("../models/Stage");
 const UserMissionProgress = require("../models/UserMissionProgress");
 const Challenge = require("../models/Challenge");
 const mongoose = require("mongoose");
@@ -24,9 +24,9 @@ function mapGet(mapOrObj, key) {
 exports.getMyMissions = async (req, res) => {
     try {
         const userId = toUserId(req);
-        const missions = await Mission.find()
+        const missions = await Mission.find({ category: "mission" })
             .sort({ level: 1, order: 1 })
-            .populate("prerequisiteMissionId", "title order")
+            .populate("prerequisiteStageId", "title order")
             .populate("challenges", "title difficulty language");
 
         const progressList = await UserMissionProgress.find({ userId });
@@ -38,11 +38,11 @@ exports.getMyMissions = async (req, res) => {
                 );
 
                 let status = "locked";
-                if (!m.prerequisiteMissionId) {
+                if (!m.prerequisiteStageId) {
                     status = "available";
                 } else {
                     const preReqProg = progressList.find(
-                        (p) => String(p.missionId) === String(m.prerequisiteMissionId._id)
+                        (p) => String(p.missionId) === String(m.prerequisiteStageId._id)
                     );
                     if (preReqProg && preReqProg.status === "completed") {
                         status = "available";
@@ -77,7 +77,7 @@ exports.getMissionById = async (req, res) => {
         const userId = toUserId(req);
         const mission = await Mission.findById(req.params.id)
             .populate("challenges")
-            .populate("prerequisiteMissionId", "title");
+            .populate("prerequisiteStageId", "title");
 
         if (!mission) {
             return res.status(404).json({ message: "Mission not found" });
@@ -88,16 +88,16 @@ exports.getMissionById = async (req, res) => {
             missionId: mission._id,
         });
 
-        if (mission.prerequisiteMissionId) {
+        if (mission.prerequisiteStageId) {
             const preReqProg = await UserMissionProgress.findOne({
                 userId,
-                missionId: mission.prerequisiteMissionId._id,
+                missionId: mission.prerequisiteStageId._id,
             });
             if (!preReqProg || preReqProg.status !== "completed") {
                 return res.status(403).json({
                     message: "Mission locked. Complete prerequisites first.",
                     code: "MISSION_LOCKED",
-                    prerequisiteTitle: mission.prerequisiteMissionId.title,
+                    prerequisiteTitle: mission.prerequisiteStageId.title,
                 });
             }
         }

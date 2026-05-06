@@ -9,6 +9,7 @@ const qrcode = require("qrcode");
 const sendEmail = require("../utils/sendEmail");
 const fs = require("fs");
 const path = require("path");
+const { getFrontendUrl } = require("../config/urls");
 
 const TWO_FA_EMAIL_TTL_MS = 10 * 60 * 1000;
 
@@ -624,7 +625,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     // Create reset URL
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    const resetUrl = `${getFrontendUrl()}/reset-password/${resetToken}`;
 
     // Load and prepare email template
     const templatePath = path.join(__dirname, "../templates/forgotPassword.html");
@@ -1195,12 +1196,12 @@ exports.updateUser = async (req, res) => {
     // Update rank if provided
     if (rank) {
       user.gamification.rank = rank;
-      
+
       const gamificationService = require("../services/gamificationService");
       const threshold = gamificationService.RANK_THRESHOLDS.find(t => t.rank === rank);
       // Synchronize ranked rating if we manually boost their rank (Leave points/level untouched!)
       if (threshold) {
-         user.gamification.rankedRating = threshold.xp;
+        user.gamification.rankedRating = threshold.xp;
       }
       updateData.gamification = user.gamification;
     }
@@ -1221,7 +1222,7 @@ exports.updateUser = async (req, res) => {
         if (newLevel > 80) newLevel = 80;
         user.gamification.level = newLevel;
         // Sync XP: sets to start of level
-        user.gamification.points = (newLevel - 1) * 500; 
+        user.gamification.points = (newLevel - 1) * 500;
       }
       updateData.gamification = user.gamification;
     }

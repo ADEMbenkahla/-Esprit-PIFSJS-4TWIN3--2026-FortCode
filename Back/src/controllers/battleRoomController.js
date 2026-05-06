@@ -526,47 +526,7 @@ exports.updateBattleRoomStatus = async (req, res) => {
         room.endedAt = new Date();
 
         // Resolve ties with AI Judge when battle ends
-        try {
-          const submissions = await BattleSubmission.find({ battleRoom: room._id, status: "submitted" }).populate("participant", "username");
-          if (submissions.length >= 2) {
-            // Sort to find the top tied ones
-            const sorted = submissions.sort((a, b) => {
-              const scoreA = Number(a.finalScore || 0);
-              const scoreB = Number(b.finalScore || 0);
-              if (scoreB !== scoreA) return scoreB - scoreA;
-
-              const correctA = Number(a.correctnessScore || 0);
-              const correctB = Number(b.correctnessScore || 0);
-              if (correctB !== correctA) return correctB - correctA;
-
-              // Fallback to time: earlier submission wins
-              const timeA = a.submittedAt ? new Date(a.submittedAt).getTime() : new Date(a.createdAt).getTime();
-              const timeB = b.submittedAt ? new Date(b.submittedAt).getTime() : new Date(b.createdAt).getTime();
-              return timeA - timeB;
-            });
-
-            const top1 = sorted[0];
-            const top2 = sorted[1];
-
-            // If scores are very close or tied
-            if (Number(top1.finalScore || 0) === Number(top2.finalScore || 0)) {
-              console.log(`[BattleRoom] Tie detected between ${top1.participant.username} and ${top2.participant.username}. Calling AI Judge...`);
-              const judgeResult = await aiJudgeService.judgeMatch(
-                { code: top1.code, username: top1.participant.username, language: room.challenge.language || "javascript" },
-                { code: top2.code, username: top2.participant.username, language: room.challenge.language || "javascript" },
-                room.challenge.description || ""
-              );
-
-              if (judgeResult.winnerIndex === 0) room.aiWinner = top1.participant._id;
-              else if (judgeResult.winnerIndex === 1) room.aiWinner = top2.participant._id;
-
-              room.aiJustification = judgeResult.justification || "";
-              console.log(`[BattleRoom] AI Judge picked winner: ${room.aiWinner}. Justification: ${room.aiJustification}`);
-            }
-          }
-        } catch (err) {
-          console.error("[BattleRoom] AI Judge error:", err);
-        }
+        await internalResolveBattleRoom(room);
       }
     }
 
@@ -1060,6 +1020,24 @@ exports.submitParticipantBattleCode = async (req, res) => {
     const mlDetection = combinedAnalysis.mlDetection;
     const complexityAnalysis = combinedAnalysis.complexityAnalysis;
 
+    const [sonar, aiFeedback] = await Promise.all([
+      fetchSonarStub(code, room.challenge?.language, {
+        participantId: participantId.toString(),
+        roomId: room._id.toString(),
+        projectName: room.title,
+      }),
+      fetchAiFeedback(code, room.challenge?.title),
+    ]);
+
+    const analysis = {
+      sonar,
+      aiFeedback,
+      qualityScore: sonar.qualityScore,
+      qualityGrade: getQualityGrade(sonar.qualityScore),
+      qualityIssues: sonar.issues || [],
+      securityAlerts: sonar.issues?.filter((i) => i.severity === "CRITICAL" || i.severity === "MAJOR") || [],
+    };
+
     const finalScore = computeFinalScore({
       qualityScore: analysis.qualityScore,
       correctnessScore: correctness.correctnessScore,
@@ -1127,7 +1105,7 @@ exports.submitParticipantBattleCode = async (req, res) => {
       }
     }
 
-    return res.json({
+    res.json({
       message: isAiAutoLoss ? "Code submitted (AI/Plagiarism detected - Auto-loss)" : "Code submitted",
       submission: updated,
       xp: xpResult,
@@ -1146,7 +1124,28 @@ exports.submitParticipantBattleCode = async (req, res) => {
         offTopic: isAiAutoLoss ? true : offTopic,
       },
     });
+
+    // Auto-end logic: If everyone has submitted, end the battle and resolve winner
+    const participantCount = room.participants.length;
+    const submissionCount = await BattleSubmission.countDocuments({
+      battleRoom: room._id,
+      status: "submitted"
+    });
+
+    if (submissionCount >= participantCount) {
+      console.log(`[BattleRoom] All participants submitted. Auto-ending room ${room._id}`);
+      const roomToUpdate = await BattleRoom.findById(room._id);
+      if (roomToUpdate && roomToUpdate.status === "live") {
+        roomToUpdate.status = "ended";
+        roomToUpdate.endedAt = new Date();
+        roomToUpdate.resultsShared = true; // Auto-share for 1v1
+        roomToUpdate.resultsSharedAt = new Date();
+        
+        await internalResolveBattleRoom(roomToUpdate);
+      }
+    }
   } catch (error) {
+    console.error("Submission error:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -1203,3 +1202,63 @@ exports.updateSubmissionEvaluation = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+/**
+ * Helper to resolve the winner of a battle room using AI Judge and Complexity analysis.
+ */
+async function internalResolveBattleRoom(room) {
+  try {
+    const submissions = await BattleSubmission.find({ battleRoom: room._id, status: "submitted" }).populate("participant", "username");
+    if (submissions.length >= 2) {
+      const sorted = submissions.sort((a, b) => {
+        const scoreA = Number(a.finalScore || 0);
+        const scoreB = Number(b.finalScore || 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+
+        const correctA = Number(a.correctnessScore || 0);
+        const correctB = Number(b.correctnessScore || 0);
+        if (correctB !== correctA) return correctB - correctA;
+
+        const timeA = a.submittedAt ? new Date(a.submittedAt).getTime() : new Date(a.createdAt).getTime();
+        const timeB = b.submittedAt ? new Date(b.submittedAt).getTime() : new Date(b.createdAt).getTime();
+        return timeA - timeB;
+      });
+
+      const top1 = sorted[0];
+      const top2 = sorted[1];
+
+      if (Number(top1.finalScore || 0) === Number(top2.finalScore || 0)) {
+        console.log(`[BattleRoom] Resolving tie: ${top1.participant.username} vs ${top2.participant.username}`);
+        
+        const [analysis1, analysis2] = await Promise.all([
+          complexityService.predictComplexity(top1.code),
+          complexityService.predictComplexity(top2.code)
+        ]);
+
+        const judgeResult = await aiJudgeService.judgeMatch(
+          { 
+            code: top1.code, 
+            username: top1.participant.username, 
+            language: room.challenge.language || "javascript",
+            complexity: analysis1.complexity 
+          },
+          { 
+            code: top2.code, 
+            username: top2.participant.username, 
+            language: room.challenge.language || "javascript",
+            complexity: analysis2.complexity 
+          },
+          room.challenge.description || ""
+        );
+
+        if (judgeResult.winnerIndex === 0) room.aiWinner = top1.participant._id;
+        else if (judgeResult.winnerIndex === 1) room.aiWinner = top2.participant._id;
+
+        room.aiJustification = judgeResult.justification || "";
+      }
+    }
+    await room.save();
+  } catch (err) {
+    console.error("[BattleRoom] Resolution Error:", err);
+  }
+}

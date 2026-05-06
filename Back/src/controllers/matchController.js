@@ -20,9 +20,11 @@ exports.getCurrentMatch = async (req, res) => {
     try {
         const userId = req.user.id;
 
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
         const match = await Match.findOne({
             "players.user": userId,
-            status: { $in: ["waiting", "live"] }
+            status: { $in: ["waiting", "live"] },
+            createdAt: { $gte: tenMinutesAgo }
         }).sort({ createdAt: -1 });
 
         res.status(200).json({ match });

@@ -18,8 +18,16 @@ def extract_features(code):
 def predict():
     code=request.json['code']
     features=extract_features(code)
-    pred=model.predict([features])[0]
-    return jsonify({"prediction":int(pred)})
+    pred=int(model.predict([features])[0])
+    
+    # Mapping des prédictions vers des labels lisibles
+    labels = {0: "Humain", 1: "IA", 2: "Plagiat"}
+    label = labels.get(pred, "Unknown")
+    
+    return jsonify({
+        "prediction": pred,
+        "label": label
+    })
 
 if __name__ == "__main__":
     app.run(debug=True, port=5050)

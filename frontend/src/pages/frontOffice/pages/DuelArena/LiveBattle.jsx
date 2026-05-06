@@ -8,9 +8,10 @@ import { Card } from '../../components/ui/Card';
 import ExperienceBar from '../../../../components/ui/ExperienceBar';
 import Swal from 'sweetalert2';
 
-const SOCKET_URL = "http://127.0.0.1:5000";
-
+import { BACKEND_URL } from '../../../../config';
 import { getDuelMatchDetails } from '../../../../services/api';
+
+const SOCKET_URL = BACKEND_URL;
 
 export default function LiveBattle() {
     const { matchId } = useParams();

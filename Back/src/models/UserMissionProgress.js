@@ -9,7 +9,7 @@ const userMissionProgressSchema = new mongoose.Schema(
         },
         missionId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Mission",
+            ref: "Stage",
             required: true,
         },
         status: {
