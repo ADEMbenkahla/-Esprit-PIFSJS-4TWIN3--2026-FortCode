@@ -9,15 +9,13 @@ function getModel() {
 
 function normalizeLocale(locale) {
   const s = String(locale || "").trim().toLowerCase();
-  if (["fr", "fr-fr", "french"].includes(s)) return "fr";
-  if (["en", "en-us", "english"].includes(s)) return "en";
-  return "fr";
+  const map = { "fr": "fr", "fr-fr": "fr", "french": "fr", "en": "en", "en-us": "en", "english": "en" };
+  return map[s] || "fr";
 }
 
 function normalizeDifficulty(d) {
   const x = String(d || "medium").toLowerCase();
-  if (["easy", "medium", "hard", "expert"].includes(x)) return x;
-  return "medium";
+  return ["easy", "medium", "hard", "expert"].includes(x) ? x : "medium";
 }
 
 function normalizeLanguage(lang) {
@@ -79,20 +77,27 @@ function parseJsonContent(content) {
   try {
     parsed = JSON.parse(raw);
   } catch (_err) {
-    // Fallback: extract first JSON object/array if model added surrounding prose.
-    const objStart = raw.indexOf("{");
-    const objEnd = raw.lastIndexOf("}");
-    const arrStart = raw.indexOf("[");
-    const arrEnd = raw.lastIndexOf("]");
-    let candidate = "";
-    if (objStart !== -1 && objEnd > objStart) {
-      candidate = raw.slice(objStart, objEnd + 1);
-    } else if (arrStart !== -1 && arrEnd > arrStart) {
-      candidate = raw.slice(arrStart, arrEnd + 1);
-    }
-    if (!candidate) throw _err;
-    parsed = JSON.parse(candidate);
+    parsed = tryExtractJson(raw, _err);
   }
+  return extractExercisesArray(parsed);
+}
+
+function tryExtractJson(raw, originalError) {
+  const objStart = raw.indexOf("{");
+  const objEnd = raw.lastIndexOf("}");
+  const arrStart = raw.indexOf("[");
+  const arrEnd = raw.lastIndexOf("]");
+  let candidate = "";
+  if (objStart !== -1 && objEnd > objStart) {
+    candidate = raw.slice(objStart, objEnd + 1);
+  } else if (arrStart !== -1 && arrEnd > arrStart) {
+    candidate = raw.slice(arrStart, arrEnd + 1);
+  }
+  if (!candidate) throw originalError;
+  return JSON.parse(candidate);
+}
+
+function extractExercisesArray(parsed) {
   if (parsed.exercises && Array.isArray(parsed.exercises)) return parsed.exercises;
   if (Array.isArray(parsed)) return parsed;
   const arr = Object.values(parsed).find((v) => Array.isArray(v));

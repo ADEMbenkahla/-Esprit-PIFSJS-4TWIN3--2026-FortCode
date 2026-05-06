@@ -58,7 +58,7 @@ exports.createChallenge = async (req, res) => {
         await moveChallengeToStage(savedChallenge._id, stageIdBody);
       } catch (e) {
         await Challenge.findByIdAndDelete(savedChallenge._id);
-        const status = e.code === "NOT_FOUND" ? 404 : e.code === "BATTLE_NOT_ALLOWED" ? 400 : 400;
+        const status = e.code === "NOT_FOUND" ? 404 : e.code === "BATTLE_NOT_ALLOWED" ? 403 : 400;
         return res.status(status).json({ message: e.message || "Invalid stage", code: e.code });
       }
     }

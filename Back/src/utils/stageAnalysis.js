@@ -299,7 +299,7 @@ async function fetchSonarStub(code, language, context = {}) {
   const alerts = [];
   if (/\beval\s*\(/i.test(code || "")) alerts.push("Use of eval() detected");
   if (/\bFunction\s*\(/i.test(code || "")) alerts.push("Dynamic Function constructor detected");
-  if (/while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "")) alerts.push("Infinite-loop pattern detected");
+  if (/(while\s*\(\s*true\s*\))|(for\s*\(\s*;\s*;\s*\))/i.test(code || "")) alerts.push("Infinite-loop pattern detected");
 
   const heuristicMetrics = {
     bugs: 0,
@@ -307,7 +307,11 @@ async function fetchSonarStub(code, language, context = {}) {
     code_smells: Math.max(0, Math.ceil(lines / 20)),
     security_rating: alerts.length > 0 ? 4 : 1, // 1 is A
     reliability_rating: /while\s*\(\s*true\s*\)|for\s*\(\s*;\s*;\s*\)/i.test(code || "") ? 4 : 1, // 1 is A
-    sqale_rating: lines > 80 ? 4 : lines > 30 ? 3 : 1, // 1 is A for short clean code
+    sqale_rating: (function() {
+      if (lines > 80) return 4;
+      if (lines > 30) return 3;
+      return 1;
+    })(), // 1 is A for short clean code
     security_hotspots_reviewed: 0,
     duplicated_lines_density: 0,
     coverage: 100, // Small snippets assumed fully covered
