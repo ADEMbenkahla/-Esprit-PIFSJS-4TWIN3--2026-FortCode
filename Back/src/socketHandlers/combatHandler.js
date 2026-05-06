@@ -141,6 +141,7 @@ function handleCombat(socket, userId) {
             
             const combinedAnalysis = await complexityService.analyzeCodeWithBothModels(code);
             const mlResult = combinedAnalysis.mlDetection;
+            const compResult = combinedAnalysis.complexityAnalysis;
 
             const updateQuery = {};
             updateQuery[`players.${idx}.finished`] = true;
@@ -148,6 +149,13 @@ function handleCombat(socket, userId) {
             updateQuery[`players.${idx}.code`] = code;
             updateQuery[`players.${idx}.language`] = language || "javascript";
             updateQuery[`players.${idx}.mlDetection`] = { prediction: mlResult.prediction, label: mlResult.label };
+            if (compResult && compResult.success) {
+                updateQuery[`players.${idx}.complexityAnalysis`] = {
+                    complexity: compResult.complexity,
+                    confidence: compResult.confidence,
+                    score: compResult.score
+                };
+            }
 
             const match = await Match.findOneAndUpdate(
                 { _id: matchId },
