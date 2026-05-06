@@ -1161,12 +1161,6 @@ async function checkAndEndBattleRoom(room) {
     }
   }
 }
-  } catch (error) {
-    console.error("Submission error:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
 // Get submissions for a room (User Story 4.5)
 exports.getSubmissions = async (req, res) => {
   try {
