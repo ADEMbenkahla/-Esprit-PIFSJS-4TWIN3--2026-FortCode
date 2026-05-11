@@ -1,11 +1,9 @@
 services:
-  # 1. Frontend (Static Site)
-  - type: web
+  # 1. Frontend (Static Site - Plus rapide et Gratuit)
+  - type: static_site
     name: fortcode-frontend
-    runtime: static
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    rootContext: frontend
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
         fromService:
@@ -21,12 +19,10 @@ services:
     startCommand: node server.js
     rootContext: Back
     envVars:
-      - key: PORT
-        value: 10000
       - key: MONGO_URI
-        sync: false # Set this in Render Dashboard
+        sync: false 
       - key: JWT_SECRET
-        sync: false # Set this in Render Dashboard
+        sync: false 
       - key: ML_DETECTION_URL
         fromService:
           name: ml-detection
