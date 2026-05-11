@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:5050";
+const ML_SERVICE_URL = process.env.ML_DETECTION_URL || process.env.ML_SERVICE_URL || "http://localhost:5050";
 
 /**
  * Calls the Python ML service to detect the origin of the code (Human, AI, or Plagiarism).
