@@ -1,0 +1,68 @@
+services:
+  # 1. Frontend (Static Site)
+  - type: web
+    name: fortcode-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    rootContext: frontend
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: fortcode-backend
+          type: web
+          property: host
+
+  # 2. Main Backend (Node.js)
+  - type: web
+    name: fortcode-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    rootContext: Back
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false # Set this in Render Dashboard
+      - key: JWT_SECRET
+        sync: false # Set this in Render Dashboard
+      - key: ML_DETECTION_URL
+        fromService:
+          name: ml-detection
+          type: web
+          property: host
+      - key: COMPLEXITY_SERVICE_URL
+        fromService:
+          name: complexity-service
+          type: web
+          property: host
+      - key: AI_SERVICE_URL
+        fromService:
+          name: ai-service
+          type: web
+          property: host
+
+  # 3. ML Detection Service (Flask)
+  - type: web
+    name: ml-detection
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api.py
+    rootContext: ml-service-python
+
+  # 4. Complexity Prediction Service (Flask)
+  - type: web
+    name: complexity-service
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    rootContext: complexity-service
+
+  # 5. AI Service (FastAPI)
+  - type: web
+    name: ai-service
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootContext: ai_service
