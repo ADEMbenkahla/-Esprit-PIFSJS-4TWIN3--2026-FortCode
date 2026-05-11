@@ -1,9 +1,11 @@
 services:
-  # 1. Frontend (Static Site - Plus rapide et Gratuit)
-  - type: static_site
+  # 1. Frontend (Configuration correcte pour Render)
+  - type: web
     name: fortcode-frontend
+    runtime: static
     buildCommand: npm install && npm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: dist
+    rootContext: frontend
     envVars:
       - key: VITE_API_URL
         fromService:
@@ -38,6 +40,8 @@ services:
           name: ai-service
           type: web
           property: host
+
+
 
   # 3. ML Detection Service (Flask)
   - type: web
