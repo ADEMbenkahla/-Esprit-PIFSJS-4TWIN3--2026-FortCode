@@ -3,7 +3,6 @@ services:
   - type: web
     name: fortcode-frontend
     runtime: static
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
@@ -18,7 +17,6 @@ services:
   - type: web
     name: fortcode-backend
     runtime: node
-    plan: free
     rootDir: Back
     buildCommand: npm install
     startCommand: node server.js
@@ -49,7 +47,6 @@ services:
   - type: web
     name: ml-detection
     runtime: python
-    plan: free
     rootDir: ml-service-python
     buildCommand: pip install -r requirements.txt
     startCommand: python api.py
@@ -58,7 +55,6 @@ services:
   - type: web
     name: complexity-service
     runtime: python
-    plan: free
     rootDir: complexity-service
     buildCommand: pip install -r requirements.txt
     startCommand: python app.py
@@ -67,7 +63,6 @@ services:
   - type: web
     name: ai-service
     runtime: python
-    plan: free
     rootDir: ai_service
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
