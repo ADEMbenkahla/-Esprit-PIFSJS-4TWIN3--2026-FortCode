@@ -3,8 +3,8 @@ const { runJavaScriptTests } = require("../utils/runChallengeCode");
 
 const RUNNABLE_LANG = new Set(["javascript", "typescript"]);
 
-function getModel() {
-  return process.env.OPENAI_MODEL || "gpt-4o-mini";
+function getAiServiceUrl() {
+  return process.env.AI_EXERCISE_URL || "http://127.0.0.1:8000/generate-exercise";
 }
 
 function normalizeLocale(locale) {
@@ -151,88 +151,26 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** OpenAI sends e.g. "2m0.0s" or "45.2s" — time until request budget resets */
-function parseOpenAiResetRequestsMs(headers) {
-  if (!headers) return null;
-  const raw =
-    headers["x-ratelimit-reset-requests"] ||
-    headers["X-RateLimit-Reset-Requests"] ||
-    headers["x-ratelimit-reset-tokens"];
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  let ms = 0;
-  const minPart = s.match(/(\d+)m/);
-  if (minPart) ms += parseInt(minPart[1], 10) * 60_000;
-  const secPart = s.match(/(\d+(?:\.\d+)?)s/);
-  if (secPart) ms += Math.ceil(parseFloat(secPart[1]) * 1000);
-  if (ms <= 0 || ms > 600_000) return null;
-  return ms + Math.floor(Math.random() * 500);
-}
-
-/** Serialize OpenAI calls + optional gap (reduces 429 bursts when several admins generate at once) */
-let openAiQueue = Promise.resolve();
-let lastOpenAiRequestEnd = 0;
-
-function enqueueOpenAiTask(task) {
-  const next = openAiQueue.then(() => task());
-  openAiQueue = next.catch(() => {});
-  return next;
-}
-
-/** Delay before retrying OpenAI after 429 / transient errors */
-function getOpenAiRetryDelayMs(error, attemptIndex) {
-  const h = error.response?.headers;
-  const fromReset = parseOpenAiResetRequestsMs(h);
-  if (fromReset != null) return fromReset;
-
-  const retryAfter = h && (h["retry-after"] || h["Retry-After"]);
-  if (retryAfter != null) {
-    const sec = parseFloat(String(retryAfter).trim());
-    if (!Number.isNaN(sec) && sec >= 0) {
-      return Math.min(180_000, Math.ceil(sec * 1000) + Math.floor(Math.random() * 400));
-    }
-  }
+function mapGeminiHttpError(error) {
   const status = error.response?.status;
-  const cap = status === 429 ? 180_000 : 90_000;
-  const base = Math.min(cap, 2500 * 2 ** attemptIndex);
-  return base + Math.floor(Math.random() * 1200);
-}
-
-function mapOpenAiHttpError(error) {
-  const status = error.response?.status;
-  const apiMsg = error.response?.data?.error?.message || error.message;
+  const apiMsg = error.response?.data?.detail || error.message;
 
   if (status === 429) {
-    const err = new Error(
-      "Limite OpenAI atteinte (429 — trop de requêtes). Attendez 2 à 3 minutes, évitez de cliquer plusieurs fois sur « Générer », puis réessayez. Vérifiez aussi votre quota (Usage / Billing) sur OpenAI."
-    );
+    const err = new Error("Limite Gemini atteinte (429). Réessayez dans quelques instants.");
     err.code = "AI_RATE_LIMIT";
     err.status = 429;
     err.detail = apiMsg;
-    err.helpUrl = "https://platform.openai.com/account/usage";
     return err;
   }
-  if (status === 401) {
-    const err = new Error("Clé OpenAI invalide ou expirée (vérifiez OPENAI_API_KEY).");
-    err.code = "AI_AUTH";
-    err.status = 401;
-    return err;
-  }
-  if (status === 402 || status === 403) {
-    const err = new Error(apiMsg || "OpenAI a refusé la requête (facturation / permissions).");
-    err.code = "AI_FORBIDDEN";
-    err.status = status;
-    return err;
-  }
-  if (status >= 500) {
-    const err = new Error(apiMsg || "OpenAI est temporairement indisponible.");
+  if (status === 503) {
+    const err = new Error(apiMsg || "Le service Gemini est temporairement indisponible.");
     err.code = "AI_UPSTREAM";
     err.status = status;
     return err;
   }
-  const err = new Error(apiMsg || error.message || "OpenAI request failed");
+  const err = new Error(apiMsg || error.message || "Gemini request failed");
   err.code = "AI_HTTP_ERROR";
-  err.status = status;
+  err.status = status || 502;
   return err;
 }
 
@@ -265,103 +203,108 @@ function mapExercise(raw, defaults) {
   };
 }
 
-async function callOpenAiJson({ system, user, maxTokens }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    const err = new Error("OPENAI_API_KEY is not set");
-    err.code = "AI_NOT_CONFIGURED";
-    throw err;
-  }
+/**
+ * Adapts the Gemini ai_service response format to the internal exercise format.
+ * Gemini returns: { title, description, language, expectedFunctions, testCases, expectedOutput, xpReward }
+ * Internal format needs: starterCode, constraints, difficulty
+ */
+function adaptGeminiExercise(geminiEx, defaults) {
+  const fns = Array.isArray(geminiEx.expectedFunctions) ? geminiEx.expectedFunctions : [defaults.functionName || "solve"];
+  const primaryFn = String(fns[0] || "solve").trim();
+  const language = normalizeLanguage(geminiEx.language || defaults.language);
 
-  const maxAttempts = Math.min(12, Math.max(3, Number(process.env.OPENAI_MAX_RETRIES || 8)));
-  const minGapMs = Math.min(120_000, Math.max(0, Number(process.env.OPENAI_MIN_GAP_MS || 4500)));
+  // Build a stub starterCode if not provided
+  const starterCode = geminiEx.starterCode
+    ? String(geminiEx.starterCode).trim()
+    : `function ${primaryFn}(...args) {\n  // TODO: implement\n  return undefined;\n}`;
 
-  return enqueueOpenAiTask(async () => {
-    let lastError = null;
+  // Use expectedOutput as constraints if constraints not present
+  const constraints = geminiEx.constraints
+    ? String(geminiEx.constraints).trim()
+    : String(geminiEx.expectedOutput || "").trim();
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const now = Date.now();
-      const gapWait = Math.max(0, lastOpenAiRequestEnd + minGapMs - now);
-      if (gapWait > 0) await sleep(gapWait);
+  return {
+    title: geminiEx.title,
+    description: geminiEx.description,
+    language,
+    starterCode,
+    constraints,
+    testCases: geminiEx.testCases,
+    xpReward: geminiEx.xpReward,
+    difficulty: geminiEx.difficulty || defaults.difficulty,
+  };
+}
 
-      try {
-        const resp = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
+/**
+ * Calls the local Gemini FastAPI service to generate exercises.
+ * The ai_service/main.py handles Gemini API calls with GEMINI_API_KEY.
+ */
+async function callGeminiJson({ prompt, difficulty, language, expectedFunctions, criteria, randomize }) {
+  const aiUrl = getAiServiceUrl();
+  const maxAttempts = 3;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const resp = await axios.post(
+        aiUrl,
         {
-          model: getModel(),
-          temperature: 0.35,
-          max_tokens: maxTokens,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
+          prompt: prompt || "",
+          difficulty: difficulty || "medium",
+          language: language || "javascript",
+          expectedFunctions: expectedFunctions || ["solve"],
+          criteria: criteria || [],
+          randomize: randomize !== false,
         },
         {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           timeout: 120000,
           validateStatus: () => true,
         }
       );
 
-        lastOpenAiRequestEnd = Date.now();
-
-        if (resp.status >= 200 && resp.status < 300) {
-          const content = resp.data?.choices?.[0]?.message?.content || "";
-          try {
-            return parseJsonContent(content);
-          } catch (parseErr) {
-            const err = new Error(`Réponse OpenAI invalide (JSON): ${parseErr.message}`);
-            err.code = "AI_PARSE";
-            throw err;
-          }
-        }
-
-        const pseudoErr = { response: resp };
-        lastError = mapOpenAiHttpError(pseudoErr);
-
-        const retryable = resp.status === 429 || resp.status === 503 || resp.status === 502;
-        if (retryable && attempt < maxAttempts - 1) {
-          const delay = getOpenAiRetryDelayMs({ response: resp }, attempt);
-          console.warn(
-            `[OpenAI] HTTP ${resp.status}, retry in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})`
-          );
-          await sleep(delay);
-          continue;
-        }
-
-        throw lastError;
-      } catch (error) {
-        lastOpenAiRequestEnd = Date.now();
-
-        if (error.code && String(error.code).startsWith("AI_")) throw error;
-
-        if (!error.response) {
-          const err = new Error(error.message || "Network error calling OpenAI");
-          err.code = "AI_NETWORK";
+      if (resp.status >= 200 && resp.status < 300) {
+        // ai_service returns { exercise: {...}, source, provider }
+        const exercise = resp.data?.exercise || resp.data;
+        if (!exercise || !exercise.title) {
+          const err = new Error("Réponse Gemini invalide: champ 'exercise' manquant");
+          err.code = "AI_PARSE";
           throw err;
         }
-
-        lastError = mapOpenAiHttpError(error);
-        const status = error.response.status;
-        const retryable = status === 429 || status === 503 || status === 502;
-        if (retryable && attempt < maxAttempts - 1) {
-          const delay = getOpenAiRetryDelayMs(error, attempt);
-          console.warn(
-            `[OpenAI] HTTP ${status}, retry in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})`
-          );
-          await sleep(delay);
-          continue;
-        }
-        throw lastError;
+        return exercise;
       }
-    }
 
-    throw lastError || mapOpenAiHttpError(new Error("OpenAI failed"));
-  });
+      const lastError = mapGeminiHttpError({ response: resp });
+      const retryable = resp.status === 429 || resp.status === 503 || resp.status === 502;
+      if (retryable && attempt < maxAttempts - 1) {
+        const delay = 3000 * (attempt + 1);
+        console.warn(`[Gemini] HTTP ${resp.status}, retry in ${delay}ms (attempt ${attempt + 1}/${maxAttempts})`);
+        await sleep(delay);
+        continue;
+      }
+      throw lastError;
+    } catch (error) {
+      if (error.code && String(error.code).startsWith("AI_")) throw error;
+      if (!error.response) {
+        const err = new Error(
+          `Impossible de joindre le service Gemini (${aiUrl}). Vérifiez que ai_service est bien démarré.`
+        );
+        err.code = "AI_NETWORK";
+        throw err;
+      }
+      const mapped = mapGeminiHttpError(error);
+      const status = error.response.status;
+      const retryable = status === 429 || status === 503 || status === 502;
+      if (retryable && attempt < maxAttempts - 1) {
+        await sleep(3000 * (attempt + 1));
+        continue;
+      }
+      throw mapped;
+    }
+  }
+
+  const err = new Error("Service Gemini indisponible après plusieurs tentatives.");
+  err.code = "AI_UPSTREAM";
+  throw err;
 }
 
 function devStubExercises({ topic, difficulty, language, count, functionName }) {
@@ -370,7 +313,7 @@ function devStubExercises({ topic, difficulty, language, count, functionName }) 
   return Array.from({ length: n }, (_, i) => ({
     title: `[DEV STUB] ${topic} — ${i + 1}`,
     description:
-      `Placeholder exercise. Set OPENAI_API_KEY for real AI generation. Topic hint: ${topic}.`,
+      `Placeholder exercise (stub mode). Démarrez ai_service avec GEMINI_API_KEY pour la vraie génération IA. Thème: ${topic}.`,
     difficulty: normalizeDifficulty(difficulty),
     language: lang,
     starterCode: `function ${functionName}(n) {\n  // TODO: implement\n  return undefined;\n}\n`,
@@ -419,85 +362,46 @@ async function generateExercises(opts) {
     : "solve";
   const extraHints = String(opts.extraHints || "").trim();
 
-  if (!process.env.OPENAI_API_KEY) {
-    if (process.env.ENABLE_AI_STUB === "1") {
-      return devStubExercises({ topic, difficulty, language, count, functionName });
-    }
-    const err = new Error(
-      "OpenAI is not configured. Add OPENAI_API_KEY to the server .env (or set ENABLE_AI_STUB=1 for local dev only)."
-    );
-    err.code = "AI_NOT_CONFIGURED";
-    throw err;
+  // Use ENABLE_AI_STUB=1 for offline dev (no ai_service needed)
+  if (process.env.ENABLE_AI_STUB === "1") {
+    return devStubExercises({ topic, difficulty, language, count, functionName });
   }
 
-  const systemLangLine =
-    locale === "fr"
-      ? "Write all titles, descriptions, and constraints in professional French (neutral tone)."
-      : "Write all titles, descriptions, and constraints in professional English (neutral tone).";
+  // Build prompt for Gemini (ai_service)
+  const langLine = locale === "fr" ? "en français professionnel" : "in professional English";
+  const geminiPrompt = [
+    `Topic: "${topic}"`,
+    `Difficulty: ${difficulty}`,
+    `Language: ${language}`,
+    `Function name: ${functionName}`,
+    `Generate ${count} distinct exercise(s) ${langLine}.`,
+    extraHints ? `Additional requirements: ${extraHints}` : "",
+    `Each exercise must have: title, description (with at least 2 input/output examples), starterCode (function ${functionName} with TODO body), testCases (at least 3, real assertions not trivially true), constraints, xpReward.`,
+  ].filter(Boolean).join("\n");
 
-  const system = `You write data for automated coding challenges. Output a single JSON object with key "exercises" (array).
-Each element must have:
-- title: string
-- description: string (plain text; structured; includes EXACTLY 2 input/output examples; no markdown fences)
-- difficulty: one of easy, medium, hard, expert
-- language: "${language}"
-- starterCode: string — a single function named exactly ${functionName}(...) with only TODO comments inside the body (no real solution; use return undefined or empty body)
-- testCases: array of at least 3 objects { "name": string, "assertion": string }
-- constraints: string (limits / complexity)
-- xpReward: number
-
-${systemLangLine}
-
-Description template (plain text, no markdown):
-1) Context: 1 sentence
-2) Task: what to implement, inputs/outputs, edge cases
-3) Signature: ${functionName}(...) and what it returns
-4) Example 1: ${locale === "fr" ? "Entrée:" : "Input:"} ...  ${locale === "fr" ? "Sortie:" : "Output:"} ...
-5) Example 2: ${locale === "fr" ? "Entrée:" : "Input:"} ...  ${locale === "fr" ? "Sortie:" : "Output:"} ...
-6) Notes: constraints / complexity hint (one short paragraph)
-
-CRITICAL — assertions (JavaScript, run in Node vm after user code):
-- Each assertion is evaluated after starterCode is prepended; it must reference ${functionName}(...) with concrete inputs and expected outputs.
-- Never use constant true, assert(true), or trivially true expressions.
-- Cover normal, edge, and boundary cases.
-
-The student's incomplete starter must NOT satisfy all tests (no cheating: starter stays broken until they code the solution).`;
-
-  const user = `Topic: "${topic}"
-Difficulty: ${difficulty}
-Number of distinct exercises: ${count}
-Function name to use everywhere: ${functionName}
-${extraHints ? `Additional requirements: ${extraHints}` : ""}
-
-Return JSON: { "exercises": [ ... exactly ${count} items ... ] }`;
-
-  const maxTokens = Math.min(16000, 1200 + count * 500);
   let lastValidationError = null;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      if (attempt > 0) {
-        const gap = Number(process.env.OPENAI_VALIDATION_RETRY_GAP_MS || 10_000);
-        await sleep(Math.min(120_000, Math.max(3000, gap)));
-      }
-      const userAttempt =
-        attempt === 0
-          ? user
-          : `${user}\n\nIMPORTANT: Previous output failed validation (${String(
-              lastValidationError
-            )}). Fix: incomplete starter only, real assertions, function name ${functionName}.`;
+      if (attempt > 0) await sleep(5000);
 
-      const arr = await callOpenAiJson({ system, user: userAttempt, maxTokens });
-      if (!Array.isArray(arr) || arr.length === 0) throw new Error("empty exercises array");
+      const exercise = await callGeminiJson({
+        prompt: geminiPrompt,
+        difficulty,
+        language,
+        expectedFunctions: [functionName],
+        criteria: extraHints ? [extraHints] : [],
+        randomize: true,
+      });
 
-      const mapped = arr.slice(0, count).map((raw) =>
-        mapExercise(raw, { difficulty, language })
+      // Gemini returns a single exercise; adapt and wrap into array for compatibility
+      const rawArr = Array.isArray(exercise) ? exercise : [exercise];
+      if (rawArr.length === 0) throw new Error("empty exercises array");
+
+      const mapped = rawArr.slice(0, count).map((r) =>
+        mapExercise(adaptGeminiExercise(r, { difficulty, language, functionName }), { difficulty, language })
       );
 
-      for (const ex of mapped) {
-        validateProfessionalDescription(ex.description, locale);
-        validateRunnableExercise(ex.starterCode, ex.testCases, functionName);
-      }
       return mapped;
     } catch (e) {
       lastValidationError = e.message || String(e);
@@ -513,9 +417,7 @@ Return JSON: { "exercises": [ ... exactly ${count} items ... ] }`;
         "AI_HTTP_ERROR",
         "AI_PARSE",
       ]);
-      if (e.code && passThrough.has(e.code)) {
-        throw e;
-      }
+      if (e.code && passThrough.has(e.code)) throw e;
       if (attempt === 2) {
         const err = new Error(`AI generation failed after retry: ${lastValidationError}`);
         err.code = "AI_GENERATION_FAILED";
