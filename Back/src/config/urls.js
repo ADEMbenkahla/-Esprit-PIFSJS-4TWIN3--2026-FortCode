@@ -4,8 +4,9 @@
  */
 
 const getFrontendUrl = () => {
-    // Priority: RENDER_EXTERNAL_URL (if on frontend service) > FRONTEND_NGROK_URL > FRONTEND_URL
-    let url = process.env.RENDER_EXTERNAL_URL || process.env.FRONTEND_NGROK_URL || process.env.FRONTEND_URL || 'https://fortcode-frontend.onrender.com';
+    // On the backend, RENDER_EXTERNAL_URL would point to the backend itself.
+    // So we must use FRONTEND_URL or the hardcoded production frontend URL.
+    let url = process.env.FRONTEND_URL || process.env.FRONTEND_NGROK_URL || 'https://fortcode-frontend.onrender.com';
     return url.replace(/\/+$/, ''); // Remove trailing slash
 };
 
