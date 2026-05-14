@@ -19,5 +19,11 @@ User.updateMany({}, { isOnline: false }).then(() => {
 });
 
 server.listen(PORT, () => {
+  const { getBackendUrl, getFrontendUrl } = require("./src/config/urls");
+  console.log(`--------------------------------------------------`);
   console.log(`Server running on port ${PORT}`);
+  console.log(`Backend URL: ${getBackendUrl()}`);
+  console.log(`Frontend URL: ${getFrontendUrl()}`);
+  console.log(`Google Callback: ${getBackendUrl()}/api/auth/google/callback`);
+  console.log(`--------------------------------------------------`);
 });
