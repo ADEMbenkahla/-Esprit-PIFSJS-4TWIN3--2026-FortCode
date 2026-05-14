@@ -333,7 +333,7 @@ async function fetchSonarStub(code, language, context = {}) {
 }
 
 async function fetchAiFeedback(code, challengeTitle) {
-  const url = process.env.AI_FEEDBACK_URL || "http://localhost:8000/code-feedback";
+  const url = process.env.AI_FEEDBACK_URL || "https://esprit-pifsjs-4twin3-2026-fortcode-1.onrender.com/code-feedback";
   try {
     const res = await axios.post(
       url,
@@ -363,7 +363,7 @@ async function fetchExerciseHelp({
   starterCode,
   code,
 }) {
-  const url = process.env.AI_HELP_URL || "http://localhost:8000/exercise-help";
+  const url = process.env.AI_HELP_URL || "https://esprit-pifsjs-4twin3-2026-fortcode-1.onrender.com/exercise-help";
   const normalizedType = ["hint", "explain", "course"].includes(String(type)) ? String(type) : "hint";
 
   try {

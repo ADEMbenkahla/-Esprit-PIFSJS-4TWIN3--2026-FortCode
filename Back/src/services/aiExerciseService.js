@@ -4,7 +4,7 @@ const { runJavaScriptTests } = require("../utils/runChallengeCode");
 const RUNNABLE_LANG = new Set(["javascript", "typescript"]);
 
 function getAiServiceUrl() {
-  return process.env.AI_EXERCISE_URL || "http://127.0.0.1:8000/generate-exercise";
+  return process.env.AI_EXERCISE_URL || "https://esprit-pifsjs-4twin3-2026-fortcode-1.onrender.com/generate-exercise";
 }
 
 function normalizeLocale(locale) {
