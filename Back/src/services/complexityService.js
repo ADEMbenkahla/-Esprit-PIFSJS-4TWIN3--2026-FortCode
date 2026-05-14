@@ -1,8 +1,8 @@
 const axios = require('axios');
 
 // Configuration des deux services
-const ML_DETECTION_URL = process.env.ML_DETECTION_URL || 'http://localhost:5050';
-const COMPLEXITY_SERVICE_URL = process.env.COMPLEXITY_SERVICE_URL || 'http://localhost:5002';
+const ML_DETECTION_URL = process.env.ML_DETECTION_URL || 'https://esprit-pifsjs-4twin3-2026-fortcode.onrender.com';
+const COMPLEXITY_SERVICE_URL = process.env.COMPLEXITY_SERVICE_URL || 'https://esprit-pifsjs-4twin3-2026-fortcode-2.onrender.com';
 
 // Complexity scoring basé sur les exigences
 const COMPLEXITY_SCORES = {
