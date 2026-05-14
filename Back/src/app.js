@@ -12,6 +12,7 @@ connectDB();
 const app = express();
 
 app.use(compression());
+
 const allowedOrigins = [
     'https://fortcode-frontend.onrender.com',
     'http://localhost:5173',
@@ -23,7 +24,7 @@ const allowedOrigins = [
     process.env.FRONTEND_NGROK_URL
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
@@ -41,11 +42,13 @@ app.use(cors({
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    optionsSuccessStatus: 200
+};
 
-// Handle preflight requests
-app.options('*', cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 // Serve static assets
@@ -111,5 +114,14 @@ app.use((err, req, res, next) => {
     return res.status(500).json({ message: "Server error", error: err.message || "Unknown error" });
 });
 
-module.exports = app;
+// Catch-all 404
+app.use((req, res) => {
+    console.warn(`404 Not Found: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ 
+        message: `Route ${req.method} ${req.originalUrl} not found`,
+        path: req.originalUrl,
+        method: req.method
+    });
+});
 
+module.exports = app;

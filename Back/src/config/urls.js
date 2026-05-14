@@ -4,13 +4,13 @@
  */
 
 const getFrontendUrl = () => {
-    // Priority: FRONTEND_NGROK_URL > FRONTEND_URL > default localhost
-    return process.env.FRONTEND_NGROK_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    // Priority: FRONTEND_NGROK_URL > FRONTEND_URL > Production Render > default localhost
+    return process.env.FRONTEND_NGROK_URL || process.env.FRONTEND_URL || 'https://fortcode-frontend.onrender.com';
 };
 
 const getBackendUrl = () => {
-    // Priority: NGROK_URL > default localhost
-    return process.env.NGROK_URL || `http://localhost:${process.env.PORT || 5000}`;
+    // Priority: NGROK_URL > Production Render > default localhost
+    return process.env.NGROK_URL || process.env.BACKEND_URL || 'https://fortcode-backend.onrender.com';
 };
 
 module.exports = {
