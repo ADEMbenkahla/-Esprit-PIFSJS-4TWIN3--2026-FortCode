@@ -69,16 +69,15 @@ router.get('/google/callback',
                 console.error("Welcome email error:", error);
             }
 
-            // Generate JWT token
             const token = jwt.sign(
                 { id: newUser._id, role: newUser.role || 'participant', username: newUser.username },
                 process.env.JWT_SECRET,
                 { expiresIn: '1h' }
             );
 
-            return res.redirect(
-                `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(newUser.role)}`
-            );
+            const redirectUrl = `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(newUser.role)}`;
+            console.log(`Google Auth New User Success: Redirecting to ${redirectUrl}`);
+            return res.redirect(redirectUrl);
         }
 
         // 🔥 Check if account is active
@@ -94,9 +93,9 @@ router.get('/google/callback',
         );
 
         // Redirect to frontend with token
-        res.redirect(
-            `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(user.role)}`
-        );
+        const redirectUrl = `${getFrontendUrl()}/auth/callback?token=${encodeURIComponent(token)}&role=${encodeURIComponent(user.role)}`;
+        console.log(`Google Auth Success: Redirecting to ${redirectUrl}`);
+        res.redirect(redirectUrl);
     }
 );
 
