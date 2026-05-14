@@ -214,23 +214,31 @@ exports.resendVerificationEmail = async (req, res) => {
       .replace("{{username}}", user.username)
       .replace("{{verificationCode}}", verificationCode);
 
-    await sendEmail({
-      email: user.email,
-      subject: "Verify Your FortCode Account",
-      message: "Verify your email",
-      html: htmlContent,
-      attachments: [
-        {
-          filename: "logo.png",
-          path: logoPath,
-          cid: "logo",
-        },
-      ],
-    });
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: "Verify Your FortCode Account",
+        message: "Verify your email",
+        html: htmlContent,
+        attachments: [
+          {
+            filename: "logo.png",
+            path: logoPath,
+            cid: "logo",
+          },
+        ],
+      });
+    } catch (emailError) {
+      console.error("Email resend error:", emailError);
+      return res.status(500).json({ 
+        message: "Failed to send verification email. Please check server configuration.",
+        error: emailError.message 
+      });
+    }
 
     res.json({ message: "Verification code resent to your email" });
   } catch (error) {
-    console.error("Resend error:", error);
+    console.error("Resend main error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
